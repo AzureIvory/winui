@@ -15,22 +15,28 @@ func NewProgressBar(id string) *ProgressBar {
 	}
 }
 
-// SetBounds 更新进度条的边界。
+// SetBounds 更新进度条边界。
 func (p *ProgressBar) SetBounds(rect Rect) {
-	p.widgetBase.setBounds(p, rect)
+	p.runOnUI(func() {
+		p.widgetBase.setBounds(p, rect)
+	})
 }
 
-// SetVisible 更新进度条的可见状态。
+// SetVisible 更新进度条可见状态。
 func (p *ProgressBar) SetVisible(visible bool) {
-	p.widgetBase.setVisible(p, visible)
+	p.runOnUI(func() {
+		p.widgetBase.setVisible(p, visible)
+	})
 }
 
-// SetEnabled 更新进度条的可用状态。
+// SetEnabled 更新进度条可用状态。
 func (p *ProgressBar) SetEnabled(enabled bool) {
-	p.widgetBase.setEnabled(p, enabled)
+	p.runOnUI(func() {
+		p.widgetBase.setEnabled(p, enabled)
+	})
 }
 
-// SetValue 更新进度条的当前值。
+// SetValue 更新进度条当前值。
 func (p *ProgressBar) SetValue(value int32) {
 	p.runOnUI(func() {
 		value = clampValue(value, 0, 100)
@@ -42,15 +48,19 @@ func (p *ProgressBar) SetValue(value int32) {
 	})
 }
 
-// SetStyle 更新进度条的样式覆盖。
+// SetStyle 更新进度条样式覆盖。
 func (p *ProgressBar) SetStyle(style ProgressStyle) {
 	p.runOnUI(func() {
+		oldRect := widgetDirtyRect(p)
 		p.Style = style
+		if scene := p.scene(); scene != nil {
+			scene.invalidateRect(oldRect)
+		}
 		p.invalidate(p)
 	})
 }
 
-// Value 返回进度条的当前值。
+// Value 返回进度条当前值。
 func (p *ProgressBar) Value() int32 {
 	return p.value
 }
@@ -60,16 +70,16 @@ func (p *ProgressBar) OnEvent(Event) bool {
 	return false
 }
 
-// Paint 使用给定的绘制上下文完成绘制。
+// Paint 使用给定绘制上下文完成绘制。
 func (p *ProgressBar) Paint(ctx *PaintCtx) {
-	if !p.Visible() {
+	if !p.Visible() || ctx == nil {
 		return
 	}
 	style := p.resolveStyle(ctx)
 	_ = ctx.DrawProgress(p.Bounds(), p.value, style)
 }
 
-// resolveStyle 解析进度条的最终样式。
+// resolveStyle 解析进度条最终样式。
 func (p *ProgressBar) resolveStyle(ctx *PaintCtx) ProgressStyle {
 	style := DefaultTheme().Progress
 	if ctx != nil && ctx.scene != nil && ctx.scene.theme != nil {
@@ -97,4 +107,42 @@ func (p *ProgressBar) resolveStyle(ctx *PaintCtx) ProgressStyle {
 		style.ShowPercent = p.Style.ShowPercent
 	}
 	return style
+}
+
+// dirtyRect 返回进度条及其百分比气泡可能覆盖到的脏区。
+func (p *ProgressBar) dirtyRect() Rect {
+	rect := p.Bounds()
+	if rect.Empty() {
+		return rect
+	}
+
+	style := p.resolveStyle(&PaintCtx{scene: p.scene()})
+	if !style.ShowPercent {
+		return rect
+	}
+
+	bubbleW := p.dp(52)
+	bubbleH := p.dp(28)
+	bubbleGap := p.dp(6)
+	pointerH := p.dp(6)
+
+	padX := bubbleW / 2
+	if bubbleW > rect.W {
+		padX = bubbleW
+	}
+
+	return Rect{
+		X: rect.X - padX,
+		Y: rect.Y - bubbleGap - pointerH - bubbleH,
+		W: rect.W + padX*2,
+		H: rect.H + bubbleGap + pointerH + bubbleH,
+	}
+}
+
+// dp 按控件所在场景的 DPI 缩放尺寸。
+func (p *ProgressBar) dp(value int32) int32 {
+	if scene := p.scene(); scene != nil && scene.app != nil {
+		return scene.app.DP(value)
+	}
+	return value
 }

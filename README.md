@@ -116,6 +116,10 @@ func main() {
 go run ./cmd/demo
 ```
 
+## 文档
+
+组件用法、构造参数和样式字段说明见 [`WIDGETS.zh-CN.md`](./WIDGETS.zh-CN.md)。
+
 ## 开发
 
 开发流程和仓库约定见 [`DEVELOPING.md`](./DEVELOPING.md)。

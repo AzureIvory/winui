@@ -14,6 +14,12 @@ type DPIAwareness int
 
 type MouseButton uint8
 
+// RenderMode 表示应用请求的渲染模式。
+type RenderMode uint8
+
+// RenderBackend 表示窗口当前实际启用的绘制后端。
+type RenderBackend uint8
+
 type Point struct {
 	X int32
 	Y int32
@@ -60,6 +66,8 @@ type Options struct {
 	Icon           *Icon
 	Background     Color
 	DoubleBuffered bool
+	// RenderMode 控制绘制后端选择。Auto 会优先尝试 Direct2D，失败时回退到 GDI。
+	RenderMode RenderMode
 
 	OnCreate     func(*App) error
 	OnPaint      func(*App, *Canvas)
@@ -81,6 +89,22 @@ const (
 	DPIAwarenessSystem
 	DPIAwarenessPerMonitor
 	DPIAwarenessPerMonitorV2
+)
+
+const (
+	// RenderModeAuto 优先尝试 Direct2D，初始化或运行失败时自动回退到 GDI。
+	RenderModeAuto RenderMode = iota + 1
+	// RenderModeGDI 强制使用 GDI。
+	RenderModeGDI
+)
+
+const (
+	// RenderBackendUnknown 表示后端尚未初始化。
+	RenderBackendUnknown RenderBackend = iota
+	// RenderBackendGDI 表示当前使用 GDI 绘制。
+	RenderBackendGDI
+	// RenderBackendDirect2D 表示当前使用 Direct2D/DirectWrite/WIC 绘制。
+	RenderBackendDirect2D
 )
 
 const (
@@ -239,6 +263,30 @@ func RGB(r, g, b byte) Color {
 	return Color(uint32(r) | (uint32(g) << 8) | (uint32(b) << 16))
 }
 
+// String 返回渲染模式的可读名称。
+func (m RenderMode) String() string {
+	switch m {
+	case RenderModeAuto:
+		return "Auto"
+	case RenderModeGDI:
+		return "GDI"
+	default:
+		return "Unknown"
+	}
+}
+
+// String 返回实际渲染后端的可读名称。
+func (b RenderBackend) String() string {
+	switch b {
+	case RenderBackendGDI:
+		return "GDI"
+	case RenderBackendDirect2D:
+		return "Direct2D"
+	default:
+		return "Unknown"
+	}
+}
+
 // Contains 返回矩形是否包含指定点。
 func (r Rect) Contains(x, y int32) bool {
 	return x >= r.X && y >= r.Y && x < r.X+r.W && y < r.Y+r.H
@@ -249,7 +297,7 @@ func (r Rect) Empty() bool {
 	return r.W <= 0 || r.H <= 0
 }
 
-// toWinRect 将 Rect 转为兼容 Win32 RECT 的结构。
+// toWinRect 把 Rect 转成兼容 Win32 RECT 的结构。
 func (r Rect) toWinRect() winRect {
 	return winRect{
 		Left:   r.X,
@@ -259,7 +307,7 @@ func (r Rect) toWinRect() winRect {
 	}
 }
 
-// rectFromWinRect 将 Win32 RECT 转为本模块使用的 Rect。
+// rectFromWinRect 把 Win32 RECT 转成库内使用的 Rect。
 func rectFromWinRect(r winRect) Rect {
 	return Rect{
 		X: r.Left,
@@ -269,7 +317,7 @@ func rectFromWinRect(r winRect) Rect {
 	}
 }
 
-// pointFromLParam 从 Win32 LPARAM 鼠标坐标中提取 Point。
+// pointFromLParam 从 Win32 LPARAM 的鼠标坐标中提取 Point。
 func pointFromLParam(lParam uintptr) Point {
 	return Point{
 		X: int32(int16(uint16(lParam & 0xFFFF))),

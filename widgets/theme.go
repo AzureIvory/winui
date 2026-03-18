@@ -19,6 +19,7 @@ type TextStyle struct {
 type ButtonStyle struct {
 	Font         FontSpec
 	TextColor    core.Color
+	DownText     core.Color
 	DisabledText core.Color
 	Background   core.Color
 	Hover        core.Color
@@ -28,6 +29,8 @@ type ButtonStyle struct {
 	CornerRadius int32
 	IconSizeDP   int32
 	TextInsetDP  int32
+	GapDP        int32
+	PadDP        int32
 }
 
 type ProgressStyle struct {
@@ -121,7 +124,7 @@ type Theme struct {
 	Edit            EditStyle
 }
 
-// DefaultTheme 返回控件在未覆写时使用的默认主题。
+// DefaultTheme 返回控件未覆写时使用的默认主题。
 func DefaultTheme() *Theme {
 	return &Theme{
 		BackgroundColor: core.RGB(255, 255, 255),
@@ -146,16 +149,18 @@ func DefaultTheme() *Theme {
 				Face:   "Microsoft YaHei UI",
 				SizeDP: 16,
 			},
-			TextColor:    core.RGB(16, 16, 16),
-			DisabledText: core.RGB(100, 100, 100),
+			TextColor:    core.RGB(15, 23, 42),
+			DownText:     core.RGB(255, 255, 255),
+			DisabledText: core.RGB(148, 163, 184),
 			Background:   core.RGB(255, 255, 255),
-			Hover:        core.RGB(242, 244, 247),
-			Pressed:      core.RGB(0, 120, 215),
-			Disabled:     core.RGB(35, 35, 35),
-			Border:       core.RGB(255, 255, 255),
-			CornerRadius: 8,
-			IconSizeDP:   48,
-			TextInsetDP:  35,
+			Hover:        core.RGB(239, 246, 255),
+			Pressed:      core.RGB(37, 99, 235),
+			Disabled:     core.RGB(241, 245, 249),
+			Border:       core.RGB(191, 219, 254),
+			CornerRadius: 10,
+			TextInsetDP:  18,
+			GapDP:        8,
+			PadDP:        12,
 		},
 		Progress: ProgressStyle{
 			Font: FontSpec{
@@ -165,8 +170,8 @@ func DefaultTheme() *Theme {
 			},
 			TextColor:    core.RGB(255, 255, 255),
 			TrackColor:   core.RGB(243, 244, 246),
-			FillColor:    core.RGB(124, 58, 237),
-			BubbleColor:  core.RGB(109, 40, 217),
+			FillColor:    core.RGB(16, 185, 129),
+			BubbleColor:  core.RGB(5, 150, 105),
 			CornerRadius: 12,
 			ShowPercent:  true,
 		},
@@ -179,11 +184,11 @@ func DefaultTheme() *Theme {
 			DisabledText:    core.RGB(156, 163, 175),
 			Background:      core.RGB(255, 255, 255),
 			BorderColor:     core.RGB(203, 213, 225),
-			HoverBorder:     core.RGB(124, 58, 237),
-			FocusBorder:     core.RGB(109, 40, 217),
-			IndicatorColor:  core.RGB(124, 58, 237),
+			HoverBorder:     core.RGB(56, 189, 248),
+			FocusBorder:     core.RGB(14, 165, 233),
+			IndicatorColor:  core.RGB(14, 165, 233),
 			CheckColor:      core.RGB(255, 255, 255),
-			HoverBackground: core.RGB(245, 243, 255),
+			HoverBackground: core.RGB(240, 249, 255),
 			DisabledBg:      core.RGB(243, 244, 246),
 			DisabledBorder:  core.RGB(209, 213, 219),
 			CornerRadius:    6,
@@ -199,11 +204,11 @@ func DefaultTheme() *Theme {
 			DisabledText:    core.RGB(156, 163, 175),
 			Background:      core.RGB(255, 255, 255),
 			BorderColor:     core.RGB(203, 213, 225),
-			HoverBorder:     core.RGB(124, 58, 237),
-			FocusBorder:     core.RGB(109, 40, 217),
-			IndicatorColor:  core.RGB(124, 58, 237),
+			HoverBorder:     core.RGB(56, 189, 248),
+			FocusBorder:     core.RGB(14, 165, 233),
+			IndicatorColor:  core.RGB(14, 165, 233),
 			CheckColor:      core.RGB(255, 255, 255),
-			HoverBackground: core.RGB(245, 243, 255),
+			HoverBackground: core.RGB(240, 249, 255),
 			DisabledBg:      core.RGB(243, 244, 246),
 			DisabledBorder:  core.RGB(209, 213, 219),
 			CornerRadius:    9,
@@ -219,10 +224,10 @@ func DefaultTheme() *Theme {
 			DisabledText:      core.RGB(156, 163, 175),
 			Background:        core.RGB(255, 255, 255),
 			BorderColor:       core.RGB(203, 213, 225),
-			HoverBorder:       core.RGB(167, 139, 250),
-			FocusBorder:       core.RGB(124, 58, 237),
-			ItemHoverColor:    core.RGB(245, 243, 255),
-			ItemSelectedColor: core.RGB(124, 58, 237),
+			HoverBorder:       core.RGB(96, 165, 250),
+			FocusBorder:       core.RGB(37, 99, 235),
+			ItemHoverColor:    core.RGB(239, 246, 255),
+			ItemSelectedColor: core.RGB(37, 99, 235),
 			ItemTextColor:     core.RGB(255, 255, 255),
 			ItemHeightDP:      34,
 			PaddingDP:         8,
@@ -237,12 +242,12 @@ func DefaultTheme() *Theme {
 			PlaceholderColor:  core.RGB(156, 163, 175),
 			Background:        core.RGB(255, 255, 255),
 			BorderColor:       core.RGB(203, 213, 225),
-			HoverBorder:       core.RGB(167, 139, 250),
-			FocusBorder:       core.RGB(124, 58, 237),
-			ArrowColor:        core.RGB(109, 40, 217),
+			HoverBorder:       core.RGB(96, 165, 250),
+			FocusBorder:       core.RGB(37, 99, 235),
+			ArrowColor:        core.RGB(37, 99, 235),
 			PopupBackground:   core.RGB(255, 255, 255),
-			ItemHoverColor:    core.RGB(245, 243, 255),
-			ItemSelectedColor: core.RGB(124, 58, 237),
+			ItemHoverColor:    core.RGB(239, 246, 255),
+			ItemSelectedColor: core.RGB(37, 99, 235),
 			ItemTextColor:     core.RGB(255, 255, 255),
 			ItemHeightDP:      34,
 			PaddingDP:         10,
@@ -258,11 +263,11 @@ func DefaultTheme() *Theme {
 			PlaceholderColor: core.RGB(156, 163, 175),
 			Background:       core.RGB(255, 255, 255),
 			BorderColor:      core.RGB(203, 213, 225),
-			HoverBorder:      core.RGB(167, 139, 250),
-			FocusBorder:      core.RGB(124, 58, 237),
+			HoverBorder:      core.RGB(96, 165, 250),
+			FocusBorder:      core.RGB(37, 99, 235),
 			DisabledText:     core.RGB(156, 163, 175),
 			DisabledBg:       core.RGB(243, 244, 246),
-			CaretColor:       core.RGB(109, 40, 217),
+			CaretColor:       core.RGB(37, 99, 235),
 			PaddingDP:        10,
 			CornerRadius:     10,
 		},

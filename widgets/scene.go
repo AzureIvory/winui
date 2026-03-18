@@ -372,7 +372,13 @@ func (s *Scene) Invalidate(widget Widget) {
 		s.app.Invalidate(nil)
 		return
 	}
-	rect := widget.Bounds()
+	s.invalidateRect(widgetDirtyRect(widget))
+}
+
+func (s *Scene) invalidateRect(rect Rect) {
+	if s == nil || s.app == nil || rect.Empty() {
+		return
+	}
 	s.app.Invalidate(&rect)
 }
 
@@ -743,4 +749,14 @@ func max32(a, b int32) int32 {
 		return a
 	}
 	return b
+}
+
+func widgetDirtyRect(widget Widget) Rect {
+	if widget == nil {
+		return Rect{}
+	}
+	if dirty, ok := widget.(dirtyWidget); ok {
+		return dirty.dirtyRect()
+	}
+	return widget.Bounds()
 }

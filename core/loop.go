@@ -37,7 +37,7 @@ func appWndProc(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr {
 		return 0
 
 	case wmPaint:
-		session, err := beginPaintSession(app.hwnd, app.opts.DoubleBuffered)
+		session, err := beginPaintSession(app, app.hwnd, app.opts.DoubleBuffered)
 		if err == nil {
 			if session.canvas != nil {
 				_ = session.canvas.Clear(app.opts.Background)

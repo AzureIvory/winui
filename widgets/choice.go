@@ -4,7 +4,7 @@ package widgets
 
 import "github.com/AzureIvory/winui/core"
 
-// CheckBox 表示可切换状态的复选框控件。
+// CheckBox 表示可切换状态的多选框控件。
 type CheckBox struct {
 	widgetBase
 	Text     string
@@ -16,7 +16,7 @@ type CheckBox struct {
 	OnChange func(bool)
 }
 
-// NewCheckBox 创建一个新的复选框。
+// NewCheckBox 创建一个新的多选框。
 func NewCheckBox(id, text string) *CheckBox {
 	return &CheckBox{
 		widgetBase: newWidgetBase(id, "checkbox"),
@@ -24,28 +24,28 @@ func NewCheckBox(id, text string) *CheckBox {
 	}
 }
 
-// SetBounds 更新复选框的边界。
+// SetBounds 更新多选框边界。
 func (c *CheckBox) SetBounds(rect Rect) {
 	c.runOnUI(func() {
 		c.widgetBase.setBounds(c, rect)
 	})
 }
 
-// SetVisible 更新复选框的可见状态。
+// SetVisible 更新多选框可见状态。
 func (c *CheckBox) SetVisible(visible bool) {
 	c.runOnUI(func() {
 		c.widgetBase.setVisible(c, visible)
 	})
 }
 
-// SetEnabled 更新复选框的可用状态。
+// SetEnabled 更新多选框可用状态。
 func (c *CheckBox) SetEnabled(enabled bool) {
 	c.runOnUI(func() {
 		c.widgetBase.setEnabled(c, enabled)
 	})
 }
 
-// SetText 更新复选框的显示文本。
+// SetText 更新多选框文本。
 func (c *CheckBox) SetText(text string) {
 	c.runOnUI(func() {
 		if c.Text == text {
@@ -56,19 +56,19 @@ func (c *CheckBox) SetText(text string) {
 	})
 }
 
-// SetChecked 更新复选框的选中状态。
+// SetChecked 更新多选框选中状态。
 func (c *CheckBox) SetChecked(checked bool) {
 	c.runOnUI(func() {
 		c.setChecked(checked, false)
 	})
 }
 
-// IsChecked 返回复选框是否选中。
+// IsChecked 返回多选框是否选中。
 func (c *CheckBox) IsChecked() bool {
 	return c.Checked
 }
 
-// SetStyle 更新复选框的样式覆盖。
+// SetStyle 更新多选框样式覆盖。
 func (c *CheckBox) SetStyle(style ChoiceStyle) {
 	c.runOnUI(func() {
 		c.Style = style
@@ -76,7 +76,7 @@ func (c *CheckBox) SetStyle(style ChoiceStyle) {
 	})
 }
 
-// SetOnChange 注册复选框的变更回调。
+// SetOnChange 注册多选框变更回调。
 func (c *CheckBox) SetOnChange(fn func(bool)) {
 	c.runOnUI(func() {
 		c.OnChange = fn
@@ -92,8 +92,10 @@ func (c *CheckBox) OnEvent(evt Event) bool {
 			c.invalidate(c)
 		}
 	case EventMouseLeave:
-		if c.Hover {
-			c.Hover = false
+		changed := c.Hover || c.Down
+		c.Hover = false
+		c.Down = false
+		if changed {
 			c.invalidate(c)
 		}
 	case EventMouseDown:
@@ -128,7 +130,7 @@ func (c *CheckBox) OnEvent(evt Event) bool {
 	return false
 }
 
-// Paint 使用给定的绘制上下文完成绘制。
+// Paint 使用给定绘制上下文完成绘制。
 func (c *CheckBox) Paint(ctx *PaintCtx) {
 	if !c.Visible() || ctx == nil {
 		return
@@ -148,8 +150,13 @@ func (c *CheckBox) Paint(ctx *PaintCtx) {
 	if gap <= 0 {
 		gap = ctx.DP(10)
 	}
-	boxY := content.Y + (content.H-boxSize)/2
-	boxRect := Rect{X: content.X, Y: boxY, W: boxSize, H: boxSize}
+
+	boxRect := Rect{
+		X: content.X,
+		Y: content.Y + (content.H-boxSize)/2,
+		W: boxSize,
+		H: boxSize,
+	}
 	wrapRect := Rect{X: content.X, Y: content.Y, W: content.W, H: content.H}
 
 	if c.Hover || c.Focused {
@@ -172,15 +179,7 @@ func (c *CheckBox) Paint(ctx *PaintCtx) {
 	_ = ctx.FillRoundRect(boxRect, ctx.DP(style.CornerRadius), background)
 	if c.Checked {
 		_ = ctx.FillRoundRect(boxRect, ctx.DP(style.CornerRadius), style.IndicatorColor)
-		_ = ctx.DrawText("X", boxRect, TextStyle{
-			Font: FontSpec{
-				Face:   style.Font.Face,
-				SizeDP: style.Font.SizeDP,
-				Weight: 700,
-			},
-			Color:  style.CheckColor,
-			Format: core.DTCenter | core.DTVCenter | core.DTSingleLine,
-		})
+		drawChoiceDot(ctx, boxRect, style.CheckColor)
 	}
 	_ = ctx.StrokeRoundRect(boxRect, ctx.DP(style.CornerRadius), borderColor, 1)
 
@@ -197,7 +196,7 @@ func (c *CheckBox) Paint(ctx *PaintCtx) {
 	})
 }
 
-// acceptsFocus 返回控件是否可接收键盘焦点。
+// acceptsFocus 返回控件是否可接受键盘焦点。
 func (c *CheckBox) acceptsFocus() bool {
 	return true
 }
@@ -210,7 +209,7 @@ func (c *CheckBox) cursor() CursorID {
 	return core.CursorHand
 }
 
-// resolveStyle 解析复选框的最终样式。
+// resolveStyle 解析多选框最终样式。
 func (c *CheckBox) resolveStyle(ctx *PaintCtx) ChoiceStyle {
 	style := DefaultTheme().CheckBox
 	if ctx != nil && ctx.scene != nil && ctx.scene.theme != nil {
@@ -219,7 +218,7 @@ func (c *CheckBox) resolveStyle(ctx *PaintCtx) ChoiceStyle {
 	return mergeChoiceStyle(style, c.Style)
 }
 
-// setChecked 更新复选框的选中状态。
+// setChecked 更新多选框选中状态。
 func (c *CheckBox) setChecked(checked bool, notify bool) {
 	if c.Checked == checked {
 		return
@@ -252,28 +251,28 @@ func NewRadioButton(id, text string) *RadioButton {
 	}
 }
 
-// SetBounds 更新单选按钮的边界。
+// SetBounds 更新单选按钮边界。
 func (r *RadioButton) SetBounds(rect Rect) {
 	r.runOnUI(func() {
 		r.widgetBase.setBounds(r, rect)
 	})
 }
 
-// SetVisible 更新单选按钮的可见状态。
+// SetVisible 更新单选按钮可见状态。
 func (r *RadioButton) SetVisible(visible bool) {
 	r.runOnUI(func() {
 		r.widgetBase.setVisible(r, visible)
 	})
 }
 
-// SetEnabled 更新单选按钮的可用状态。
+// SetEnabled 更新单选按钮可用状态。
 func (r *RadioButton) SetEnabled(enabled bool) {
 	r.runOnUI(func() {
 		r.widgetBase.setEnabled(r, enabled)
 	})
 }
 
-// SetText 更新单选按钮的显示文本。
+// SetText 更新单选按钮文本。
 func (r *RadioButton) SetText(text string) {
 	r.runOnUI(func() {
 		if r.Text == text {
@@ -284,7 +283,7 @@ func (r *RadioButton) SetText(text string) {
 	})
 }
 
-// SetGroup 更新单选按钮的分组。
+// SetGroup 更新单选按钮分组。
 func (r *RadioButton) SetGroup(group string) {
 	r.runOnUI(func() {
 		if r.Group == group {
@@ -297,7 +296,7 @@ func (r *RadioButton) SetGroup(group string) {
 	})
 }
 
-// SetChecked 更新单选按钮的选中状态。
+// SetChecked 更新单选按钮选中状态。
 func (r *RadioButton) SetChecked(checked bool) {
 	r.runOnUI(func() {
 		r.setChecked(checked, false)
@@ -309,7 +308,7 @@ func (r *RadioButton) IsChecked() bool {
 	return r.Checked
 }
 
-// SetStyle 更新单选按钮的样式覆盖。
+// SetStyle 更新单选按钮样式覆盖。
 func (r *RadioButton) SetStyle(style ChoiceStyle) {
 	r.runOnUI(func() {
 		r.Style = style
@@ -317,7 +316,7 @@ func (r *RadioButton) SetStyle(style ChoiceStyle) {
 	})
 }
 
-// SetOnChange 注册单选按钮的变更回调。
+// SetOnChange 注册单选按钮变更回调。
 func (r *RadioButton) SetOnChange(fn func(bool)) {
 	r.runOnUI(func() {
 		r.OnChange = fn
@@ -333,8 +332,10 @@ func (r *RadioButton) OnEvent(evt Event) bool {
 			r.invalidate(r)
 		}
 	case EventMouseLeave:
-		if r.Hover {
-			r.Hover = false
+		changed := r.Hover || r.Down
+		r.Hover = false
+		r.Down = false
+		if changed {
 			r.invalidate(r)
 		}
 	case EventMouseDown:
@@ -369,7 +370,7 @@ func (r *RadioButton) OnEvent(evt Event) bool {
 	return false
 }
 
-// Paint 使用给定的绘制上下文完成绘制。
+// Paint 使用给定绘制上下文完成绘制。
 func (r *RadioButton) Paint(ctx *PaintCtx) {
 	if !r.Visible() || ctx == nil {
 		return
@@ -389,8 +390,13 @@ func (r *RadioButton) Paint(ctx *PaintCtx) {
 	if gap <= 0 {
 		gap = ctx.DP(10)
 	}
-	boxY := content.Y + (content.H-boxSize)/2
-	boxRect := Rect{X: content.X, Y: boxY, W: boxSize, H: boxSize}
+
+	boxRect := Rect{
+		X: content.X,
+		Y: content.Y + (content.H-boxSize)/2,
+		W: boxSize,
+		H: boxSize,
+	}
 	wrapRect := Rect{X: content.X, Y: content.Y, W: content.W, H: content.H}
 
 	if r.Hover || r.Focused {
@@ -414,14 +420,7 @@ func (r *RadioButton) Paint(ctx *PaintCtx) {
 	_ = ctx.FillRoundRect(boxRect, radius, background)
 	_ = ctx.StrokeRoundRect(boxRect, radius, borderColor, 1)
 	if r.Checked {
-		dotSize := max32(6, boxSize/2)
-		dotRect := Rect{
-			X: boxRect.X + (boxRect.W-dotSize)/2,
-			Y: boxRect.Y + (boxRect.H-dotSize)/2,
-			W: dotSize,
-			H: dotSize,
-		}
-		_ = ctx.FillRoundRect(dotRect, max32(1, dotSize/2), style.IndicatorColor)
+		drawChoiceDot(ctx, boxRect, style.IndicatorColor)
 	}
 
 	textRect := Rect{
@@ -437,7 +436,7 @@ func (r *RadioButton) Paint(ctx *PaintCtx) {
 	})
 }
 
-// acceptsFocus 返回控件是否可接收键盘焦点。
+// acceptsFocus 返回控件是否可接受键盘焦点。
 func (r *RadioButton) acceptsFocus() bool {
 	return true
 }
@@ -450,7 +449,7 @@ func (r *RadioButton) cursor() CursorID {
 	return core.CursorHand
 }
 
-// resolveStyle 解析单选按钮的最终样式。
+// resolveStyle 解析单选按钮最终样式。
 func (r *RadioButton) resolveStyle(ctx *PaintCtx) ChoiceStyle {
 	style := DefaultTheme().RadioButton
 	if ctx != nil && ctx.scene != nil && ctx.scene.theme != nil {
@@ -459,7 +458,7 @@ func (r *RadioButton) resolveStyle(ctx *PaintCtx) ChoiceStyle {
 	return mergeChoiceStyle(style, r.Style)
 }
 
-// setChecked 更新单选按钮的选中状态。
+// setChecked 更新单选按钮选中状态。
 func (r *RadioButton) setChecked(checked bool, notify bool) {
 	if r.Checked == checked {
 		return
@@ -474,7 +473,7 @@ func (r *RadioButton) setChecked(checked bool, notify bool) {
 	}
 }
 
-// syncGroup 同步当前分组中的单选按钮状态。
+// syncGroup 同步当前分组内其他单选按钮状态。
 func (r *RadioButton) syncGroup(notify bool) {
 	parent := r.parent()
 	if parent == nil || r.Group == "" {
@@ -493,7 +492,21 @@ func (r *RadioButton) syncGroup(notify bool) {
 	}
 }
 
-// mergeChoiceStyle 将复选框或单选按钮的样式覆盖合并到基础样式上。
+func drawChoiceDot(ctx *PaintCtx, boxRect Rect, color core.Color) {
+	if ctx == nil || boxRect.Empty() {
+		return
+	}
+	dotSize := max32(ctx.DP(6), boxRect.W/2)
+	dotRect := Rect{
+		X: boxRect.X + (boxRect.W-dotSize)/2,
+		Y: boxRect.Y + (boxRect.H-dotSize)/2,
+		W: dotSize,
+		H: dotSize,
+	}
+	_ = ctx.FillRoundRect(dotRect, max32(1, dotSize/2), color)
+}
+
+// mergeChoiceStyle 把多选框或单选按钮样式覆盖合并到基础样式中。
 func mergeChoiceStyle(base, override ChoiceStyle) ChoiceStyle {
 	if override.Font.Face != "" {
 		base.Font = override.Font

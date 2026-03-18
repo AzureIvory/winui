@@ -97,7 +97,11 @@ type blendFunction struct {
 }
 
 type Font struct {
-	handle windows.Handle
+	handle  windows.Handle
+	face    string
+	height  int32
+	weight  int32
+	quality FontQuality
 }
 
 type Brush struct {
@@ -128,11 +132,13 @@ type AnimatedFrame struct {
 type Canvas struct {
 	hdc    windows.Handle
 	bounds Rect
+	d2d    *d2dRenderer
 }
 
 type PaintCtx = Canvas
 
 type paintSession struct {
+	app       *App
 	hwnd      windows.Handle
 	paintDC   windows.Handle
 	memDC     windows.Handle
@@ -141,6 +147,7 @@ type paintSession struct {
 	canvas    *Canvas
 	ps        paintStruct
 	direct    bool
+	d2d       *d2dRenderer
 }
 
 // NewSolidBrush 创建一个新的实心画刷。
@@ -208,6 +215,9 @@ func (p *Pen) Close() error {
 // NewFont 创建一个新的字体。
 func NewFont(face string, height int32, weight int32, quality FontQuality) (*Font, error) {
 	var lf logFontW
+	if weight <= 0 {
+		weight = 400
+	}
 	lf.Height = -height
 	lf.Weight = weight
 	lf.CharSet = 1
@@ -218,7 +228,13 @@ func NewFont(face string, height int32, weight int32, quality FontQuality) (*Fon
 	if h == 0 {
 		return nil, wrapError("CreateFontIndirectW", err)
 	}
-	return &Font{handle: windows.Handle(h)}, nil
+	return &Font{
+		handle:  windows.Handle(h),
+		face:    face,
+		height:  height,
+		weight:  weight,
+		quality: quality,
+	}, nil
 }
 
 // NewFont 创建一个新的字体。
@@ -479,6 +495,16 @@ func (c *Canvas) Bounds() Rect {
 
 // FillRect 在当前画布上填充指定矩形。
 func (c *Canvas) FillRect(rect Rect, color Color) error {
+	if c == nil {
+		return nil
+	}
+	if c.d2d != nil {
+		return c.d2d.fillRect(rect, color)
+	}
+	return c.fillRectGDI(rect, color)
+}
+
+func (c *Canvas) fillRectGDI(rect Rect, color Color) error {
 	brush, err := NewSolidBrush(color)
 	if err != nil {
 		return err
@@ -504,11 +530,27 @@ func (c *Canvas) Clear(color Color) error {
 
 // FillRoundRect 在当前画布上填充指定圆角矩形。
 func (c *Canvas) FillRoundRect(rect Rect, radius int32, color Color) error {
+	if c == nil {
+		return nil
+	}
+	if c.d2d != nil {
+		return c.d2d.fillRoundRect(rect, radius, color)
+	}
 	return c.RoundRect(rect, radius, color, color)
 }
 
 // StrokeRoundRect 在当前画布上描边指定圆角矩形。
 func (c *Canvas) StrokeRoundRect(rect Rect, radius int32, color Color, width int32) error {
+	if c == nil {
+		return nil
+	}
+	if c.d2d != nil {
+		return c.d2d.strokeRoundRect(rect, radius, color, width)
+	}
+	return c.strokeRoundRectGDI(rect, radius, color, width)
+}
+
+func (c *Canvas) strokeRoundRectGDI(rect Rect, radius int32, color Color, width int32) error {
 	if width <= 0 {
 		width = 1
 	}
@@ -546,6 +588,16 @@ func (c *Canvas) StrokeRoundRect(rect Rect, radius int32, color Color, width int
 
 // FillPolygon 在当前画布上填充指定多边形。
 func (c *Canvas) FillPolygon(points []Point, color Color) error {
+	if c == nil {
+		return nil
+	}
+	if c.d2d != nil {
+		return c.d2d.fillPolygon(points, color)
+	}
+	return c.fillPolygonGDI(points, color)
+}
+
+func (c *Canvas) fillPolygonGDI(points []Point, color Color) error {
 	if len(points) < 3 {
 		return nil
 	}
@@ -579,6 +631,19 @@ func (c *Canvas) FillPolygon(points []Point, color Color) error {
 
 // RoundRect 在当前画布上绘制指定圆角矩形。
 func (c *Canvas) RoundRect(rect Rect, radius int32, fill Color, stroke Color) error {
+	if c == nil {
+		return nil
+	}
+	if c.d2d != nil {
+		if err := c.d2d.fillRoundRect(rect, radius, fill); err != nil {
+			return err
+		}
+		return c.d2d.strokeRoundRect(rect, radius, stroke, 1)
+	}
+	return c.roundRectGDI(rect, radius, fill, stroke)
+}
+
+func (c *Canvas) roundRectGDI(rect Rect, radius int32, fill Color, stroke Color) error {
 	brush, err := NewSolidBrush(fill)
 	if err != nil {
 		return err
@@ -613,6 +678,16 @@ func (c *Canvas) RoundRect(rect Rect, radius int32, fill Color, stroke Color) er
 
 // DrawText 在当前画布上绘制文本。
 func (c *Canvas) DrawText(text string, rect Rect, font *Font, color Color, format uint32) error {
+	if c == nil {
+		return nil
+	}
+	if c.d2d != nil {
+		return c.d2d.drawText(text, rect, font, color, format)
+	}
+	return c.drawTextGDI(text, rect, font, color, format)
+}
+
+func (c *Canvas) drawTextGDI(text string, rect Rect, font *Font, color Color, format uint32) error {
 	if text == "" {
 		return nil
 	}
@@ -646,6 +721,16 @@ func (c *Canvas) DrawText(text string, rect Rect, font *Font, color Color, forma
 
 // MeasureText 测量渲染给定文本所需的尺寸。
 func (c *Canvas) MeasureText(text string, font *Font) (Size, error) {
+	if c == nil {
+		return Size{}, nil
+	}
+	if c.d2d != nil {
+		return c.d2d.measureText(text, font)
+	}
+	return c.measureTextGDI(text, font)
+}
+
+func (c *Canvas) measureTextGDI(text string, font *Font) (Size, error) {
 	if text == "" {
 		return Size{}, nil
 	}
@@ -676,6 +761,18 @@ func (c *Canvas) MeasureText(text string, font *Font) (Size, error) {
 
 // DrawIcon 在当前画布上绘制图标。
 func (c *Canvas) DrawIcon(icon *Icon, rect Rect) error {
+	if c == nil {
+		return nil
+	}
+	if c.d2d != nil {
+		if err := c.d2d.flush(); err != nil {
+			return err
+		}
+	}
+	return c.drawIconGDI(icon, rect)
+}
+
+func (c *Canvas) drawIconGDI(icon *Icon, rect Rect) error {
 	if icon == nil || icon.handle == 0 {
 		return nil
 	}
@@ -698,6 +795,16 @@ func (c *Canvas) DrawIcon(icon *Icon, rect Rect) error {
 
 // DrawBitmapAlpha 在当前画布上按透明度绘制位图。
 func (c *Canvas) DrawBitmapAlpha(bitmap *Bitmap, rect Rect, alpha byte) error {
+	if c == nil {
+		return nil
+	}
+	if c.d2d != nil {
+		return c.d2d.drawBitmap(bitmap, rect, alpha)
+	}
+	return c.drawBitmapAlphaGDI(bitmap, rect, alpha)
+}
+
+func (c *Canvas) drawBitmapAlphaGDI(bitmap *Bitmap, rect Rect, alpha byte) error {
 	if bitmap == nil || bitmap.handle == 0 {
 		return nil
 	}
@@ -738,8 +845,19 @@ func (c *Canvas) DrawBitmapAlpha(bitmap *Bitmap, rect Rect, alpha byte) error {
 }
 
 // beginPaintSession 为当前 WM_PAINT 周期创建并初始化绘制会话。
-func beginPaintSession(hwnd windows.Handle, doubleBuffered bool) (*paintSession, error) {
-	session := &paintSession{hwnd: hwnd}
+func beginPaintSession(app *App, hwnd windows.Handle, doubleBuffered bool) (*paintSession, error) {
+	if renderer, backend := app.rendererForPaint(); renderer != nil && backend == RenderBackendDirect2D {
+		session, err := beginD2DPaintSession(app, hwnd, doubleBuffered, renderer)
+		if err == nil {
+			return session, nil
+		}
+		app.fallbackToGDI(err)
+	}
+	return beginGDIPaintSession(app, hwnd, doubleBuffered)
+}
+
+func beginGDIPaintSession(app *App, hwnd windows.Handle, doubleBuffered bool) (*paintSession, error) {
+	session := &paintSession{app: app, hwnd: hwnd}
 	paintDC, _, err := procBeginPaint.Call(uintptr(hwnd), uintptr(unsafe.Pointer(&session.ps)))
 	if paintDC == 0 {
 		return nil, wrapError("BeginPaint", err)
@@ -778,14 +896,47 @@ func beginPaintSession(hwnd windows.Handle, doubleBuffered bool) (*paintSession,
 	return session, nil
 }
 
+func beginD2DPaintSession(app *App, hwnd windows.Handle, doubleBuffered bool, renderer *d2dRenderer) (*paintSession, error) {
+	session, err := beginGDIPaintSession(app, hwnd, doubleBuffered)
+	if err != nil {
+		return nil, err
+	}
+	session.d2d = renderer
+	session.canvas.d2d = renderer
+	if err := renderer.begin(session.canvas.hdc, session.canvas.bounds); err != nil {
+		_ = session.closeRaw()
+		return nil, err
+	}
+	return session, nil
+}
+
 // close 释放绘制会话持有的资源。
 func (s *paintSession) close() error {
+	var retErr error
+	if s != nil && s.d2d != nil {
+		retErr = s.d2d.end()
+		if retErr != nil && s.app != nil {
+			s.app.fallbackToGDI(retErr)
+		}
+	}
+	closeErr := s.closeRaw(retErr == nil)
+	if retErr != nil {
+		return retErr
+	}
+	return closeErr
+}
+
+func (s *paintSession) closeRaw(doBlit ...bool) error {
 	if s == nil {
 		return nil
 	}
 
 	var retErr error
-	if !s.direct && s.canvas != nil && s.buffer != nil {
+	shouldBlit := true
+	if len(doBlit) > 0 {
+		shouldBlit = doBlit[0]
+	}
+	if shouldBlit && !s.direct && s.canvas != nil && s.buffer != nil {
 		r1, _, err := procBitBlt.Call(
 			uintptr(s.paintDC),
 			0,

@@ -44,6 +44,10 @@ type overlayWidget interface {
 	PaintOverlay(ctx *PaintCtx)
 }
 
+type dirtyWidget interface {
+	dirtyRect() Rect
+}
+
 var widgetSequence atomic.Uint64
 
 // newWidgetID 使用给定前缀生成唯一的控件标识。
@@ -130,8 +134,15 @@ func (b *widgetBase) setBounds(owner Widget, rect Rect) {
 	if b.bounds == rect {
 		return
 	}
+	var oldRect Rect
+	if b.sceneRef != nil && owner != nil {
+		oldRect = widgetDirtyRect(owner)
+	}
 	b.bounds = rect
 	if b.sceneRef != nil {
+		if !oldRect.Empty() {
+			b.sceneRef.invalidateRect(oldRect)
+		}
 		b.sceneRef.Invalidate(owner)
 	}
 }

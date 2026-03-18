@@ -3,8 +3,9 @@
 package widgets
 
 import (
-	"github.com/AzureIvory/winui/core"
 	"testing"
+
+	"github.com/AzureIvory/winui/core"
 )
 
 // TestProgressStyleDefaults 测试进度条默认样式。
@@ -12,10 +13,10 @@ func TestProgressStyleDefaults(t *testing.T) {
 	progress := NewProgressBar("progress")
 	style := progress.resolveStyle(nil)
 
-	if style.FillColor != core.RGB(124, 58, 237) {
+	if style.FillColor != core.RGB(16, 185, 129) {
 		t.Fatalf("expected default fill color updated, got %#08x", uint32(style.FillColor))
 	}
-	if style.BubbleColor != core.RGB(109, 40, 217) {
+	if style.BubbleColor != core.RGB(5, 150, 105) {
 		t.Fatalf("expected default bubble color updated, got %#08x", uint32(style.BubbleColor))
 	}
 	if style.TextColor != core.RGB(255, 255, 255) {
@@ -41,5 +42,23 @@ func TestProgressStyleOverride(t *testing.T) {
 	}
 	if style.TextColor != core.RGB(240, 240, 240) {
 		t.Fatalf("expected text override, got %#08x", uint32(style.TextColor))
+	}
+}
+
+// TestProgressDirtyRect 测试进度条脏区会覆盖百分比气泡。
+func TestProgressDirtyRect(t *testing.T) {
+	progress := NewProgressBar("progress")
+	progress.SetBounds(Rect{X: 20, Y: 100, W: 200, H: 16})
+	progress.SetStyle(ProgressStyle{ShowPercent: true})
+
+	dirty := widgetDirtyRect(progress)
+	if dirty.Y >= 100 {
+		t.Fatalf("expected dirty rect to extend above progress bar, got %#v", dirty)
+	}
+	if dirty.W <= 200 {
+		t.Fatalf("expected dirty rect width to include bubble sweep, got %#v", dirty)
+	}
+	if dirty.H <= 16 {
+		t.Fatalf("expected dirty rect height to include bubble area, got %#v", dirty)
 	}
 }

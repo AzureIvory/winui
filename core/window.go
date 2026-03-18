@@ -80,6 +80,11 @@ type App struct {
 
 	timerMu      sync.Mutex
 	activeTimers map[uintptr]struct{}
+
+	renderMu       sync.RWMutex
+	renderBackend  RenderBackend
+	renderFallback string
+	d2dRenderer    *d2dRenderer
 }
 
 // NewApp 创建一个新的应用实例。
@@ -104,6 +109,9 @@ func NewApp(opts Options) (*App, error) {
 	}
 	if opts.Background == 0 {
 		opts.Background = RGB(255, 255, 255)
+	}
+	if opts.RenderMode == 0 {
+		opts.RenderMode = RenderModeAuto
 	}
 
 	return &App{
@@ -275,6 +283,7 @@ func MessageBeep() error {
 func (a *App) runUIThread() {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
+	defer a.closeRenderer()
 
 	a.threadID = currentThreadID()
 	a.setDPI(initProcessDPIAwareness())
@@ -377,6 +386,7 @@ func (a *App) createWindow() error {
 	a.hwnd = windows.Handle(hwnd)
 	windowRegistry.Store(a.hwnd, a)
 	a.refreshWindowDPI()
+	a.initRenderer()
 
 	if a.opts.Icon != nil && a.opts.Icon.handle != 0 {
 		procSendMessageW.Call(hwnd, wmSetIcon, iconSmall, uintptr(a.opts.Icon.handle))
