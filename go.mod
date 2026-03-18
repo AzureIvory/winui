@@ -1,4 +1,4 @@
-module github.com/yourname/winui
+module github.com/AzureIvory/winui
 
 go 1.24.0
 

@@ -3,8 +3,8 @@
 package main
 
 import (
-	"github.com/yourname/winui/core"
-	"github.com/yourname/winui/widgets"
+	"github.com/AzureIvory/winui/core"
+	"github.com/AzureIvory/winui/widgets"
 )
 
 type demoUI struct {
