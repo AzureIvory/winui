@@ -12,6 +12,7 @@ const (
 	EventMouseLeave
 	EventMouseDown
 	EventMouseUp
+	EventMouseWheel
 	EventClick
 	EventFocus
 	EventBlur
@@ -29,6 +30,7 @@ type Event struct {
 	Key     core.KeyEvent
 	Rune    rune
 	Flags   uintptr
+	Delta   int32
 	TimerID uintptr
 	Bounds  Rect
 	Ctx     *PaintCtx
@@ -42,5 +44,6 @@ func eventFromMouse(t EventType, ev core.MouseEvent) Event {
 		Point:  ev.Point,
 		Button: ev.Button,
 		Flags:  ev.Flags,
+		Delta:  ev.Delta,
 	}
 }

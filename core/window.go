@@ -43,6 +43,7 @@ var (
 	procMessageBeep           = user32.NewProc("MessageBeep")
 	procGetDC                 = user32.NewProc("GetDC")
 	procReleaseDC             = user32.NewProc("ReleaseDC")
+	procScreenToClient        = user32.NewProc("ScreenToClient")
 	procSystemParametersInfoW = user32.NewProc("SystemParametersInfoW")
 	procSetWindowPos          = user32.NewProc("SetWindowPos")
 	procGetModuleHandleW      = kernel32.NewProc("GetModuleHandleW")
@@ -519,7 +520,32 @@ func (a *App) updateClientSize(size Size) {
 }
 
 // currentThreadID 返回调用线程的标识。
+// Close 请求关闭当前应用窗口。
+func (a *App) Close() {
+	if a == nil || a.hwnd == 0 || a.closed.Load() {
+		return
+	}
+	if a.IsUIThread() {
+		procDestroyWindow.Call(uintptr(a.hwnd))
+		return
+	}
+	_ = a.Post(func() {
+		if a.hwnd != 0 && !a.closed.Load() {
+			procDestroyWindow.Call(uintptr(a.hwnd))
+		}
+	})
+}
+
 func currentThreadID() uint32 {
 	r1, _, _ := procGetCurrentThreadID.Call()
 	return uint32(r1)
+}
+
+func (a *App) screenToClient(pt Point) Point {
+	if a == nil || a.hwnd == 0 {
+		return pt
+	}
+	wp := point{X: pt.X, Y: pt.Y}
+	procScreenToClient.Call(uintptr(a.hwnd), uintptr(unsafe.Pointer(&wp)))
+	return Point{X: wp.X, Y: wp.Y}
 }

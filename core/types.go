@@ -1,17 +1,22 @@
-//go:build windows
+﻿//go:build windows
 
 package core
 
 import "golang.org/x/sys/windows"
 
+// Color 表示 Win32 常用的 0x00BBGGRR 颜色值。
 type Color uint32
 
+// CursorID 表示系统预定义光标的标识。
 type CursorID uintptr
 
+// FontQuality 表示 GDI 字体平滑质量选项。
 type FontQuality byte
 
+// DPIAwareness 表示进程或线程的 DPI 感知级别。
 type DPIAwareness int
 
+// MouseButton 表示鼠标按键类型。
 type MouseButton uint8
 
 // RenderMode 表示应用请求的渲染模式。
@@ -20,16 +25,19 @@ type RenderMode uint8
 // RenderBackend 表示窗口当前实际启用的绘制后端。
 type RenderBackend uint8
 
+// Point 表示二维平面中的整数坐标点。
 type Point struct {
 	X int32
 	Y int32
 }
 
+// Size 表示宽高尺寸。
 type Size struct {
 	Width  int32
 	Height int32
 }
 
+// Rect 表示以左上角和宽高定义的矩形区域。
 type Rect struct {
 	X int32
 	Y int32
@@ -37,6 +45,7 @@ type Rect struct {
 	H int32
 }
 
+// DPIInfo 保存当前窗口或进程的 DPI 缩放信息。
 type DPIInfo struct {
 	X         int32
 	Y         int32
@@ -44,17 +53,21 @@ type DPIInfo struct {
 	Awareness DPIAwareness
 }
 
+// MouseEvent 描述鼠标位置、按键和滚轮等输入信息。
 type MouseEvent struct {
 	Point  Point
 	Button MouseButton
 	Flags  uintptr
+	Delta  int32
 }
 
+// KeyEvent 描述键盘按键与底层消息标志。
 type KeyEvent struct {
 	Key   uint32
 	Flags uintptr
 }
 
+// Options 定义创建 App 时使用的窗口参数和事件回调。
 type Options struct {
 	ClassName      string
 	Title          string
@@ -76,6 +89,7 @@ type Options struct {
 	OnMouseLeave func(*App)
 	OnMouseDown  func(*App, MouseEvent)
 	OnMouseUp    func(*App, MouseEvent)
+	OnMouseWheel func(*App, MouseEvent)
 	OnKeyDown    func(*App, KeyEvent)
 	OnChar       func(*App, rune)
 	OnFocus      func(*App, bool)
@@ -85,9 +99,13 @@ type Options struct {
 }
 
 const (
+	// DPIAwarenessUnknown 表示尚未确定 DPI 感知模式。
 	DPIAwarenessUnknown DPIAwareness = iota
+	// DPIAwarenessSystem 表示系统级 DPI 感知。
 	DPIAwarenessSystem
+	// DPIAwarenessPerMonitor 表示按显示器感知 DPI。
 	DPIAwarenessPerMonitor
+	// DPIAwarenessPerMonitorV2 表示按显示器感知 DPI V2。
 	DPIAwarenessPerMonitorV2
 )
 
@@ -108,120 +126,201 @@ const (
 )
 
 const (
+	// MouseButtonLeft 表示鼠标左键。
 	MouseButtonLeft MouseButton = 1
+	// MouseButtonRight 表示鼠标右键。
+	MouseButtonRight MouseButton = 2
 )
 
 const (
-	WSCaption      uint32 = 0x00C00000
-	WSSysMenu      uint32 = 0x00080000
-	WSMinimizeBox  uint32 = 0x00020000
-	WSThickFrame   uint32 = 0x00040000
-	WSMaximizeBox  uint32 = 0x00010000
+	// WSCaption 启用标准标题栏。
+	WSCaption uint32 = 0x00C00000
+	// WSSysMenu 启用系统菜单。
+	WSSysMenu uint32 = 0x00080000
+	// WSMinimizeBox 启用最小化按钮。
+	WSMinimizeBox uint32 = 0x00020000
+	// WSThickFrame 启用可调整大小的边框。
+	WSThickFrame uint32 = 0x00040000
+	// WSMaximizeBox 启用最大化按钮。
+	WSMaximizeBox uint32 = 0x00010000
+	// WSClipSiblings 避免同级窗口互相覆盖绘制。
 	WSClipSiblings uint32 = 0x04000000
+	// WSClipChildren 避免父窗口覆盖子窗口绘制。
 	WSClipChildren uint32 = 0x02000000
 
+	// WSExAppWindow 强制窗口显示在任务栏。
 	WSExAppWindow uint32 = 0x00040000
-	WSExLayered   uint32 = 0x00080000
+	// WSExLayered 启用分层窗口能力。
+	WSExLayered uint32 = 0x00080000
 )
 
 const (
-	DefaultWindowStyle   = WSCaption | WSSysMenu | WSMinimizeBox | WSClipChildren | WSClipSiblings
+	// DefaultWindowStyle 表示默认窗口样式组合。
+	DefaultWindowStyle = WSCaption | WSSysMenu | WSMinimizeBox | WSClipChildren | WSClipSiblings
+	// DefaultWindowExStyle 表示默认扩展窗口样式组合。
 	DefaultWindowExStyle = WSExAppWindow
 )
 
 const (
+	// CursorArrow 表示标准箭头光标。
 	CursorArrow CursorID = 32512
+	// CursorIBeam 表示文本输入光标。
 	CursorIBeam CursorID = 32513
-	CursorHand  CursorID = 32649
+	// CursorHand 表示手型链接光标。
+	CursorHand CursorID = 32649
 )
 
 const (
-	DTCenter      uint32 = 0x00000001
-	DTVCenter     uint32 = 0x00000004
-	DTSingleLine  uint32 = 0x00000020
+	// DTCenter 让文本在水平方向居中。
+	DTCenter uint32 = 0x00000001
+	// DTVCenter 让文本在垂直方向居中。
+	DTVCenter uint32 = 0x00000004
+	// DTSingleLine 强制文本单行绘制。
+	DTSingleLine uint32 = 0x00000020
+	// DTEndEllipsis 在末尾显示省略号。
 	DTEndEllipsis uint32 = 0x00008000
 )
 
 const (
-	MessageBoxOKCancel    uint32 = 0x00000001
+	// MessageBoxOKCancel 表示确定和取消按钮组合。
+	MessageBoxOKCancel uint32 = 0x00000001
+	// MessageBoxRetryCancel 表示重试和取消按钮组合。
 	MessageBoxRetryCancel uint32 = 0x00000005
 )
 
 const (
-	MessageBoxResultOK    = 1
+	// MessageBoxResultOK 表示用户点击了确定。
+	MessageBoxResultOK = 1
+	// MessageBoxResultRetry 表示用户点击了重试。
 	MessageBoxResultRetry = 4
 )
 
 const (
+	// FontQualityAntialiased 表示普通抗锯齿字体质量。
 	FontQualityAntialiased FontQuality = 4
-	FontQualityClearType   FontQuality = 5
+	// FontQualityClearType 表示 ClearType 字体质量。
+	FontQualityClearType FontQuality = 5
 )
 
 const (
+	// drawTextAutoLen 让 DrawTextW 自动计算字符串长度。
 	drawTextAutoLen = uintptr(^uint32(0))
 
+	// showWindowNormal 以正常状态显示窗口。
 	showWindowNormal = 5
 
-	wmDestroy     = 0x0002
-	wmSize        = 0x0005
-	wmSetFocus    = 0x0007
-	wmKillFocus   = 0x0008
-	wmPaint       = 0x000F
-	wmClose       = 0x0010
-	wmSetIcon     = 0x0080
-	wmKeyDown     = 0x0100
-	wmChar        = 0x0102
-	wmTimer       = 0x0113
-	wmMouseMove   = 0x0200
+	// wmDestroy 表示窗口销毁消息。
+	wmDestroy = 0x0002
+	// wmSize 表示客户区尺寸变化消息。
+	wmSize = 0x0005
+	// wmSetFocus 表示窗口获得焦点消息。
+	wmSetFocus = 0x0007
+	// wmKillFocus 表示窗口失去焦点消息。
+	wmKillFocus = 0x0008
+	// wmPaint 表示窗口重绘消息。
+	wmPaint = 0x000F
+	// wmClose 表示窗口关闭请求消息。
+	wmClose = 0x0010
+	// wmSetIcon 表示设置窗口图标消息。
+	wmSetIcon = 0x0080
+	// wmKeyDown 表示按键按下消息。
+	wmKeyDown = 0x0100
+	// wmChar 表示字符输入消息。
+	wmChar = 0x0102
+	// wmTimer 表示定时器消息。
+	wmTimer = 0x0113
+	// wmMouseMove 表示鼠标移动消息。
+	wmMouseMove = 0x0200
+	// wmLButtonDown 表示鼠标左键按下消息。
 	wmLButtonDown = 0x0201
-	wmLButtonUp   = 0x0202
-	wmMouseLeave  = 0x02A3
-	wmDPICHanged  = 0x02E0
-	wmApp         = 0x8000
-	wmNcCreate    = 0x0081
-	wmNcDestroy   = 0x0082
-	wmAppInvoke   = wmApp + 0x240
+	// wmLButtonUp 表示鼠标左键抬起消息。
+	wmLButtonUp = 0x0202
+	// wmRButtonDown 表示鼠标右键按下消息。
+	wmRButtonDown = 0x0204
+	// wmRButtonUp 表示鼠标右键抬起消息。
+	wmRButtonUp = 0x0205
+	// wmMouseWheel 表示鼠标滚轮消息。
+	wmMouseWheel = 0x020A
+	// wmMouseLeave 表示鼠标离开窗口消息。
+	wmMouseLeave = 0x02A3
+	// wmDPICHanged 表示 DPI 变化消息。
+	wmDPICHanged = 0x02E0
+	// wmApp 表示应用自定义消息起始值。
+	wmApp = 0x8000
+	// wmNcCreate 表示非客户区创建消息。
+	wmNcCreate = 0x0081
+	// wmNcDestroy 表示非客户区销毁消息。
+	wmNcDestroy = 0x0082
+	// wmAppInvoke 表示执行投递回调的自定义消息。
+	wmAppInvoke = wmApp + 0x240
 
+	// iconSmall 表示小图标槽位。
 	iconSmall = 0
-	iconBig   = 1
+	// iconBig 表示大图标槽位。
+	iconBig = 1
 
+	// psSolid 表示实线画笔样式。
 	psSolid = 0
 
+	// srccopy 表示位块传输的直接复制模式。
 	srccopy = 0x00CC0020
 
+	// bkModeTransparent 表示文本背景透明模式。
 	bkModeTransparent = 1
 
+	// tmeLeave 表示请求鼠标离开跟踪。
 	tmeLeave = 0x00000002
 
+	// diNormal 表示图标正常绘制模式。
 	diNormal = 0x0003
 
-	acSrcOver  = 0x00
+	// acSrcOver 表示 AlphaBlend 的普通叠加模式。
+	acSrcOver = 0x00
+	// acSrcAlpha 表示使用源 Alpha 通道。
 	acSrcAlpha = 0x01
 
+	// logPixelsX 表示设备水平 DPI 项。
 	logPixelsX = 88
+	// logPixelsY 表示设备垂直 DPI 项。
 	logPixelsY = 90
 
-	swpNoZOrder   = 0x0004
+	// swpNoZOrder 表示保持原有 Z 序。
+	swpNoZOrder = 0x0004
+	// swpNoActivate 表示调整窗口时不激活。
 	swpNoActivate = 0x0010
 
+	// spiGetWorkArea 表示查询桌面工作区。
 	spiGetWorkArea = 0x0030
 )
 
 const (
-	KeyBack   uint32 = 0x08
-	KeyTab    uint32 = 0x09
+	// KeyBack 表示退格键。
+	KeyBack uint32 = 0x08
+	// KeyTab 表示 Tab 键。
+	KeyTab uint32 = 0x09
+	// KeyReturn 表示回车键。
 	KeyReturn uint32 = 0x0D
+	// KeyEscape 表示 Esc 键。
 	KeyEscape uint32 = 0x1B
-	KeySpace  uint32 = 0x20
-	KeyHome   uint32 = 0x24
-	KeyLeft   uint32 = 0x25
-	KeyUp     uint32 = 0x26
-	KeyRight  uint32 = 0x27
-	KeyDown   uint32 = 0x28
-	KeyEnd    uint32 = 0x23
+	// KeySpace 表示空格键。
+	KeySpace uint32 = 0x20
+	// KeyHome 表示 Home 键。
+	KeyHome uint32 = 0x24
+	// KeyLeft 表示左方向键。
+	KeyLeft uint32 = 0x25
+	// KeyUp 表示上方向键。
+	KeyUp uint32 = 0x26
+	// KeyRight 表示右方向键。
+	KeyRight uint32 = 0x27
+	// KeyDown 表示下方向键。
+	KeyDown uint32 = 0x28
+	// KeyEnd 表示 End 键。
+	KeyEnd uint32 = 0x23
+	// KeyDelete 表示 Delete 键。
 	KeyDelete uint32 = 0x2E
 )
 
+// wndClassEx 对应 Win32 的 WNDCLASSEXW 结构。
 type wndClassEx struct {
 	CbSize        uint32
 	Style         uint32
@@ -237,6 +336,7 @@ type wndClassEx struct {
 	HIconSm       windows.Handle
 }
 
+// msg 对应 Win32 的 MSG 结构。
 type msg struct {
 	HWnd    windows.Handle
 	Message uint32
@@ -246,11 +346,13 @@ type msg struct {
 	Pt      point
 }
 
+// point 对应 Win32 的 POINT 结构。
 type point struct {
 	X int32
 	Y int32
 }
 
+// winRect 对应 Win32 的 RECT 结构。
 type winRect struct {
 	Left   int32
 	Top    int32

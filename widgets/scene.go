@@ -304,6 +304,8 @@ func (s *Scene) Dispatch(evt Event) bool {
 		return s.dispatchMouseDown(evt)
 	case EventMouseUp:
 		return s.dispatchMouseUp(evt)
+	case EventMouseWheel:
+		return s.dispatchMouseWheel(evt)
 	case EventResize:
 		return s.routeEvent(s.root, evt)
 	case EventKeyDown, EventChar:
@@ -336,6 +338,11 @@ func (s *Scene) DispatchMouseDown(ev core.MouseEvent) bool {
 // DispatchMouseUp 在场景中分发鼠标抬起事件。
 func (s *Scene) DispatchMouseUp(ev core.MouseEvent) bool {
 	return s.Dispatch(eventFromMouse(EventMouseUp, ev))
+}
+
+// DispatchMouseWheel 在场景中分发鼠标滚轮事件。
+func (s *Scene) DispatchMouseWheel(ev core.MouseEvent) bool {
+	return s.Dispatch(eventFromMouse(EventMouseWheel, ev))
 }
 
 // DispatchKeyDown 在场景中分发按键按下事件。
@@ -649,7 +656,7 @@ func (s *Scene) dispatchMouseUp(evt Event) bool {
 	}
 
 	handled := s.routeEvent(target, evt)
-	if hit != nil && target == hit {
+	if evt.Button == core.MouseButtonLeft && hit != nil && target == hit {
 		click := evt
 		click.Type = EventClick
 		click.Source = hit
@@ -658,6 +665,18 @@ func (s *Scene) dispatchMouseUp(evt Event) bool {
 		}
 	}
 	return handled
+}
+
+// dispatchMouseWheel 在场景中分发滚轮事件。
+func (s *Scene) dispatchMouseWheel(evt Event) bool {
+	target := s.capture
+	if target == nil {
+		target = s.hitTest(s.root, evt.Point.X, evt.Point.Y)
+	}
+	if target == nil {
+		return false
+	}
+	return s.routeEvent(target, evt)
 }
 
 // hitTest 返回给定点命中的最上层可见控件。

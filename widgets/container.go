@@ -2,6 +2,8 @@
 
 package widgets
 
+import "github.com/AzureIvory/winui/core"
+
 type Container interface {
 	Widget
 	Add(child Widget)
@@ -9,10 +11,19 @@ type Container interface {
 	Children() []Widget
 }
 
+type PanelStyle struct {
+	Background   core.Color
+	BorderColor  core.Color
+	CornerRadius int32
+	BorderWidth  int32
+}
+
 type Panel struct {
 	widgetBase
 	children []Widget
 	layout   Layout
+	Style    PanelStyle
+	OnClick  func()
 }
 
 // NewPanel 创建一个新的面板。
@@ -95,8 +106,23 @@ func (p *Panel) SetLayout(layout Layout) {
 	p.invalidate(p)
 }
 
+// SetStyle 更新面板背景和边框样式。
+func (p *Panel) SetStyle(style PanelStyle) {
+	p.Style = style
+	p.invalidate(p)
+}
+
+// SetOnClick 注册面板点击回调。
+func (p *Panel) SetOnClick(fn func()) {
+	p.OnClick = fn
+}
+
 // OnEvent 处理输入事件或生命周期事件。
-func (p *Panel) OnEvent(Event) bool {
+func (p *Panel) OnEvent(evt Event) bool {
+	if evt.Type == EventClick && p.OnClick != nil {
+		p.OnClick()
+		return true
+	}
 	return false
 }
 
@@ -104,6 +130,25 @@ func (p *Panel) OnEvent(Event) bool {
 func (p *Panel) Paint(ctx *PaintCtx) {
 	if !p.Visible() {
 		return
+	}
+	if ctx != nil {
+		radius := ctx.DP(p.Style.CornerRadius)
+		if p.Style.Background != 0 {
+			if radius > 0 {
+				_ = ctx.FillRoundRect(p.Bounds(), radius, p.Style.Background)
+			} else {
+				_ = ctx.FillRect(p.Bounds(), p.Style.Background)
+			}
+		}
+		if p.Style.BorderColor != 0 {
+			width := p.Style.BorderWidth
+			if width <= 0 {
+				width = 1
+			}
+			if radius > 0 {
+				_ = ctx.StrokeRoundRect(p.Bounds(), radius, p.Style.BorderColor, width)
+			}
+		}
 	}
 	for _, child := range p.children {
 		if child.Visible() {

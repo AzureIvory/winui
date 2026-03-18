@@ -2,27 +2,37 @@
 
 package widgets
 
-import "github.com/AzureIvory/winui/core"
+import (
+	"time"
+
+	"github.com/AzureIvory/winui/core"
+)
 
 // ListBox 表示单选列表控件。
 type ListBox struct {
 	widgetBase
-	items    []ListItem
-	selected int
-	hover    int
-	pressed  int
-	focused  bool
-	Style    ListStyle
-	OnChange func(int, ListItem)
+	items          []ListItem
+	selected       int
+	hover          int
+	pressed        int
+	scroll         int
+	focused        bool
+	lastClickIndex int
+	lastClickAt    time.Time
+	Style          ListStyle
+	OnChange       func(int, ListItem)
+	OnActivate     func(int, ListItem)
+	OnRightClick   func(int, ListItem, core.Point)
 }
 
 // NewListBox 创建一个新的列表框。
 func NewListBox(id string) *ListBox {
 	return &ListBox{
-		widgetBase: newWidgetBase(id, "listbox"),
-		selected:   -1,
-		hover:      -1,
-		pressed:    -1,
+		widgetBase:     newWidgetBase(id, "listbox"),
+		selected:       -1,
+		hover:          -1,
+		pressed:        -1,
+		lastClickIndex: -1,
 	}
 }
 
@@ -30,6 +40,7 @@ func NewListBox(id string) *ListBox {
 func (l *ListBox) SetBounds(rect Rect) {
 	l.runOnUI(func() {
 		l.widgetBase.setBounds(l, rect)
+		l.clampScroll()
 	})
 }
 
@@ -55,9 +66,13 @@ func (l *ListBox) SetItems(items []ListItem) {
 			l.selected = -1
 			l.hover = -1
 			l.pressed = -1
+			l.scroll = 0
+			l.lastClickIndex = -1
+			l.lastClickAt = time.Time{}
 		} else if l.selected >= len(l.items) {
 			l.selected = len(l.items) - 1
 		}
+		l.clampScroll()
 		l.invalidate(l)
 	})
 }
@@ -70,8 +85,20 @@ func (l *ListBox) Items() []ListItem {
 // SetSelected 更新列表框的当前选择。
 func (l *ListBox) SetSelected(index int) {
 	l.runOnUI(func() {
+		if index < 0 {
+			if l.selected != -1 {
+				l.selected = -1
+				l.invalidate(l)
+			}
+			return
+		}
 		l.selectIndex(index, false)
 	})
+}
+
+// ClearSelection 清除当前选择。
+func (l *ListBox) ClearSelection() {
+	l.SetSelected(-1)
 }
 
 // SelectedIndex 返回列表框当前选中的索引。
@@ -102,6 +129,20 @@ func (l *ListBox) SetOnChange(fn func(int, ListItem)) {
 	})
 }
 
+// SetOnActivate 注册列表项激活回调，例如双击或按下 Enter。
+func (l *ListBox) SetOnActivate(fn func(int, ListItem)) {
+	l.runOnUI(func() {
+		l.OnActivate = fn
+	})
+}
+
+// SetOnRightClick 注册列表项右键回调。
+func (l *ListBox) SetOnRightClick(fn func(int, ListItem, core.Point)) {
+	l.runOnUI(func() {
+		l.OnRightClick = fn
+	})
+}
+
 // OnEvent 处理输入事件或生命周期事件。
 func (l *ListBox) OnEvent(evt Event) bool {
 	switch evt.Type {
@@ -118,9 +159,21 @@ func (l *ListBox) OnEvent(evt Event) bool {
 		}
 	case EventMouseDown:
 		if l.Enabled() {
-			l.pressed = l.indexAt(evt.Point)
-			l.invalidate(l)
-			return true
+			index := l.indexAt(evt.Point)
+			switch evt.Button {
+			case core.MouseButtonLeft:
+				l.pressed = index
+				l.invalidate(l)
+				return true
+			case core.MouseButtonRight:
+				if index >= 0 {
+					l.selectIndex(index, true)
+					if l.OnRightClick != nil {
+						l.OnRightClick(index, l.items[index], evt.Point)
+					}
+					return true
+				}
+			}
 		}
 	case EventMouseUp:
 		if l.pressed != -1 {
@@ -134,7 +187,21 @@ func (l *ListBox) OnEvent(evt Event) bool {
 		}
 		index := l.indexAt(evt.Point)
 		if index >= 0 {
+			now := time.Now()
+			activate := index == l.lastClickIndex && now.Sub(l.lastClickAt) <= 450*time.Millisecond
+			l.lastClickIndex = index
+			l.lastClickAt = now
 			l.selectIndex(index, true)
+			if activate && l.OnActivate != nil {
+				l.OnActivate(index, l.items[index])
+			}
+			return true
+		}
+	case EventMouseWheel:
+		if !l.Enabled() {
+			return false
+		}
+		if l.scrollBy(wheelSteps(evt.Delta) * -3) {
 			return true
 		}
 	case EventFocus:
@@ -180,7 +247,14 @@ func (l *ListBox) Paint(ctx *PaintCtx) {
 	_ = ctx.FillRoundRect(bounds, radius, style.Background)
 	_ = ctx.StrokeRoundRect(bounds, radius, borderColor, 1)
 
-	for index, item := range l.items {
+	start := l.scroll
+	end := len(l.items)
+	if visible := l.visibleRows(style); visible > 0 && start+visible+1 < end {
+		end = start + visible + 1
+	}
+
+	for index := start; index < end; index++ {
+		item := l.items[index]
 		rowRect := l.rowRect(index, ctx, style)
 		if rowRect.Y >= bounds.Y+bounds.H {
 			break
@@ -211,6 +285,29 @@ func (l *ListBox) Paint(ctx *PaintCtx) {
 			Color:  textColor,
 			Format: core.DTVCenter | core.DTSingleLine | core.DTEndEllipsis,
 		})
+	}
+
+	if maxScroll := l.maxScroll(style); maxScroll > 0 {
+		track := Rect{
+			X: bounds.X + bounds.W - ctx.DP(8),
+			Y: bounds.Y + ctx.DP(8),
+			W: ctx.DP(4),
+			H: max32(0, bounds.H-ctx.DP(16)),
+		}
+		if track.H > 0 {
+			thumbH := max32(ctx.DP(24), track.H*int32(l.visibleRows(style))/int32(len(l.items)))
+			thumbRange := max32(1, track.H-thumbH)
+			thumbY := track.Y
+			if maxScroll > 0 {
+				thumbY += thumbRange * int32(l.scroll) / int32(maxScroll)
+			}
+			_ = ctx.FillRoundRect(track, ctx.DP(2), core.RGB(241, 245, 249))
+			_ = ctx.FillRoundRect(
+				Rect{X: track.X, Y: thumbY, W: track.W, H: thumbH},
+				ctx.DP(2),
+				core.RGB(148, 163, 184),
+			)
+		}
 	}
 }
 
@@ -259,6 +356,9 @@ func (l *ListBox) handleKey(key core.KeyEvent) bool {
 		if l.selected >= 0 && l.selected < len(l.items) && l.OnChange != nil {
 			l.OnChange(l.selected, l.items[l.selected])
 		}
+		if key.Key == core.KeyReturn && l.selected >= 0 && l.selected < len(l.items) && l.OnActivate != nil {
+			l.OnActivate(l.selected, l.items[l.selected])
+		}
 		return true
 	}
 	return false
@@ -295,6 +395,7 @@ func (l *ListBox) selectIndex(index int, notify bool) {
 		return
 	}
 	l.selected = index
+	l.ensureVisible(index)
 	l.invalidate(l)
 	if notify && l.OnChange != nil {
 		l.OnChange(index, l.items[index])
@@ -310,7 +411,7 @@ func (l *ListBox) indexAt(point core.Point) int {
 	style := mergeListStyle(DefaultTheme().ListBox, l.Style)
 	itemHeight := max32(1, l.dp(style.ItemHeightDP))
 	padding := max32(0, l.dp(style.PaddingDP))
-	index := int((point.Y - rect.Y - padding) / itemHeight)
+	index := int((point.Y-rect.Y-padding)/itemHeight) + l.scroll
 	if point.Y < rect.Y+padding || index < 0 || index >= len(l.items) {
 		return -1
 	}
@@ -323,7 +424,7 @@ func (l *ListBox) rowRect(index int, ctx *PaintCtx, style ListStyle) Rect {
 	itemHeight := ctx.DP(style.ItemHeightDP)
 	return Rect{
 		X: l.bounds.X + padding,
-		Y: l.bounds.Y + padding + int32(index)*itemHeight,
+		Y: l.bounds.Y + padding + int32(index-l.scroll)*itemHeight,
 		W: max32(0, l.bounds.W-padding*2),
 		H: itemHeight,
 	}
@@ -379,4 +480,85 @@ func mergeListStyle(base, override ListStyle) ListStyle {
 		base.CornerRadius = override.CornerRadius
 	}
 	return base
+}
+
+func (l *ListBox) visibleRows(style ListStyle) int {
+	padding := max32(0, l.dp(style.PaddingDP))
+	itemHeight := max32(1, l.dp(style.ItemHeightDP))
+	height := l.bounds.H - padding*2
+	if height <= 0 {
+		return 0
+	}
+	rows := int(height / itemHeight)
+	if rows <= 0 {
+		rows = 1
+	}
+	return rows
+}
+
+func (l *ListBox) maxScroll(style ListStyle) int {
+	rows := l.visibleRows(style)
+	if rows <= 0 || len(l.items) <= rows {
+		return 0
+	}
+	return len(l.items) - rows
+}
+
+func (l *ListBox) clampScroll() {
+	style := mergeListStyle(DefaultTheme().ListBox, l.Style)
+	maxScroll := l.maxScroll(style)
+	if l.scroll < 0 {
+		l.scroll = 0
+	}
+	if l.scroll > maxScroll {
+		l.scroll = maxScroll
+	}
+}
+
+func (l *ListBox) scrollBy(delta int) bool {
+	if delta == 0 {
+		return false
+	}
+	old := l.scroll
+	l.scroll += delta
+	l.clampScroll()
+	if l.scroll == old {
+		return false
+	}
+	l.invalidate(l)
+	return true
+}
+
+func (l *ListBox) ensureVisible(index int) {
+	if index < 0 || index >= len(l.items) {
+		return
+	}
+	style := mergeListStyle(DefaultTheme().ListBox, l.Style)
+	rows := l.visibleRows(style)
+	if rows <= 0 {
+		return
+	}
+	if index < l.scroll {
+		l.scroll = index
+		return
+	}
+	last := l.scroll + rows - 1
+	if index > last {
+		l.scroll = index - rows + 1
+	}
+	l.clampScroll()
+}
+
+func wheelSteps(delta int32) int {
+	if delta == 0 {
+		return 0
+	}
+	steps := int(delta / 120)
+	if steps == 0 {
+		if delta > 0 {
+			return 1
+		}
+		return -1
+	}
+	return steps
 }

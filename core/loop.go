@@ -94,6 +94,37 @@ func appWndProc(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr {
 		}
 		return 0
 
+	case wmRButtonDown:
+		if app.opts.OnMouseDown != nil {
+			app.opts.OnMouseDown(app, MouseEvent{
+				Point:  pointFromLParam(lParam),
+				Button: MouseButtonRight,
+				Flags:  wParam,
+			})
+		}
+		return 0
+
+	case wmRButtonUp:
+		if app.opts.OnMouseUp != nil {
+			app.opts.OnMouseUp(app, MouseEvent{
+				Point:  pointFromLParam(lParam),
+				Button: MouseButtonRight,
+				Flags:  wParam,
+			})
+		}
+		return 0
+
+	case wmMouseWheel:
+		if app.opts.OnMouseWheel != nil {
+			pt := app.screenToClient(pointFromLParam(lParam))
+			app.opts.OnMouseWheel(app, MouseEvent{
+				Point: pt,
+				Flags: wParam & 0xFFFF,
+				Delta: int32(int16(uint16((wParam >> 16) & 0xFFFF))),
+			})
+		}
+		return 0
+
 	case wmKeyDown:
 		if app.opts.OnKeyDown != nil {
 			app.opts.OnKeyDown(app, KeyEvent{
