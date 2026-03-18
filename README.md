@@ -1,4 +1,4 @@
-# winui
+﻿# winui
 
 `winui` 是一个仅支持 Windows 的 Go UI 工具包，直接构建在 Win32 API 之上。
 
@@ -82,6 +82,9 @@ func main() {
 		OnMouseUp: func(_ *core.App, ev core.MouseEvent) {
 			scene.DispatchMouseUp(ev)
 		},
+		OnMouseWheel: func(_ *core.App, ev core.MouseEvent) {
+			scene.DispatchMouseWheel(ev)
+		},
 		OnKeyDown: func(_ *core.App, ev core.KeyEvent) {
 			scene.DispatchKeyDown(ev)
 		},
@@ -120,6 +123,11 @@ go run ./cmd/demo
 
 组件用法、构造参数和样式字段说明见 [`WIDGETS.zh-CN.md`](./WIDGETS.zh-CN.md)。
 
+源码中的函数、自定义类型、结构体字段和常量也统一补充了中文注释，便于直接从代码阅读 API 与内部行为。
+
 ## 开发
 
 开发流程和仓库约定见 [`DEVELOPING.md`](./DEVELOPING.md)。
+
+
+

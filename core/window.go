@@ -57,35 +57,57 @@ var (
 	createRegistry sync.Map
 )
 
+// App 表示一个原生 Win32 应用窗口及其运行时状态。
 type App struct {
-	opts      Options
-	hwnd      windows.Handle
-	threadID  uint32
+	// opts 保存创建应用时的配置。
+	opts Options
+	// hwnd 保存底层窗口句柄。
+	hwnd windows.Handle
+	// threadID 保存 UI 线程标识。
+	threadID uint32
+	// className 保存注册到 Win32 的窗口类名。
 	className string
 
+	// dpiMu 保护 DPI 信息。
 	dpiMu sync.RWMutex
-	dpi   DPIInfo
+	// dpi 保存当前 DPI 状态。
+	dpi DPIInfo
 
-	sizeMu     sync.RWMutex
+	// sizeMu 保护客户区尺寸。
+	sizeMu sync.RWMutex
+	// clientSize 保存最新客户区尺寸。
 	clientSize Size
 
+	// initOnce 保证初始化只执行一次。
 	initOnce sync.Once
-	ready    chan struct{}
-	done     chan int
-	initErr  error
+	// ready 用于通知初始化结果已就绪。
+	ready chan struct{}
+	// done 用于返回消息循环退出码。
+	done chan int
+	// initErr 保存初始化错误。
+	initErr error
 
+	// closed 标记窗口是否已经关闭。
 	closed atomic.Bool
 
-	postMu    sync.Mutex
+	// postMu 保护投递回调队列。
+	postMu sync.Mutex
+	// postQueue 保存待在 UI 线程执行的回调。
 	postQueue []func()
 
-	timerMu      sync.Mutex
+	// timerMu 保护定时器集合。
+	timerMu sync.Mutex
+	// activeTimers 保存当前激活的原生定时器。
 	activeTimers map[uintptr]struct{}
 
-	renderMu       sync.RWMutex
-	renderBackend  RenderBackend
+	// renderMu 保护渲染后端状态。
+	renderMu sync.RWMutex
+	// renderBackend 保存当前实际后端。
+	renderBackend RenderBackend
+	// renderFallback 保存回退到 GDI 的原因。
 	renderFallback string
-	d2dRenderer    *d2dRenderer
+	// d2dRenderer 保存 Direct2D 渲染器实例。
+	d2dRenderer *d2dRenderer
 }
 
 // NewApp 创建一个新的应用实例。
@@ -536,11 +558,13 @@ func (a *App) Close() {
 	})
 }
 
+// currentThreadID 返回调用线程的标识。
 func currentThreadID() uint32 {
 	r1, _, _ := procGetCurrentThreadID.Call()
 	return uint32(r1)
 }
 
+// screenToClient 将屏幕坐标转换为窗口客户区坐标。
 func (a *App) screenToClient(pt Point) Point {
 	if a == nil || a.hwnd == 0 {
 		return pt

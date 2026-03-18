@@ -6,16 +6,26 @@ import "github.com/AzureIvory/winui/core"
 
 // EditBox 表示单行可编辑文本控件。
 type EditBox struct {
+	// widgetBase 提供编辑框共享的基础控件能力。
 	widgetBase
-	Text        string
+	// Text 保存当前文本内容。
+	Text string
+	// Placeholder 保存占位文本。
 	Placeholder string
-	ReadOnly    bool
-	Hover       bool
-	Focused     bool
-	caret       int
-	Style       EditStyle
-	OnChange    func(string)
-	OnSubmit    func(string)
+	// ReadOnly 记录是否为只读模式。
+	ReadOnly bool
+	// Hover 记录当前是否处于悬停状态。
+	Hover bool
+	// Focused 记录当前是否拥有焦点。
+	Focused bool
+	// caret 保存光标所在字符索引。
+	caret int
+	// Style 保存样式覆盖。
+	Style EditStyle
+	// OnChange 保存文本变更回调。
+	OnChange func(string)
+	// OnSubmit 保存提交回调。
+	OnSubmit func(string)
 }
 
 // NewEditBox 创建一个新的编辑框。

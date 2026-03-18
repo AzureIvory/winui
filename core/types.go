@@ -1,4 +1,4 @@
-﻿//go:build windows
+//go:build windows
 
 package core
 
@@ -27,75 +27,117 @@ type RenderBackend uint8
 
 // Point 表示二维平面中的整数坐标点。
 type Point struct {
+	// X 表示水平坐标。
 	X int32
+	// Y 表示垂直坐标。
 	Y int32
 }
 
 // Size 表示宽高尺寸。
 type Size struct {
-	Width  int32
+	// Width 表示宽度。
+	Width int32
+	// Height 表示高度。
 	Height int32
 }
 
 // Rect 表示以左上角和宽高定义的矩形区域。
 type Rect struct {
+	// X 表示左上角横坐标。
 	X int32
+	// Y 表示左上角纵坐标。
 	Y int32
+	// W 表示矩形宽度。
 	W int32
+	// H 表示矩形高度。
 	H int32
 }
 
 // DPIInfo 保存当前窗口或进程的 DPI 缩放信息。
 type DPIInfo struct {
-	X         int32
-	Y         int32
-	Scale     float64
+	// X 表示水平 DPI。
+	X int32
+	// Y 表示垂直 DPI。
+	Y int32
+	// Scale 表示相对 96 DPI 的缩放比例。
+	Scale float64
+	// Awareness 表示当前 DPI 感知级别。
 	Awareness DPIAwareness
 }
 
 // MouseEvent 描述鼠标位置、按键和滚轮等输入信息。
 type MouseEvent struct {
-	Point  Point
+	// Point 表示事件发生时的客户区坐标。
+	Point Point
+	// Button 表示本次事件关联的按键。
 	Button MouseButton
-	Flags  uintptr
-	Delta  int32
+	// Flags 保存原始 Win32 鼠标标志位。
+	Flags uintptr
+	// Delta 表示滚轮事件的滚动增量。
+	Delta int32
 }
 
 // KeyEvent 描述键盘按键与底层消息标志。
 type KeyEvent struct {
-	Key   uint32
+	// Key 表示虚拟键码。
+	Key uint32
+	// Flags 保存原始消息中的位标志。
 	Flags uintptr
 }
 
 // Options 定义创建 App 时使用的窗口参数和事件回调。
 type Options struct {
-	ClassName      string
-	Title          string
-	Width          int32
-	Height         int32
-	Style          uint32
-	ExStyle        uint32
-	Cursor         CursorID
-	Icon           *Icon
-	Background     Color
+	// ClassName 指定 Win32 窗口类名。
+	ClassName string
+	// Title 指定窗口标题。
+	Title string
+	// Width 指定初始客户区宽度。
+	Width int32
+	// Height 指定初始客户区高度。
+	Height int32
+	// Style 指定窗口样式标志。
+	Style uint32
+	// ExStyle 指定窗口扩展样式标志。
+	ExStyle uint32
+	// Cursor 指定默认光标。
+	Cursor CursorID
+	// Icon 指定窗口图标。
+	Icon *Icon
+	// Background 指定默认背景色。
+	Background Color
+	// DoubleBuffered 控制是否启用 GDI 双缓冲。
 	DoubleBuffered bool
 	// RenderMode 控制绘制后端选择。Auto 会优先尝试 Direct2D，失败时回退到 GDI。
 	RenderMode RenderMode
 
-	OnCreate     func(*App) error
-	OnPaint      func(*App, *Canvas)
-	OnResize     func(*App, Size)
-	OnMouseMove  func(*App, MouseEvent)
+	// OnCreate 在窗口创建完成后触发。
+	OnCreate func(*App) error
+	// OnPaint 在窗口需要重绘时触发。
+	OnPaint func(*App, *Canvas)
+	// OnResize 在客户区尺寸变化时触发。
+	OnResize func(*App, Size)
+	// OnMouseMove 在鼠标移动时触发。
+	OnMouseMove func(*App, MouseEvent)
+	// OnMouseLeave 在鼠标离开窗口时触发。
 	OnMouseLeave func(*App)
-	OnMouseDown  func(*App, MouseEvent)
-	OnMouseUp    func(*App, MouseEvent)
+	// OnMouseDown 在鼠标按下时触发。
+	OnMouseDown func(*App, MouseEvent)
+	// OnMouseUp 在鼠标抬起时触发。
+	OnMouseUp func(*App, MouseEvent)
+	// OnMouseWheel 在鼠标滚轮滚动时触发。
 	OnMouseWheel func(*App, MouseEvent)
-	OnKeyDown    func(*App, KeyEvent)
-	OnChar       func(*App, rune)
-	OnFocus      func(*App, bool)
-	OnTimer      func(*App, uintptr)
+	// OnKeyDown 在按键按下时触发。
+	OnKeyDown func(*App, KeyEvent)
+	// OnChar 在字符输入时触发。
+	OnChar func(*App, rune)
+	// OnFocus 在窗口焦点变化时触发。
+	OnFocus func(*App, bool)
+	// OnTimer 在窗口定时器触发时调用。
+	OnTimer func(*App, uintptr)
+	// OnDPIChanged 在窗口 DPI 变化时触发。
 	OnDPIChanged func(*App, DPIInfo)
-	OnDestroy    func(*App)
+	// OnDestroy 在窗口销毁前触发。
+	OnDestroy func(*App)
 }
 
 const (
@@ -322,41 +364,65 @@ const (
 
 // wndClassEx 对应 Win32 的 WNDCLASSEXW 结构。
 type wndClassEx struct {
-	CbSize        uint32
-	Style         uint32
-	LpfnWndProc   uintptr
-	CbClsExtra    int32
-	CbWndExtra    int32
-	HInstance     windows.Handle
-	HIcon         windows.Handle
-	HCursor       windows.Handle
+	// CbSize 表示结构体自身大小。
+	CbSize uint32
+	// Style 表示窗口类样式。
+	Style uint32
+	// LpfnWndProc 表示窗口过程回调地址。
+	LpfnWndProc uintptr
+	// CbClsExtra 表示额外类内存大小。
+	CbClsExtra int32
+	// CbWndExtra 表示额外窗口内存大小。
+	CbWndExtra int32
+	// HInstance 表示模块实例句柄。
+	HInstance windows.Handle
+	// HIcon 表示大图标句柄。
+	HIcon windows.Handle
+	// HCursor 表示默认光标句柄。
+	HCursor windows.Handle
+	// HbrBackground 表示背景画刷句柄。
 	HbrBackground windows.Handle
-	LpszMenuName  *uint16
+	// LpszMenuName 表示菜单资源名称。
+	LpszMenuName *uint16
+	// LpszClassName 表示窗口类名。
 	LpszClassName *uint16
-	HIconSm       windows.Handle
+	// HIconSm 表示小图标句柄。
+	HIconSm windows.Handle
 }
 
 // msg 对应 Win32 的 MSG 结构。
 type msg struct {
-	HWnd    windows.Handle
+	// HWnd 表示消息关联的窗口句柄。
+	HWnd windows.Handle
+	// Message 表示消息编号。
 	Message uint32
-	WParam  uintptr
-	LParam  uintptr
-	Time    uint32
-	Pt      point
+	// WParam 表示消息的 WPARAM 数据。
+	WParam uintptr
+	// LParam 表示消息的 LPARAM 数据。
+	LParam uintptr
+	// Time 表示消息时间戳。
+	Time uint32
+	// Pt 表示消息关联的屏幕坐标。
+	Pt point
 }
 
 // point 对应 Win32 的 POINT 结构。
 type point struct {
+	// X 表示水平坐标。
 	X int32
+	// Y 表示垂直坐标。
 	Y int32
 }
 
 // winRect 对应 Win32 的 RECT 结构。
 type winRect struct {
-	Left   int32
-	Top    int32
-	Right  int32
+	// Left 表示左边界。
+	Left int32
+	// Top 表示上边界。
+	Top int32
+	// Right 表示右边界。
+	Right int32
+	// Bottom 表示下边界。
 	Bottom int32
 }
 

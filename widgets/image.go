@@ -13,20 +13,31 @@ import (
 	"time"
 )
 
+// ImageScaleMode 表示图像在控件中的缩放方式。
 type ImageScaleMode int
 
 const (
+	// ImageScaleStretch 表示拉伸填满控件区域。
 	ImageScaleStretch ImageScaleMode = iota + 1
+	// ImageScaleContain 表示等比缩放并完整显示图像。
 	ImageScaleContain
+	// ImageScaleCenter 表示按原始尺寸居中显示图像。
 	ImageScaleCenter
 )
 
+// Image 表示显示静态位图的控件。
 type Image struct {
+	// widgetBase 提供静态图像控件共享的基础控件能力。
 	widgetBase
-	bitmap     *core.Bitmap
-	owned      bool
-	opacity    byte
-	scaleMode  ImageScaleMode
+	// bitmap 保存当前显示的位图。
+	bitmap *core.Bitmap
+	// owned 表示位图资源是否由控件负责释放。
+	owned bool
+	// opacity 保存绘制透明度。
+	opacity byte
+	// scaleMode 保存当前缩放模式。
+	scaleMode ImageScaleMode
+	// sourceSize 保存原始位图尺寸。
 	sourceSize core.Size
 }
 
@@ -215,15 +226,24 @@ func (i *Image) drawRect() Rect {
 	}
 }
 
+// AnimatedImage 表示播放多帧位图动画的控件。
 type AnimatedImage struct {
+	// widgetBase 提供动画图像控件共享的基础控件能力。
 	widgetBase
-	frames      []core.AnimatedFrame
+	// frames 保存动画帧序列。
+	frames []core.AnimatedFrame
+	// ownedFrames 表示帧资源是否由控件负责释放。
 	ownedFrames bool
-	frameIndex  int
-	playing     bool
-	opacity     byte
-	scaleMode   ImageScaleMode
-	timerID     uintptr
+	// frameIndex 保存当前播放帧索引。
+	frameIndex int
+	// playing 记录动画是否正在播放。
+	playing bool
+	// opacity 保存绘制透明度。
+	opacity byte
+	// scaleMode 保存当前缩放模式。
+	scaleMode ImageScaleMode
+	// timerID 保存场景分配的定时器标识。
+	timerID uintptr
 }
 
 // NewAnimatedImage 创建一个新的动画图像控件。

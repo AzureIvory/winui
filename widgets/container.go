@@ -4,26 +4,41 @@ package widgets
 
 import "github.com/AzureIvory/winui/core"
 
+// Container 定义可以持有子控件的容器行为。
 type Container interface {
 	Widget
+	// Add 向容器添加子控件。
 	Add(child Widget)
+	// Remove 按标识移除子控件。
 	Remove(id string)
+	// Children 返回当前子控件列表。
 	Children() []Widget
 }
 
+// PanelStyle 描述面板控件的外观样式。
 type PanelStyle struct {
-	Background   core.Color
-	BorderColor  core.Color
+	// Background 指定面板背景色。
+	Background core.Color
+	// BorderColor 指定面板边框颜色。
+	BorderColor core.Color
+	// CornerRadius 指定面板圆角半径。
 	CornerRadius int32
-	BorderWidth  int32
+	// BorderWidth 指定边框宽度。
+	BorderWidth int32
 }
 
+// Panel 表示可承载其他控件的基础面板。
 type Panel struct {
+	// widgetBase 提供面板共享的基础控件能力。
 	widgetBase
+	// children 保存面板当前的子控件。
 	children []Widget
-	layout   Layout
-	Style    PanelStyle
-	OnClick  func()
+	// layout 保存子控件布局策略。
+	layout Layout
+	// Style 保存面板的样式覆盖。
+	Style PanelStyle
+	// OnClick 保存面板点击回调。
+	OnClick func()
 }
 
 // NewPanel 创建一个新的面板。

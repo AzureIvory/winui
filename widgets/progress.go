@@ -2,9 +2,13 @@
 
 package widgets
 
+// ProgressBar 表示显示 0 到 100 进度值的控件。
 type ProgressBar struct {
+	// widgetBase 提供进度条共享的基础控件能力。
 	widgetBase
+	// value 保存当前进度值。
 	value int32
+	// Style 保存样式覆盖。
 	Style ProgressStyle
 }
 

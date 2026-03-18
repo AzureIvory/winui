@@ -16,15 +16,24 @@ const (
 	BtnLeft
 )
 
+// Button 表示可点击的按钮控件。
 type Button struct {
+	// widgetBase 提供按钮共享的基础控件能力。
 	widgetBase
-	Text    string
-	Icon    *core.Icon
-	Hover   bool
-	Down    bool
+	// Text 保存按钮显示文本。
+	Text string
+	// Icon 保存按钮显示图标。
+	Icon *core.Icon
+	// Hover 记录按钮是否处于悬停状态。
+	Hover bool
+	// Down 记录按钮是否处于按下状态。
+	Down bool
+	// OnClick 保存按钮点击回调。
 	OnClick func()
-	Style   ButtonStyle
-	kind    BtnKind
+	// Style 保存按钮样式覆盖。
+	Style ButtonStyle
+	// kind 保存按钮内容布局方式。
+	kind BtnKind
 }
 
 // NewButton 创建一个新的按钮控件。
@@ -261,6 +270,7 @@ func (b *Button) resolveStyle(ctx *PaintCtx) ButtonStyle {
 	return style
 }
 
+// drawButtonText 绘制按钮文本内容。
 func (b *Button) drawButtonText(ctx *PaintCtx, rect Rect, font FontSpec, color core.Color) {
 	if b.Text == "" {
 		return
@@ -279,6 +289,7 @@ func (b *Button) drawButtonText(ctx *PaintCtx, rect Rect, font FontSpec, color c
 	)
 }
 
+// drawCenteredIcon 在按钮中心绘制图标。
 func (b *Button) drawCenteredIcon(ctx *PaintCtx, rect Rect, style ButtonStyle, kind BtnKind) {
 	if b.Icon == nil {
 		return
@@ -296,6 +307,7 @@ func (b *Button) drawCenteredIcon(ctx *PaintCtx, rect Rect, style ButtonStyle, k
 	_ = ctx.DrawIcon(b.Icon, iconRect)
 }
 
+// drawLeftIconButton 绘制左图标右文本布局的按钮。
 func (b *Button) drawLeftIconButton(ctx *PaintCtx, rect Rect, style ButtonStyle, textColor core.Color) {
 	if b.Icon == nil {
 		b.drawButtonText(ctx, rect, style.Font, textColor)
@@ -342,6 +354,7 @@ func (b *Button) drawLeftIconButton(ctx *PaintCtx, rect Rect, style ButtonStyle,
 	)
 }
 
+// drawTopIconButton 绘制上图标下文本布局的按钮。
 func (b *Button) drawTopIconButton(ctx *PaintCtx, rect Rect, style ButtonStyle, textColor core.Color) {
 	if b.Icon == nil {
 		b.drawButtonText(ctx, rect, style.Font, textColor)
@@ -398,6 +411,7 @@ func (b *Button) drawTopIconButton(ctx *PaintCtx, rect Rect, style ButtonStyle, 
 	)
 }
 
+// buttonIconSize 计算按钮图标尺寸。
 func buttonIconSize(ctx *PaintCtx, rect Rect, style ButtonStyle, kind BtnKind) int32 {
 	if ctx == nil {
 		return 0
@@ -411,6 +425,7 @@ func buttonIconSize(ctx *PaintCtx, rect Rect, style ButtonStyle, kind BtnKind) i
 	return clampValue(rect.H-ctx.DP(22), ctx.DP(16), ctx.DP(28))
 }
 
+// normalizeBtnKind 规范化按钮布局枚举值。
 func normalizeBtnKind(kind BtnKind) BtnKind {
 	switch kind {
 	case BtnTop, BtnLeft:
@@ -420,6 +435,7 @@ func normalizeBtnKind(kind BtnKind) BtnKind {
 	}
 }
 
+// offsetRect 返回按给定位移偏移后的矩形。
 func offsetRect(rect Rect, dx, dy int32) Rect {
 	rect.X += dx
 	rect.Y += dy

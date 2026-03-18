@@ -4,9 +4,13 @@ package widgets
 
 import "github.com/AzureIvory/winui/core"
 
+// Label 表示只读文本标签控件。
 type Label struct {
+	// widgetBase 提供标签共享的基础控件能力。
 	widgetBase
-	Text  string
+	// Text 保存标签文本。
+	Text string
+	// Style 保存文本样式覆盖。
 	Style TextStyle
 }
 

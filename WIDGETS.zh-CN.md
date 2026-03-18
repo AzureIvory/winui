@@ -1,4 +1,4 @@
-# winui 组件文档
+﻿# winui 组件文档
 
 本文档面向 `github.com/AzureIvory/winui/widgets` 的公开组件 API，记录每个内置组件的用途、构造参数、常用方法和样式参数。
 
@@ -53,6 +53,9 @@ func main() {
 		},
 		OnMouseUp: func(_ *core.App, ev core.MouseEvent) {
 			scene.DispatchMouseUp(ev)
+		},
+		OnMouseWheel: func(_ *core.App, ev core.MouseEvent) {
+			scene.DispatchMouseWheel(ev)
 		},
 		OnKeyDown: func(_ *core.App, ev core.KeyEvent) {
 			scene.DispatchKeyDown(ev)
@@ -211,6 +214,7 @@ scene := widgets.NewScene(app)
 - `DispatchMouseLeave() bool`
 - `DispatchMouseDown(ev core.MouseEvent) bool`
 - `DispatchMouseUp(ev core.MouseEvent) bool`
+- `DispatchMouseWheel(ev core.MouseEvent) bool`
 - `DispatchKeyDown(ev core.KeyEvent) bool`
 - `DispatchChar(ch rune) bool`
   - 把窗口输入事件转发给场景。
@@ -257,6 +261,10 @@ panel := widgets.NewPanel("content")
   - 返回子控件切片副本。
 - `SetLayout(layout Layout)`
   - 设置布局器。
+- `SetStyle(style PanelStyle)`
+  - 设置面板背景、边框、圆角等样式。
+- `SetOnClick(fn func())`
+  - 注册面板点击回调。
 
 示例：
 
@@ -538,11 +546,17 @@ list := widgets.NewListBox("city")
 - `SelectedItem() (ListItem, bool)`
 - `SetStyle(style ListStyle)`
 - `SetOnChange(fn func(int, ListItem))`
+- `SetOnActivate(fn func(int, ListItem))`
+- `SetOnRightClick(fn func(int, ListItem, core.Point))`
+- `ClearSelection()`
 
 行为说明：
 
 - 只支持单选。
 - 禁用项不会被选中。
+- 支持滚轮滚动长列表。
+- 双击列表项或按 `Enter` 会触发激活回调。
+- 右键点击列表项会先选中该项，再触发右键回调。
 - 支持键盘：
   - `Up` / `Down`
   - `Home` / `End`
@@ -1052,3 +1066,4 @@ reason := app.RenderFallbackReason()
 ```
 
 如果 `backend == core.RenderBackendGDI` 且 `reason != ""`，说明应用在 `RenderModeAuto` 下尝试过 Direct2D，但最终回退到了 GDI。
+

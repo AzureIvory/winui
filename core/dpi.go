@@ -21,18 +21,25 @@ var (
 var dpiInitOnce sync.Once
 
 const (
+	// processDpiSystemAware 表示系统级 DPI 感知常量值。
 	processDpiSystemAware = 1
-	processDpiPerMonitor  = 2
+	// processDpiPerMonitor 表示按显示器 DPI 感知常量值。
+	processDpiPerMonitor = 2
 )
 
 const (
-	hResultOK     uint32 = 0
+	// hResultOK 表示调用成功的 HRESULT。
+	hResultOK uint32 = 0
+	// hResultDenied 表示访问被拒绝但可视为已设置的 HRESULT。
 	hResultDenied uint32 = 0x80070005
 )
 
 const (
-	dpiAwareContextSystemAware       = ^uintptr(1)
-	dpiAwareContextPerMonitorAware   = ^uintptr(2)
+	// dpiAwareContextSystemAware 表示系统级 DPI 感知上下文。
+	dpiAwareContextSystemAware = ^uintptr(1)
+	// dpiAwareContextPerMonitorAware 表示按显示器 DPI 感知上下文。
+	dpiAwareContextPerMonitorAware = ^uintptr(2)
+	// dpiAwareContextPerMonitorAwareV2 表示按显示器 DPI 感知 V2 上下文。
 	dpiAwareContextPerMonitorAwareV2 = ^uintptr(3)
 )
 

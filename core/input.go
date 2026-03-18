@@ -16,31 +16,52 @@ var (
 	procSetCursor       = user32.NewProc("SetCursor")
 )
 
+// trackMouseEvent 对应 Win32 的 TRACKMOUSEEVENT 结构。
 type trackMouseEvent struct {
-	CbSize      uint32
-	DwFlags     uint32
-	HWndTrack   windows.Handle
+	// CbSize 表示结构体大小。
+	CbSize uint32
+	// DwFlags 表示跟踪选项。
+	DwFlags uint32
+	// HWndTrack 表示被跟踪的窗口。
+	HWndTrack windows.Handle
+	// DwHoverTime 表示悬停超时时间。
 	DwHoverTime uint32
 }
 
+// MouseTarget 描述输入路由器可命中的目标控件。
 type MouseTarget struct {
-	Bounds  func() Rect
+	// Bounds 返回目标的命中区域。
+	Bounds func() Rect
+	// Visible 返回目标是否可见。
 	Visible func() bool
+	// Enabled 返回目标是否可用。
 	Enabled func() bool
-	Cursor  CursorID
+	// Cursor 指定悬停时使用的光标。
+	Cursor CursorID
 
+	// OnEnter 在鼠标进入时触发。
 	OnEnter func()
+	// OnLeave 在鼠标离开时触发。
 	OnLeave func()
-	OnMove  func(MouseEvent)
-	OnDown  func(MouseEvent)
-	OnUp    func(MouseEvent)
+	// OnMove 在鼠标移动时触发。
+	OnMove func(MouseEvent)
+	// OnDown 在鼠标按下时触发。
+	OnDown func(MouseEvent)
+	// OnUp 在鼠标抬起时触发。
+	OnUp func(MouseEvent)
+	// OnClick 在点击完成时触发。
 	OnClick func(MouseEvent)
 }
 
+// InputRouter 负责把鼠标事件路由到多个目标。
 type InputRouter struct {
-	app      *App
-	targets  []*MouseTarget
-	hovered  *MouseTarget
+	// app 指向关联的应用实例。
+	app *App
+	// targets 保存当前可路由目标集合。
+	targets []*MouseTarget
+	// hovered 保存当前悬停目标。
+	hovered *MouseTarget
+	// captured 保存当前捕获鼠标的目标。
 	captured *MouseTarget
 }
 

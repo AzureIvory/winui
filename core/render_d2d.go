@@ -40,7 +40,9 @@ import (
 )
 
 // d2dRenderer 持有 Go 侧对 Direct2D/DirectWrite/WIC 桥接对象的引用。
+// d2dRenderer 持有 Go 侧对 Direct2D/DirectWrite/WIC 桥接对象的引用。
 type d2dRenderer struct {
+	// ptr 保存底层 C 桥接渲染器指针。
 	ptr *C.WinUID2DRenderer
 }
 
@@ -57,6 +59,7 @@ func newD2DRenderer() (*d2dRenderer, error) {
 	return &d2dRenderer{ptr: ptr}, nil
 }
 
+// Close 释放底层 Direct2D 渲染器资源。
 func (r *d2dRenderer) Close() {
 	if r == nil || r.ptr == nil {
 		return
@@ -95,6 +98,7 @@ func (r *d2dRenderer) flush() error {
 	})
 }
 
+// fillRect 使用 Direct2D 填充矩形。
 func (r *d2dRenderer) fillRect(rect Rect, color Color) error {
 	return r.call(func(errBuf *[512]C.char) C.int {
 		return C.winui_d2d_fill_rect(
@@ -110,6 +114,7 @@ func (r *d2dRenderer) fillRect(rect Rect, color Color) error {
 	})
 }
 
+// fillRoundRect 使用 Direct2D 填充圆角矩形。
 func (r *d2dRenderer) fillRoundRect(rect Rect, radius int32, color Color) error {
 	return r.call(func(errBuf *[512]C.char) C.int {
 		return C.winui_d2d_fill_round_rect(
@@ -126,6 +131,7 @@ func (r *d2dRenderer) fillRoundRect(rect Rect, radius int32, color Color) error 
 	})
 }
 
+// strokeRoundRect 使用 Direct2D 绘制圆角矩形边框。
 func (r *d2dRenderer) strokeRoundRect(rect Rect, radius int32, color Color, width int32) error {
 	return r.call(func(errBuf *[512]C.char) C.int {
 		return C.winui_d2d_stroke_round_rect(
@@ -143,6 +149,7 @@ func (r *d2dRenderer) strokeRoundRect(rect Rect, radius int32, color Color, widt
 	})
 }
 
+// fillPolygon 使用 Direct2D 填充多边形。
 func (r *d2dRenderer) fillPolygon(points []Point, color Color) error {
 	if len(points) < 3 {
 		return nil
@@ -159,6 +166,7 @@ func (r *d2dRenderer) fillPolygon(points []Point, color Color) error {
 	})
 }
 
+// drawText 使用 Direct2D 绘制文本。
 func (r *d2dRenderer) drawText(text string, rect Rect, font *Font, color Color, format uint32) error {
 	if text == "" {
 		return nil
@@ -193,6 +201,7 @@ func (r *d2dRenderer) drawText(text string, rect Rect, font *Font, color Color, 
 	})
 }
 
+// measureText 使用 Direct2D 测量文本尺寸。
 func (r *d2dRenderer) measureText(text string, font *Font) (Size, error) {
 	if text == "" {
 		return Size{}, nil
@@ -229,6 +238,7 @@ func (r *d2dRenderer) measureText(text string, font *Font) (Size, error) {
 	return Size{Width: int32(width), Height: int32(height)}, nil
 }
 
+// drawIcon 使用 Direct2D 绘制图标。
 func (r *d2dRenderer) drawIcon(icon *Icon, rect Rect) error {
 	if icon == nil || icon.handle == 0 {
 		return nil
@@ -247,6 +257,7 @@ func (r *d2dRenderer) drawIcon(icon *Icon, rect Rect) error {
 	})
 }
 
+// drawBitmap 使用 Direct2D 绘制位图。
 func (r *d2dRenderer) drawBitmap(bitmap *Bitmap, rect Rect, alpha byte) error {
 	if bitmap == nil || bitmap.handle == 0 {
 		return nil
@@ -266,6 +277,7 @@ func (r *d2dRenderer) drawBitmap(bitmap *Bitmap, rect Rect, alpha byte) error {
 	})
 }
 
+// call 统一处理 C 桥接调用和错误转换。
 func (r *d2dRenderer) call(fn func(errBuf *[512]C.char) C.int) error {
 	if r == nil || r.ptr == nil {
 		return errors.New("Direct2D renderer is not initialized")

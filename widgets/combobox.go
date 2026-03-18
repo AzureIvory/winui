@@ -6,15 +6,24 @@ import "github.com/AzureIvory/winui/core"
 
 // ComboBox 表示带弹出列表的选择控件。
 type ComboBox struct {
+	// widgetBase 提供组合框共享的基础控件能力。
 	widgetBase
-	items       []ListItem
-	selected    int
-	hover       int
-	focused     bool
-	open        bool
+	// items 保存可选项目集合。
+	items []ListItem
+	// selected 保存当前选中索引。
+	selected int
+	// hover 保存弹出层当前悬停索引。
+	hover int
+	// focused 记录控件是否拥有焦点。
+	focused bool
+	// open 记录弹出层是否展开。
+	open bool
+	// Placeholder 保存未选中时显示的占位文本。
 	Placeholder string
-	Style       ComboStyle
-	OnChange    func(int, ListItem)
+	// Style 保存样式覆盖。
+	Style ComboStyle
+	// OnChange 保存选择变更回调。
+	OnChange func(int, ListItem)
 }
 
 // NewComboBox 创建一个新的组合框。

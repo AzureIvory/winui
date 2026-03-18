@@ -16,8 +16,11 @@ var (
 	ErrTimerIDZero    = errors.New("winui/core: timer id must not be zero")
 )
 
+// opError 为底层系统调用错误补充操作上下文。
 type opError struct {
-	Op  string
+	// Op 表示失败的操作名称。
+	Op string
+	// Err 表示底层错误。
 	Err error
 }
 

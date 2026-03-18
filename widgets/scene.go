@@ -9,9 +9,12 @@ import (
 	"time"
 )
 
+// PaintCtx 是带场景信息的绘制上下文包装器。
 type PaintCtx struct {
+	// canvas 保存底层 core 绘制上下文。
 	canvas *core.PaintCtx
-	scene  *Scene
+	// scene 指向当前正在绘制的场景。
+	scene *Scene
 }
 
 // newPaintCtx 将 core 绘制上下文封装为场景感知的绘制上下文。
@@ -205,19 +208,31 @@ func (p *PaintCtx) DrawProgress(rect Rect, value int32, style ProgressStyle) err
 	)
 }
 
+// Scene 管理控件树、主题、焦点和定时器等运行时状态。
 type Scene struct {
-	app     *core.App
-	root    *Panel
-	theme   *Theme
-	hover   Widget
+	// app 指向场景绑定的底层应用实例。
+	app *core.App
+	// root 保存场景根面板。
+	root *Panel
+	// theme 保存当前主题。
+	theme *Theme
+	// hover 记录当前鼠标悬停的控件。
+	hover Widget
+	// capture 记录当前捕获鼠标的控件。
 	capture Widget
-	focus   Widget
+	// focus 记录当前拥有键盘焦点的控件。
+	focus Widget
 
+	// fontMu 保护字体缓存。
 	fontMu sync.Mutex
-	fonts  map[FontSpec]*core.Font
+	// fonts 缓存已创建的字体资源。
+	fonts map[FontSpec]*core.Font
 
-	timerMu     sync.Mutex
-	timers      map[uintptr]Widget
+	// timerMu 保护定时器映射。
+	timerMu sync.Mutex
+	// timers 保存定时器与控件的映射关系。
+	timers map[uintptr]Widget
+	// nextTimerID 保存下一个自动分配的定时器标识。
 	nextTimerID uintptr
 }
 
@@ -382,6 +397,7 @@ func (s *Scene) Invalidate(widget Widget) {
 	s.invalidateRect(widgetDirtyRect(widget))
 }
 
+// invalidateRect 让指定矩形区域失效并等待重绘。
 func (s *Scene) invalidateRect(rect Rect) {
 	if s == nil || s.app == nil || rect.Empty() {
 		return
@@ -770,6 +786,7 @@ func max32(a, b int32) int32 {
 	return b
 }
 
+// widgetDirtyRect 返回控件声明的脏区或其边界。
 func widgetDirtyRect(widget Widget) Rect {
 	if widget == nil {
 		return Rect{}

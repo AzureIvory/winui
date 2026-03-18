@@ -40,114 +40,195 @@ var (
 )
 
 const (
+	// nullBrush 表示空画刷对象。
 	nullBrush = 5
-	nullPen   = 8
+	// nullPen 表示空画笔对象。
+	nullPen = 8
 )
 
+// paintStruct 对应 Win32 的 PAINTSTRUCT 结构。
 type paintStruct struct {
-	Hdc         windows.Handle
-	FErase      int32
-	RcPaint     winRect
-	FRestore    int32
-	FIncUpdate  int32
+	// Hdc 表示 BeginPaint 返回的绘图设备上下文。
+	Hdc windows.Handle
+	// FErase 表示是否需要擦除背景。
+	FErase int32
+	// RcPaint 表示本次需要重绘的区域。
+	RcPaint winRect
+	// FRestore 表示系统内部恢复标志。
+	FRestore int32
+	// FIncUpdate 表示系统内部增量更新标志。
+	FIncUpdate int32
+	// RgbReserved 保存保留字节。
 	RgbReserved [32]byte
 }
 
+// logFontW 对应 Win32 的 LOGFONTW 结构。
 type logFontW struct {
-	Height         int32
-	Width          int32
-	Escapement     int32
-	Orientation    int32
-	Weight         int32
-	Italic         byte
-	Underline      byte
-	StrikeOut      byte
-	CharSet        byte
-	OutPrecision   byte
-	ClipPrecision  byte
-	Quality        byte
+	// Height 指定字体高度。
+	Height int32
+	// Width 指定字体宽度。
+	Width int32
+	// Escapement 指定字形基线角度。
+	Escapement int32
+	// Orientation 指定字符方向角度。
+	Orientation int32
+	// Weight 指定字体粗细。
+	Weight int32
+	// Italic 表示是否斜体。
+	Italic byte
+	// Underline 表示是否带下划线。
+	Underline byte
+	// StrikeOut 表示是否带删除线。
+	StrikeOut byte
+	// CharSet 指定字符集。
+	CharSet byte
+	// OutPrecision 指定输出精度。
+	OutPrecision byte
+	// ClipPrecision 指定裁剪精度。
+	ClipPrecision byte
+	// Quality 指定字体渲染质量。
+	Quality byte
+	// PitchAndFamily 指定字距和字族。
 	PitchAndFamily byte
-	FaceName       [32]uint16
+	// FaceName 保存字体名称。
+	FaceName [32]uint16
 }
 
+// bitmapInfoHeader 对应 Win32 的 BITMAPINFOHEADER 结构。
 type bitmapInfoHeader struct {
-	Size          uint32
-	Width         int32
-	Height        int32
-	Planes        uint16
-	BitCount      uint16
-	Compression   uint32
-	SizeImage     uint32
+	// Size 表示结构体大小。
+	Size uint32
+	// Width 表示位图宽度。
+	Width int32
+	// Height 表示位图高度。
+	Height int32
+	// Planes 表示颜色平面数。
+	Planes uint16
+	// BitCount 表示每像素位数。
+	BitCount uint16
+	// Compression 表示压缩方式。
+	Compression uint32
+	// SizeImage 表示像素数据大小。
+	SizeImage uint32
+	// XPelsPerMeter 表示水平分辨率。
 	XPelsPerMeter int32
+	// YPelsPerMeter 表示垂直分辨率。
 	YPelsPerMeter int32
-	ClrUsed       uint32
-	ClrImportant  uint32
+	// ClrUsed 表示使用的调色板颜色数。
+	ClrUsed uint32
+	// ClrImportant 表示重要颜色数。
+	ClrImportant uint32
 }
 
+// bitmapInfo 对应 Win32 的 BITMAPINFO 结构。
 type bitmapInfo struct {
+	// Header 保存位图头信息。
 	Header bitmapInfoHeader
+	// Colors 保存颜色表。
 	Colors [1]uint32
 }
 
+// blendFunction 对应 Win32 的 BLENDFUNCTION 结构。
 type blendFunction struct {
-	BlendOp             byte
-	BlendFlags          byte
+	// BlendOp 指定混合操作。
+	BlendOp byte
+	// BlendFlags 保存保留标志。
+	BlendFlags byte
+	// SourceConstantAlpha 指定整体透明度。
 	SourceConstantAlpha byte
-	AlphaFormat         byte
+	// AlphaFormat 指定是否使用源 Alpha。
+	AlphaFormat byte
 }
 
+// Font 表示可复用的原生字体资源。
 type Font struct {
-	handle  windows.Handle
-	face    string
-	height  int32
-	weight  int32
+	// handle 保存字体句柄。
+	handle windows.Handle
+	// face 保存字体名称。
+	face string
+	// height 保存字体高度。
+	height int32
+	// weight 保存字体粗细。
+	weight int32
+	// quality 保存字体渲染质量。
 	quality FontQuality
 }
 
+// Brush 表示可复用的原生画刷资源。
 type Brush struct {
+	// handle 保存画刷句柄。
 	handle windows.Handle
 }
 
+// Pen 表示可复用的原生画笔资源。
 type Pen struct {
+	// handle 保存画笔句柄。
 	handle windows.Handle
 }
 
+// Icon 表示可复用的原生图标资源。
 type Icon struct {
+	// handle 保存图标句柄。
 	handle windows.Handle
 }
 
+// Bitmap 表示可绘制的原生位图资源。
 type Bitmap struct {
+	// handle 保存位图句柄。
 	handle windows.Handle
-	Width  int32
+	// Width 保存位图宽度。
+	Width int32
+	// Height 保存位图高度。
 	Height int32
 }
 
+// AnimatedFrame 表示动画图像中的单帧数据。
 type AnimatedFrame struct {
+	// Bitmap 保存帧位图。
 	Bitmap *Bitmap
-	Width  int32
+	// Width 保存帧宽度。
+	Width int32
+	// Height 保存帧高度。
 	Height int32
-	Delay  time.Duration
+	// Delay 保存下一帧播放前的延迟。
+	Delay time.Duration
 }
 
+// Canvas 表示一次绘制过程使用的画布。
 type Canvas struct {
-	hdc    windows.Handle
+	// hdc 保存底层绘图上下文句柄。
+	hdc windows.Handle
+	// bounds 保存当前画布边界。
 	bounds Rect
-	d2d    *d2dRenderer
+	// d2d 保存可选的 Direct2D 渲染器。
+	d2d *d2dRenderer
 }
 
+// PaintCtx 是 Canvas 的语义别名。
 type PaintCtx = Canvas
 
+// paintSession 保存一次 WM_PAINT 周期中的临时资源。
 type paintSession struct {
-	app       *App
-	hwnd      windows.Handle
-	paintDC   windows.Handle
-	memDC     windows.Handle
+	// app 指向所属应用实例。
+	app *App
+	// hwnd 保存当前绘制窗口句柄。
+	hwnd windows.Handle
+	// paintDC 保存 BeginPaint 返回的 DC。
+	paintDC windows.Handle
+	// memDC 保存双缓冲内存 DC。
+	memDC windows.Handle
+	// oldBitmap 保存原先选入 memDC 的位图。
 	oldBitmap uintptr
-	buffer    *Bitmap
-	canvas    *Canvas
-	ps        paintStruct
-	direct    bool
-	d2d       *d2dRenderer
+	// buffer 保存双缓冲位图。
+	buffer *Bitmap
+	// canvas 保存对外暴露的画布包装。
+	canvas *Canvas
+	// ps 保存 BeginPaint 返回的 PAINTSTRUCT。
+	ps paintStruct
+	// direct 表示是否直接绘制到 paintDC。
+	direct bool
+	// d2d 保存本次绘制使用的 Direct2D 渲染器。
+	d2d *d2dRenderer
 }
 
 // NewSolidBrush 创建一个新的实心画刷。
@@ -275,13 +356,21 @@ func LoadIconFromICO(data []byte, want int32) (*Icon, error) {
 		return nil, wrapError("CreateIconFromResourceEx", windows.ERROR_INVALID_DATA)
 	}
 
+	// iconDirEntry 对应 ICO 文件中的目录项。
 	type iconDirEntry struct {
-		W, H        byte
-		ColorCount  byte
-		Reserved    byte
-		Planes      uint16
-		BitCount    uint16
-		BytesInRes  uint32
+		// W 和 H 表示图标宽高。
+		W, H byte
+		// ColorCount 表示调色板颜色数。
+		ColorCount byte
+		// Reserved 表示保留字段。
+		Reserved byte
+		// Planes 表示颜色平面数。
+		Planes uint16
+		// BitCount 表示每像素位数。
+		BitCount uint16
+		// BytesInRes 表示图像资源大小。
+		BytesInRes uint32
+		// ImageOffset 表示图像资源偏移。
 		ImageOffset uint32
 	}
 
@@ -504,6 +593,7 @@ func (c *Canvas) FillRect(rect Rect, color Color) error {
 	return c.fillRectGDI(rect, color)
 }
 
+// fillRectGDI 使用 GDI 填充矩形。
 func (c *Canvas) fillRectGDI(rect Rect, color Color) error {
 	brush, err := NewSolidBrush(color)
 	if err != nil {
@@ -550,6 +640,7 @@ func (c *Canvas) StrokeRoundRect(rect Rect, radius int32, color Color, width int
 	return c.strokeRoundRectGDI(rect, radius, color, width)
 }
 
+// strokeRoundRectGDI 使用 GDI 绘制圆角矩形边框。
 func (c *Canvas) strokeRoundRectGDI(rect Rect, radius int32, color Color, width int32) error {
 	if width <= 0 {
 		width = 1
@@ -597,6 +688,7 @@ func (c *Canvas) FillPolygon(points []Point, color Color) error {
 	return c.fillPolygonGDI(points, color)
 }
 
+// fillPolygonGDI 使用 GDI 填充多边形。
 func (c *Canvas) fillPolygonGDI(points []Point, color Color) error {
 	if len(points) < 3 {
 		return nil
@@ -643,6 +735,7 @@ func (c *Canvas) RoundRect(rect Rect, radius int32, fill Color, stroke Color) er
 	return c.roundRectGDI(rect, radius, fill, stroke)
 }
 
+// roundRectGDI 使用 GDI 绘制圆角矩形。
 func (c *Canvas) roundRectGDI(rect Rect, radius int32, fill Color, stroke Color) error {
 	brush, err := NewSolidBrush(fill)
 	if err != nil {
@@ -687,6 +780,7 @@ func (c *Canvas) DrawText(text string, rect Rect, font *Font, color Color, forma
 	return c.drawTextGDI(text, rect, font, color, format)
 }
 
+// drawTextGDI 使用 GDI 绘制文本。
 func (c *Canvas) drawTextGDI(text string, rect Rect, font *Font, color Color, format uint32) error {
 	if text == "" {
 		return nil
@@ -730,6 +824,7 @@ func (c *Canvas) MeasureText(text string, font *Font) (Size, error) {
 	return c.measureTextGDI(text, font)
 }
 
+// measureTextGDI 使用 GDI 测量文本尺寸。
 func (c *Canvas) measureTextGDI(text string, font *Font) (Size, error) {
 	if text == "" {
 		return Size{}, nil
@@ -772,6 +867,7 @@ func (c *Canvas) DrawIcon(icon *Icon, rect Rect) error {
 	return c.drawIconGDI(icon, rect)
 }
 
+// drawIconGDI 使用 GDI 绘制图标。
 func (c *Canvas) drawIconGDI(icon *Icon, rect Rect) error {
 	if icon == nil || icon.handle == 0 {
 		return nil
@@ -804,6 +900,7 @@ func (c *Canvas) DrawBitmapAlpha(bitmap *Bitmap, rect Rect, alpha byte) error {
 	return c.drawBitmapAlphaGDI(bitmap, rect, alpha)
 }
 
+// drawBitmapAlphaGDI 使用 GDI 按透明度绘制位图。
 func (c *Canvas) drawBitmapAlphaGDI(bitmap *Bitmap, rect Rect, alpha byte) error {
 	if bitmap == nil || bitmap.handle == 0 {
 		return nil
@@ -856,6 +953,7 @@ func beginPaintSession(app *App, hwnd windows.Handle, doubleBuffered bool) (*pai
 	return beginGDIPaintSession(app, hwnd, doubleBuffered)
 }
 
+// beginGDIPaintSession 创建基于 GDI 的绘制会话。
 func beginGDIPaintSession(app *App, hwnd windows.Handle, doubleBuffered bool) (*paintSession, error) {
 	session := &paintSession{app: app, hwnd: hwnd}
 	paintDC, _, err := procBeginPaint.Call(uintptr(hwnd), uintptr(unsafe.Pointer(&session.ps)))
@@ -896,6 +994,7 @@ func beginGDIPaintSession(app *App, hwnd windows.Handle, doubleBuffered bool) (*
 	return session, nil
 }
 
+// beginD2DPaintSession 创建基于 Direct2D 的绘制会话。
 func beginD2DPaintSession(app *App, hwnd windows.Handle, doubleBuffered bool, renderer *d2dRenderer) (*paintSession, error) {
 	session, err := beginGDIPaintSession(app, hwnd, doubleBuffered)
 	if err != nil {
@@ -926,6 +1025,7 @@ func (s *paintSession) close() error {
 	return closeErr
 }
 
+// closeRaw 释放绘制会话资源，并在需要时把缓冲内容复制到窗口。
 func (s *paintSession) closeRaw(doBlit ...bool) error {
 	if s == nil {
 		return nil

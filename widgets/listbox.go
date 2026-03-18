@@ -9,20 +9,34 @@ import (
 )
 
 // ListBox 表示单选列表控件。
+// ListBox 表示单选列表控件。
 type ListBox struct {
+	// widgetBase 提供列表框共享的基础控件能力。
 	widgetBase
-	items          []ListItem
-	selected       int
-	hover          int
-	pressed        int
-	scroll         int
-	focused        bool
+	// items 保存列表项集合。
+	items []ListItem
+	// selected 保存当前选中索引。
+	selected int
+	// hover 保存当前悬停索引。
+	hover int
+	// pressed 保存当前按下索引。
+	pressed int
+	// scroll 保存顶部可见行索引。
+	scroll int
+	// focused 记录控件是否拥有焦点。
+	focused bool
+	// lastClickIndex 保存上次点击的索引，用于双击检测。
 	lastClickIndex int
-	lastClickAt    time.Time
-	Style          ListStyle
-	OnChange       func(int, ListItem)
-	OnActivate     func(int, ListItem)
-	OnRightClick   func(int, ListItem, core.Point)
+	// lastClickAt 保存上次点击时间。
+	lastClickAt time.Time
+	// Style 保存样式覆盖。
+	Style ListStyle
+	// OnChange 保存选择变更回调。
+	OnChange func(int, ListItem)
+	// OnActivate 保存项激活回调。
+	OnActivate func(int, ListItem)
+	// OnRightClick 保存右键回调。
+	OnRightClick func(int, ListItem, core.Point)
 }
 
 // NewListBox 创建一个新的列表框。
@@ -482,6 +496,7 @@ func mergeListStyle(base, override ListStyle) ListStyle {
 	return base
 }
 
+// visibleRows 计算当前样式下可见的行数。
 func (l *ListBox) visibleRows(style ListStyle) int {
 	padding := max32(0, l.dp(style.PaddingDP))
 	itemHeight := max32(1, l.dp(style.ItemHeightDP))
@@ -496,6 +511,7 @@ func (l *ListBox) visibleRows(style ListStyle) int {
 	return rows
 }
 
+// maxScroll 计算当前列表允许的最大滚动偏移。
 func (l *ListBox) maxScroll(style ListStyle) int {
 	rows := l.visibleRows(style)
 	if rows <= 0 || len(l.items) <= rows {
@@ -504,6 +520,7 @@ func (l *ListBox) maxScroll(style ListStyle) int {
 	return len(l.items) - rows
 }
 
+// clampScroll 把滚动位置限制在合法范围内。
 func (l *ListBox) clampScroll() {
 	style := mergeListStyle(DefaultTheme().ListBox, l.Style)
 	maxScroll := l.maxScroll(style)
@@ -515,6 +532,7 @@ func (l *ListBox) clampScroll() {
 	}
 }
 
+// scrollBy 按给定偏移滚动列表。
 func (l *ListBox) scrollBy(delta int) bool {
 	if delta == 0 {
 		return false
@@ -529,6 +547,7 @@ func (l *ListBox) scrollBy(delta int) bool {
 	return true
 }
 
+// ensureVisible 调整滚动位置以确保指定项可见。
 func (l *ListBox) ensureVisible(index int) {
 	if index < 0 || index >= len(l.items) {
 		return
@@ -549,6 +568,7 @@ func (l *ListBox) ensureVisible(index int) {
 	l.clampScroll()
 }
 
+// wheelSteps 把鼠标滚轮增量转换为滚动步数。
 func wheelSteps(delta int32) int {
 	if delta == 0 {
 		return 0

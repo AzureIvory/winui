@@ -4,50 +4,80 @@ package widgets
 
 import (
 	"fmt"
-	"github.com/AzureIvory/winui/core"
 	"sync/atomic"
+
+	"github.com/AzureIvory/winui/core"
 )
 
+// Rect 复用 core 包中的矩形类型。
 type Rect = core.Rect
+
+// Color 复用 core 包中的颜色类型。
 type Color = core.Color
+
+// CursorID 复用 core 包中的光标标识类型。
 type CursorID = core.CursorID
 
+// Widget 定义所有控件都要实现的基础行为。
 type Widget interface {
+	// ID 返回控件标识。
 	ID() string
+	// Bounds 返回控件边界。
 	Bounds() Rect
+	// SetBounds 更新控件边界。
 	SetBounds(Rect)
+	// Visible 返回控件是否可见。
 	Visible() bool
+	// SetVisible 更新控件可见状态。
 	SetVisible(bool)
+	// Enabled 返回控件是否可用。
 	Enabled() bool
+	// SetEnabled 更新控件可用状态。
 	SetEnabled(bool)
+	// HitTest 判断点是否命中控件。
 	HitTest(x, y int32) bool
+	// OnEvent 处理分发到控件的事件。
 	OnEvent(evt Event) bool
+	// Paint 使用绘制上下文渲染控件。
 	Paint(ctx *PaintCtx)
 }
 
+// widgetNode 定义场景树内部节点需要实现的附加行为。
 type widgetNode interface {
 	Widget
+	// setScene 绑定控件所属场景。
 	setScene(*Scene)
+	// scene 返回控件所属场景。
 	scene() *Scene
+	// setParent 绑定父容器。
 	setParent(Container)
+	// parent 返回父容器。
 	parent() Container
+	// cursor 返回悬停时应显示的光标。
 	cursor() CursorID
 }
 
+// focusableWidget 表示可接收键盘焦点的控件。
 type focusableWidget interface {
 	Widget
+	// acceptsFocus 返回控件是否允许获得焦点。
 	acceptsFocus() bool
 }
 
+// overlayWidget 表示需要在覆盖层阶段追加绘制的控件。
 type overlayWidget interface {
 	Widget
+	// PaintOverlay 在覆盖层阶段绘制额外内容。
 	PaintOverlay(ctx *PaintCtx)
 }
 
+// dirtyWidget 表示可提供自定义脏区的控件。
 type dirtyWidget interface {
+	// dirtyRect 返回控件当前需要刷新的矩形区域。
 	dirtyRect() Rect
 }
 
+// widgetSequence 用于生成自动控件标识。
 var widgetSequence atomic.Uint64
 
 // newWidgetID 使用给定前缀生成唯一的控件标识。
@@ -58,12 +88,19 @@ func newWidgetID(prefix string) string {
 	return fmt.Sprintf("%s-%d", prefix, widgetSequence.Add(1))
 }
 
+// widgetBase 保存大多数控件共享的基础状态。
 type widgetBase struct {
-	id        string
-	bounds    Rect
-	visible   bool
-	enabled   bool
-	sceneRef  *Scene
+	// id 保存控件唯一标识。
+	id string
+	// bounds 保存控件边界。
+	bounds Rect
+	// visible 记录控件是否可见。
+	visible bool
+	// enabled 记录控件是否可用。
+	enabled bool
+	// sceneRef 指向控件所属场景。
+	sceneRef *Scene
+	// parentRef 指向控件父容器。
 	parentRef Container
 }
 

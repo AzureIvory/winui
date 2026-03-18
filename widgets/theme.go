@@ -4,124 +4,226 @@ package widgets
 
 import "github.com/AzureIvory/winui/core"
 
+// FontSpec 描述控件文本使用的字体规格。
 type FontSpec struct {
-	Face   string
+	// Face 指定字体名称。
+	Face string
+	// SizeDP 指定按 DPI 缩放前的字号。
 	SizeDP int32
+	// Weight 指定字体粗细，400 为常规，700 为粗体。
 	Weight int32
 }
 
+// TextStyle 描述通用文本绘制样式。
 type TextStyle struct {
-	Font   FontSpec
-	Color  core.Color
+	// Font 指定文本使用的字体规格。
+	Font FontSpec
+	// Color 指定文本颜色。
+	Color core.Color
+	// Format 指定 DrawText 使用的排版标志。
 	Format uint32
 }
 
+// ButtonStyle 描述按钮控件的外观样式。
 type ButtonStyle struct {
-	Font         FontSpec
-	TextColor    core.Color
-	DownText     core.Color
+	// Font 指定按钮文本使用的字体规格。
+	Font FontSpec
+	// TextColor 指定默认状态下的文字颜色。
+	TextColor core.Color
+	// DownText 指定按下状态下的文字颜色。
+	DownText core.Color
+	// DisabledText 指定禁用状态下的文字颜色。
 	DisabledText core.Color
-	Background   core.Color
-	Hover        core.Color
-	Pressed      core.Color
-	Disabled     core.Color
-	Border       core.Color
+	// Background 指定默认背景色。
+	Background core.Color
+	// Hover 指定悬停状态背景色。
+	Hover core.Color
+	// Pressed 指定按下状态背景色。
+	Pressed core.Color
+	// Disabled 指定禁用状态背景色。
+	Disabled core.Color
+	// Border 指定边框颜色。
+	Border core.Color
+	// CornerRadius 指定圆角半径。
 	CornerRadius int32
-	IconSizeDP   int32
-	TextInsetDP  int32
-	GapDP        int32
-	PadDP        int32
+	// IconSizeDP 指定图标尺寸。
+	IconSizeDP int32
+	// TextInsetDP 指定文本区域参考高度。
+	TextInsetDP int32
+	// GapDP 指定图标和文字之间的间距。
+	GapDP int32
+	// PadDP 指定按钮内容内边距。
+	PadDP int32
 }
 
+// ProgressStyle 描述进度条控件的外观样式。
 type ProgressStyle struct {
-	Font         FontSpec
-	TextColor    core.Color
-	TrackColor   core.Color
-	FillColor    core.Color
-	BubbleColor  core.Color
+	// Font 指定百分比文本使用的字体规格。
+	Font FontSpec
+	// TextColor 指定百分比文本颜色。
+	TextColor core.Color
+	// TrackColor 指定轨道颜色。
+	TrackColor core.Color
+	// FillColor 指定进度填充颜色。
+	FillColor core.Color
+	// BubbleColor 指定气泡颜色。
+	BubbleColor core.Color
+	// CornerRadius 指定轨道圆角半径。
 	CornerRadius int32
-	ShowPercent  bool
+	// ShowPercent 控制是否显示百分比气泡。
+	ShowPercent bool
 }
 
+// ChoiceStyle 描述复选框和单选框的外观样式。
 type ChoiceStyle struct {
-	Font            FontSpec
-	TextColor       core.Color
-	DisabledText    core.Color
-	Background      core.Color
-	BorderColor     core.Color
-	HoverBorder     core.Color
-	FocusBorder     core.Color
-	IndicatorColor  core.Color
-	CheckColor      core.Color
+	// Font 指定标签文本使用的字体规格。
+	Font FontSpec
+	// TextColor 指定默认文本颜色。
+	TextColor core.Color
+	// DisabledText 指定禁用文本颜色。
+	DisabledText core.Color
+	// Background 指定指示器背景色。
+	Background core.Color
+	// BorderColor 指定默认边框颜色。
+	BorderColor core.Color
+	// HoverBorder 指定悬停边框颜色。
+	HoverBorder core.Color
+	// FocusBorder 指定焦点边框颜色。
+	FocusBorder core.Color
+	// IndicatorColor 指定选中指示器颜色。
+	IndicatorColor core.Color
+	// CheckColor 指定复选框勾选图形颜色。
+	CheckColor core.Color
+	// HoverBackground 指定悬停时包裹区域背景色。
 	HoverBackground core.Color
-	DisabledBg      core.Color
-	DisabledBorder  core.Color
-	CornerRadius    int32
+	// DisabledBg 指定禁用状态背景色。
+	DisabledBg core.Color
+	// DisabledBorder 指定禁用状态边框颜色。
+	DisabledBorder core.Color
+	// CornerRadius 指定指示器圆角半径。
+	CornerRadius int32
+	// IndicatorSizeDP 指定指示器尺寸。
 	IndicatorSizeDP int32
-	IndicatorGapDP  int32
+	// IndicatorGapDP 指定指示器和文本之间的间距。
+	IndicatorGapDP int32
 }
 
+// ListStyle 描述列表框控件的外观样式。
 type ListStyle struct {
-	Font              FontSpec
-	TextColor         core.Color
-	DisabledText      core.Color
-	Background        core.Color
-	BorderColor       core.Color
-	HoverBorder       core.Color
-	FocusBorder       core.Color
-	ItemHoverColor    core.Color
+	// Font 指定列表文本使用的字体规格。
+	Font FontSpec
+	// TextColor 指定默认文本颜色。
+	TextColor core.Color
+	// DisabledText 指定禁用项文本颜色。
+	DisabledText core.Color
+	// Background 指定列表背景色。
+	Background core.Color
+	// BorderColor 指定默认边框颜色。
+	BorderColor core.Color
+	// HoverBorder 指定悬停边框颜色。
+	HoverBorder core.Color
+	// FocusBorder 指定焦点边框颜色。
+	FocusBorder core.Color
+	// ItemHoverColor 指定悬停行背景色。
+	ItemHoverColor core.Color
+	// ItemSelectedColor 指定选中行背景色。
 	ItemSelectedColor core.Color
-	ItemTextColor     core.Color
-	ItemHeightDP      int32
-	PaddingDP         int32
-	CornerRadius      int32
+	// ItemTextColor 指定选中行文本颜色。
+	ItemTextColor core.Color
+	// ItemHeightDP 指定每行高度。
+	ItemHeightDP int32
+	// PaddingDP 指定列表内边距。
+	PaddingDP int32
+	// CornerRadius 指定列表圆角半径。
+	CornerRadius int32
 }
 
+// ComboStyle 描述组合框控件的外观样式。
 type ComboStyle struct {
-	Font              FontSpec
-	TextColor         core.Color
-	PlaceholderColor  core.Color
-	Background        core.Color
-	BorderColor       core.Color
-	HoverBorder       core.Color
-	FocusBorder       core.Color
-	ArrowColor        core.Color
-	PopupBackground   core.Color
-	ItemHoverColor    core.Color
-	ItemSelectedColor core.Color
-	ItemTextColor     core.Color
-	ItemHeightDP      int32
-	PaddingDP         int32
-	CornerRadius      int32
-	MaxVisibleItems   int32
-}
-
-type EditStyle struct {
-	Font             FontSpec
-	TextColor        core.Color
+	// Font 指定组合框文本使用的字体规格。
+	Font FontSpec
+	// TextColor 指定已选文本颜色。
+	TextColor core.Color
+	// PlaceholderColor 指定占位文本颜色。
 	PlaceholderColor core.Color
-	Background       core.Color
-	BorderColor      core.Color
-	HoverBorder      core.Color
-	FocusBorder      core.Color
-	DisabledText     core.Color
-	DisabledBg       core.Color
-	CaretColor       core.Color
-	PaddingDP        int32
-	CornerRadius     int32
+	// Background 指定输入框背景色。
+	Background core.Color
+	// BorderColor 指定默认边框颜色。
+	BorderColor core.Color
+	// HoverBorder 指定悬停边框颜色。
+	HoverBorder core.Color
+	// FocusBorder 指定焦点边框颜色。
+	FocusBorder core.Color
+	// ArrowColor 指定箭头颜色。
+	ArrowColor core.Color
+	// PopupBackground 指定弹出层背景色。
+	PopupBackground core.Color
+	// ItemHoverColor 指定弹出项悬停背景色。
+	ItemHoverColor core.Color
+	// ItemSelectedColor 指定弹出项选中背景色。
+	ItemSelectedColor core.Color
+	// ItemTextColor 指定弹出项选中文本颜色。
+	ItemTextColor core.Color
+	// ItemHeightDP 指定弹出项高度。
+	ItemHeightDP int32
+	// PaddingDP 指定控件和弹出层内边距。
+	PaddingDP int32
+	// CornerRadius 指定圆角半径。
+	CornerRadius int32
+	// MaxVisibleItems 指定弹出层最大可见条目数。
+	MaxVisibleItems int32
 }
 
+// EditStyle 描述编辑框控件的外观样式。
+type EditStyle struct {
+	// Font 指定编辑框文本使用的字体规格。
+	Font FontSpec
+	// TextColor 指定默认文本颜色。
+	TextColor core.Color
+	// PlaceholderColor 指定占位文本颜色。
+	PlaceholderColor core.Color
+	// Background 指定背景色。
+	Background core.Color
+	// BorderColor 指定默认边框颜色。
+	BorderColor core.Color
+	// HoverBorder 指定悬停边框颜色。
+	HoverBorder core.Color
+	// FocusBorder 指定焦点边框颜色。
+	FocusBorder core.Color
+	// DisabledText 指定禁用文本颜色。
+	DisabledText core.Color
+	// DisabledBg 指定禁用背景色。
+	DisabledBg core.Color
+	// CaretColor 指定光标颜色。
+	CaretColor core.Color
+	// PaddingDP 指定编辑区内边距。
+	PaddingDP int32
+	// CornerRadius 指定圆角半径。
+	CornerRadius int32
+}
+
+// Theme 聚合场景中各类控件的默认样式。
 type Theme struct {
+	// BackgroundColor 指定场景默认背景色。
 	BackgroundColor core.Color
-	Text            TextStyle
-	Title           TextStyle
-	Button          ButtonStyle
-	Progress        ProgressStyle
-	CheckBox        ChoiceStyle
-	RadioButton     ChoiceStyle
-	ListBox         ListStyle
-	ComboBox        ComboStyle
-	Edit            EditStyle
+	// Text 指定常规文本样式。
+	Text TextStyle
+	// Title 指定标题文本样式。
+	Title TextStyle
+	// Button 指定按钮默认样式。
+	Button ButtonStyle
+	// Progress 指定进度条默认样式。
+	Progress ProgressStyle
+	// CheckBox 指定复选框默认样式。
+	CheckBox ChoiceStyle
+	// RadioButton 指定单选按钮默认样式。
+	RadioButton ChoiceStyle
+	// ListBox 指定列表框默认样式。
+	ListBox ListStyle
+	// ComboBox 指定组合框默认样式。
+	ComboBox ComboStyle
+	// Edit 指定编辑框默认样式。
+	Edit EditStyle
 }
 
 // DefaultTheme 返回控件未覆写时使用的默认主题。

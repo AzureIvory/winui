@@ -5,14 +5,23 @@ package widgets
 import "github.com/AzureIvory/winui/core"
 
 // CheckBox 表示可切换状态的多选框控件。
+// CheckBox 表示可切换状态的多选框控件。
 type CheckBox struct {
+	// widgetBase 提供选项控件共享的基础控件能力。
 	widgetBase
-	Text     string
-	Checked  bool
-	Hover    bool
-	Down     bool
-	Focused  bool
-	Style    ChoiceStyle
+	// Text 保存复选框文本。
+	Text string
+	// Checked 记录当前是否已选中。
+	Checked bool
+	// Hover 记录当前是否处于悬停状态。
+	Hover bool
+	// Down 记录当前是否处于按下状态。
+	Down bool
+	// Focused 记录当前是否拥有焦点。
+	Focused bool
+	// Style 保存样式覆盖。
+	Style ChoiceStyle
+	// OnChange 保存状态变更回调。
 	OnChange func(bool)
 }
 
@@ -231,15 +240,25 @@ func (c *CheckBox) setChecked(checked bool, notify bool) {
 }
 
 // RadioButton 表示互斥选择的单选按钮控件。
+// RadioButton 表示互斥选择的单选按钮控件。
 type RadioButton struct {
+	// widgetBase 提供选项控件共享的基础控件能力。
 	widgetBase
-	Text     string
-	Group    string
-	Checked  bool
-	Hover    bool
-	Down     bool
-	Focused  bool
-	Style    ChoiceStyle
+	// Text 保存单选按钮文本。
+	Text string
+	// Group 指定互斥分组名称。
+	Group string
+	// Checked 记录当前是否已选中。
+	Checked bool
+	// Hover 记录当前是否处于悬停状态。
+	Hover bool
+	// Down 记录当前是否处于按下状态。
+	Down bool
+	// Focused 记录当前是否拥有焦点。
+	Focused bool
+	// Style 保存样式覆盖。
+	Style ChoiceStyle
+	// OnChange 保存状态变更回调。
 	OnChange func(bool)
 }
 
@@ -492,6 +511,7 @@ func (r *RadioButton) syncGroup(notify bool) {
 	}
 }
 
+// drawChoiceDot 在选择框内部绘制选中标记。
 func drawChoiceDot(ctx *PaintCtx, boxRect Rect, color core.Color) {
 	if ctx == nil || boxRect.Empty() {
 		return

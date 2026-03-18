@@ -14,29 +14,47 @@ import (
 	"github.com/AzureIvory/winui/widgets"
 )
 
+// demoUI 聚合演示程序中会反复访问的控件引用。
 type demoUI struct {
-	app   *core.App
+	// app 保存演示程序的应用实例。
+	app *core.App
+	// scene 保存演示程序场景。
 	scene *widgets.Scene
 
-	title       *widgets.Label
-	renderer    *widgets.Label
-	status      *widgets.Label
+	// title 保存标题标签。
+	title *widgets.Label
+	// renderer 保存渲染器摘要标签。
+	renderer *widgets.Label
+	// status 保存状态标签。
+	status *widgets.Label
+	// progressPct 保存进度文本标签。
 	progressPct *widgets.Label
-	progress    *widgets.ProgressBar
-	check       *widgets.CheckBox
-	radioA      *widgets.RadioButton
-	radioB      *widgets.RadioButton
-	list        *widgets.ListBox
-	combo       *widgets.ComboBox
-	edit        *widgets.EditBox
-	btnStep     *widgets.Button
-	btnReset    *widgets.Button
+	// progress 保存进度条控件。
+	progress *widgets.ProgressBar
+	// check 保存复选框控件。
+	check *widgets.CheckBox
+	// radioA 保存第一个单选按钮。
+	radioA *widgets.RadioButton
+	// radioB 保存第二个单选按钮。
+	radioB *widgets.RadioButton
+	// list 保存列表框控件。
+	list *widgets.ListBox
+	// combo 保存组合框控件。
+	combo *widgets.ComboBox
+	// edit 保存编辑框控件。
+	edit *widgets.EditBox
+	// btnStep 保存推进按钮。
+	btnStep *widgets.Button
+	// btnReset 保存重置按钮。
+	btnReset *widgets.Button
 
+	// stepIcon 保存推进按钮使用的图标资源。
 	stepIcon *core.Icon
 }
 
 var ui demoUI
 
+// main 启动并运行演示程序。
 func main() {
 	app, err := core.NewApp(core.Options{
 		ClassName:      "WinUIDemo",
@@ -468,6 +486,7 @@ func demoBadge(fill, accent color.RGBA) *core.Icon {
 	return icon
 }
 
+// buildICO 把 RGBA 图像打包成单图标 ICO 数据。
 func buildICO(img *image.RGBA) []byte {
 	w := img.Bounds().Dx()
 	h := img.Bounds().Dy()
@@ -513,6 +532,7 @@ func buildICO(img *image.RGBA) []byte {
 	return data
 }
 
+// fillCircle 在图像上填充一个纯色圆形。
 func fillCircle(img *image.RGBA, cx, cy, radius int, clr color.RGBA) {
 	if img == nil || radius <= 0 {
 		return
@@ -532,6 +552,7 @@ func fillCircle(img *image.RGBA, cx, cy, radius int, clr color.RGBA) {
 	}
 }
 
+// demoClamp 将示例中的整数值限制在闭区间内。
 func demoClamp(value, min, max int32) int32 {
 	if value < min {
 		return min
