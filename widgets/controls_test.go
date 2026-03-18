@@ -7,7 +7,8 @@ import (
 	"testing"
 )
 
-// TestCheckBoxToggle 测试复选框切换�?func TestCheckBoxToggle(t *testing.T) {
+// TestCheckBoxToggle 测试复选框切换。
+func TestCheckBoxToggle(t *testing.T) {
 	check := NewCheckBox("check", "demo")
 
 	changed := false
@@ -24,7 +25,8 @@ import (
 	}
 }
 
-// TestRadioButtonGroup 测试单选按钮分组�?func TestRadioButtonGroup(t *testing.T) {
+// TestRadioButtonGroup 测试单选按钮分组。
+func TestRadioButtonGroup(t *testing.T) {
 	panel := NewPanel("root")
 	left := NewRadioButton("left", "Left")
 	right := NewRadioButton("right", "Right")
@@ -44,7 +46,8 @@ import (
 	}
 }
 
-// TestComboBoxSelectByClick 测试组合框点击选择�?func TestComboBoxSelectByClick(t *testing.T) {
+// TestComboBoxSelectByClick 测试组合框点击选择。
+func TestComboBoxSelectByClick(t *testing.T) {
 	combo := NewComboBox("combo")
 	combo.SetBounds(Rect{X: 0, Y: 0, W: 200, H: 40})
 	combo.SetItems([]ListItem{
@@ -67,7 +70,8 @@ import (
 	}
 }
 
-// TestEditBoxTyping 测试编辑框输入�?func TestEditBoxTyping(t *testing.T) {
+// TestEditBoxTyping 测试编辑框输入。
+func TestEditBoxTyping(t *testing.T) {
 	edit := NewEditBox("edit")
 	edit.OnEvent(Event{Type: EventFocus})
 	edit.OnEvent(Event{Type: EventChar, Rune: 'A'})
@@ -79,7 +83,8 @@ import (
 	}
 }
 
-// TestListBoxKeyboardSelect 测试列表框键盘选择�?func TestListBoxKeyboardSelect(t *testing.T) {
+// TestListBoxKeyboardSelect 测试列表框键盘选择。
+func TestListBoxKeyboardSelect(t *testing.T) {
 	list := NewListBox("list")
 	list.SetItems([]ListItem{
 		{Value: "1", Text: "One"},

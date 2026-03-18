@@ -7,7 +7,8 @@ import (
 	"testing"
 )
 
-// TestProgressStyleDefaults 测试进度条默认样式�?func TestProgressStyleDefaults(t *testing.T) {
+// TestProgressStyleDefaults 测试进度条默认样式。
+func TestProgressStyleDefaults(t *testing.T) {
 	progress := NewProgressBar("progress")
 	style := progress.resolveStyle(nil)
 
@@ -22,7 +23,8 @@ import (
 	}
 }
 
-// TestProgressStyleOverride 测试进度条样式覆盖�?func TestProgressStyleOverride(t *testing.T) {
+// TestProgressStyleOverride 测试进度条样式覆盖。
+func TestProgressStyleOverride(t *testing.T) {
 	progress := NewProgressBar("progress")
 	progress.Style = ProgressStyle{
 		FillColor:   core.RGB(12, 34, 56),
