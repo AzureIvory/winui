@@ -3,15 +3,14 @@
 package widgets
 
 import (
-	"github.com/yourname/winui/core"
+	"github.com/AzureIvory/winui/core"
 	"image"
 	"image/color"
 	"testing"
 	"time"
 )
 
-// TestImageLoadBytes 测试图像字节加载。
-func TestImageLoadBytes(t *testing.T) {
+// TestImageLoadBytes 测试图像字节加载�?func TestImageLoadBytes(t *testing.T) {
 	img := image.NewRGBA(image.Rect(0, 0, 8, 6))
 	img.Set(0, 0, color.RGBA{R: 255, A: 255})
 
@@ -30,8 +29,7 @@ func TestImageLoadBytes(t *testing.T) {
 	}
 }
 
-// TestAnimatedImageTimerAdvance 测试动画图像定时推进。
-func TestAnimatedImageTimerAdvance(t *testing.T) {
+// TestAnimatedImageTimerAdvance 测试动画图像定时推进�?func TestAnimatedImageTimerAdvance(t *testing.T) {
 	anim := NewAnimatedImage("anim")
 	anim.SetFrames([]core.AnimatedFrame{
 		{Width: 10, Height: 10, Delay: 10 * time.Millisecond},

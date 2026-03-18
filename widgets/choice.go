@@ -2,10 +2,9 @@
 
 package widgets
 
-import "github.com/yourname/winui/core"
+import "github.com/AzureIvory/winui/core"
 
-// CheckBox 表示可切换状态的复选框控件。
-type CheckBox struct {
+// CheckBox 表示可切换状态的复选框控件�?type CheckBox struct {
 	widgetBase
 	Text     string
 	Checked  bool
@@ -16,37 +15,32 @@ type CheckBox struct {
 	OnChange func(bool)
 }
 
-// NewCheckBox 创建一个新的复选框。
-func NewCheckBox(id, text string) *CheckBox {
+// NewCheckBox 创建一个新的复选框�?func NewCheckBox(id, text string) *CheckBox {
 	return &CheckBox{
 		widgetBase: newWidgetBase(id, "checkbox"),
 		Text:       text,
 	}
 }
 
-// SetBounds 更新复选框的边界。
-func (c *CheckBox) SetBounds(rect Rect) {
+// SetBounds 更新复选框的边界�?func (c *CheckBox) SetBounds(rect Rect) {
 	c.runOnUI(func() {
 		c.widgetBase.setBounds(c, rect)
 	})
 }
 
-// SetVisible 更新复选框的可见状态。
-func (c *CheckBox) SetVisible(visible bool) {
+// SetVisible 更新复选框的可见状态�?func (c *CheckBox) SetVisible(visible bool) {
 	c.runOnUI(func() {
 		c.widgetBase.setVisible(c, visible)
 	})
 }
 
-// SetEnabled 更新复选框的可用状态。
-func (c *CheckBox) SetEnabled(enabled bool) {
+// SetEnabled 更新复选框的可用状态�?func (c *CheckBox) SetEnabled(enabled bool) {
 	c.runOnUI(func() {
 		c.widgetBase.setEnabled(c, enabled)
 	})
 }
 
-// SetText 更新复选框的显示文本。
-func (c *CheckBox) SetText(text string) {
+// SetText 更新复选框的显示文本�?func (c *CheckBox) SetText(text string) {
 	c.runOnUI(func() {
 		if c.Text == text {
 			return
@@ -56,35 +50,30 @@ func (c *CheckBox) SetText(text string) {
 	})
 }
 
-// SetChecked 更新复选框的选中状态。
-func (c *CheckBox) SetChecked(checked bool) {
+// SetChecked 更新复选框的选中状态�?func (c *CheckBox) SetChecked(checked bool) {
 	c.runOnUI(func() {
 		c.setChecked(checked, false)
 	})
 }
 
-// IsChecked 返回复选框是否选中。
-func (c *CheckBox) IsChecked() bool {
+// IsChecked 返回复选框是否选中�?func (c *CheckBox) IsChecked() bool {
 	return c.Checked
 }
 
-// SetStyle 更新复选框的样式覆盖。
-func (c *CheckBox) SetStyle(style ChoiceStyle) {
+// SetStyle 更新复选框的样式覆盖�?func (c *CheckBox) SetStyle(style ChoiceStyle) {
 	c.runOnUI(func() {
 		c.Style = style
 		c.invalidate(c)
 	})
 }
 
-// SetOnChange 注册复选框的变更回调。
-func (c *CheckBox) SetOnChange(fn func(bool)) {
+// SetOnChange 注册复选框的变更回调�?func (c *CheckBox) SetOnChange(fn func(bool)) {
 	c.runOnUI(func() {
 		c.OnChange = fn
 	})
 }
 
-// OnEvent 处理输入事件或生命周期事件。
-func (c *CheckBox) OnEvent(evt Event) bool {
+// OnEvent 处理输入事件或生命周期事件�?func (c *CheckBox) OnEvent(evt Event) bool {
 	switch evt.Type {
 	case EventMouseEnter:
 		if !c.Hover {
@@ -128,8 +117,7 @@ func (c *CheckBox) OnEvent(evt Event) bool {
 	return false
 }
 
-// Paint 使用给定的绘制上下文完成绘制。
-func (c *CheckBox) Paint(ctx *PaintCtx) {
+// Paint 使用给定的绘制上下文完成绘制�?func (c *CheckBox) Paint(ctx *PaintCtx) {
 	if !c.Visible() || ctx == nil {
 		return
 	}
@@ -197,21 +185,18 @@ func (c *CheckBox) Paint(ctx *PaintCtx) {
 	})
 }
 
-// acceptsFocus 返回控件是否可接收键盘焦点。
-func (c *CheckBox) acceptsFocus() bool {
+// acceptsFocus 返回控件是否可接收键盘焦点�?func (c *CheckBox) acceptsFocus() bool {
 	return true
 }
 
-// cursor 返回悬停控件时应使用的光标。
-func (c *CheckBox) cursor() CursorID {
+// cursor 返回悬停控件时应使用的光标�?func (c *CheckBox) cursor() CursorID {
 	if !c.Enabled() {
 		return core.CursorArrow
 	}
 	return core.CursorHand
 }
 
-// resolveStyle 解析复选框的最终样式。
-func (c *CheckBox) resolveStyle(ctx *PaintCtx) ChoiceStyle {
+// resolveStyle 解析复选框的最终样式�?func (c *CheckBox) resolveStyle(ctx *PaintCtx) ChoiceStyle {
 	style := DefaultTheme().CheckBox
 	if ctx != nil && ctx.scene != nil && ctx.scene.theme != nil {
 		style = ctx.scene.theme.CheckBox
@@ -219,8 +204,7 @@ func (c *CheckBox) resolveStyle(ctx *PaintCtx) ChoiceStyle {
 	return mergeChoiceStyle(style, c.Style)
 }
 
-// setChecked 更新复选框的选中状态。
-func (c *CheckBox) setChecked(checked bool, notify bool) {
+// setChecked 更新复选框的选中状态�?func (c *CheckBox) setChecked(checked bool, notify bool) {
 	if c.Checked == checked {
 		return
 	}
@@ -231,8 +215,7 @@ func (c *CheckBox) setChecked(checked bool, notify bool) {
 	}
 }
 
-// RadioButton 表示互斥选择的单选按钮控件。
-type RadioButton struct {
+// RadioButton 表示互斥选择的单选按钮控件�?type RadioButton struct {
 	widgetBase
 	Text     string
 	Group    string
@@ -244,37 +227,32 @@ type RadioButton struct {
 	OnChange func(bool)
 }
 
-// NewRadioButton 创建一个新的单选按钮。
-func NewRadioButton(id, text string) *RadioButton {
+// NewRadioButton 创建一个新的单选按钮�?func NewRadioButton(id, text string) *RadioButton {
 	return &RadioButton{
 		widgetBase: newWidgetBase(id, "radio"),
 		Text:       text,
 	}
 }
 
-// SetBounds 更新单选按钮的边界。
-func (r *RadioButton) SetBounds(rect Rect) {
+// SetBounds 更新单选按钮的边界�?func (r *RadioButton) SetBounds(rect Rect) {
 	r.runOnUI(func() {
 		r.widgetBase.setBounds(r, rect)
 	})
 }
 
-// SetVisible 更新单选按钮的可见状态。
-func (r *RadioButton) SetVisible(visible bool) {
+// SetVisible 更新单选按钮的可见状态�?func (r *RadioButton) SetVisible(visible bool) {
 	r.runOnUI(func() {
 		r.widgetBase.setVisible(r, visible)
 	})
 }
 
-// SetEnabled 更新单选按钮的可用状态。
-func (r *RadioButton) SetEnabled(enabled bool) {
+// SetEnabled 更新单选按钮的可用状态�?func (r *RadioButton) SetEnabled(enabled bool) {
 	r.runOnUI(func() {
 		r.widgetBase.setEnabled(r, enabled)
 	})
 }
 
-// SetText 更新单选按钮的显示文本。
-func (r *RadioButton) SetText(text string) {
+// SetText 更新单选按钮的显示文本�?func (r *RadioButton) SetText(text string) {
 	r.runOnUI(func() {
 		if r.Text == text {
 			return
@@ -284,8 +262,7 @@ func (r *RadioButton) SetText(text string) {
 	})
 }
 
-// SetGroup 更新单选按钮的分组。
-func (r *RadioButton) SetGroup(group string) {
+// SetGroup 更新单选按钮的分组�?func (r *RadioButton) SetGroup(group string) {
 	r.runOnUI(func() {
 		if r.Group == group {
 			return
@@ -297,35 +274,30 @@ func (r *RadioButton) SetGroup(group string) {
 	})
 }
 
-// SetChecked 更新单选按钮的选中状态。
-func (r *RadioButton) SetChecked(checked bool) {
+// SetChecked 更新单选按钮的选中状态�?func (r *RadioButton) SetChecked(checked bool) {
 	r.runOnUI(func() {
 		r.setChecked(checked, false)
 	})
 }
 
-// IsChecked 返回单选按钮是否选中。
-func (r *RadioButton) IsChecked() bool {
+// IsChecked 返回单选按钮是否选中�?func (r *RadioButton) IsChecked() bool {
 	return r.Checked
 }
 
-// SetStyle 更新单选按钮的样式覆盖。
-func (r *RadioButton) SetStyle(style ChoiceStyle) {
+// SetStyle 更新单选按钮的样式覆盖�?func (r *RadioButton) SetStyle(style ChoiceStyle) {
 	r.runOnUI(func() {
 		r.Style = style
 		r.invalidate(r)
 	})
 }
 
-// SetOnChange 注册单选按钮的变更回调。
-func (r *RadioButton) SetOnChange(fn func(bool)) {
+// SetOnChange 注册单选按钮的变更回调�?func (r *RadioButton) SetOnChange(fn func(bool)) {
 	r.runOnUI(func() {
 		r.OnChange = fn
 	})
 }
 
-// OnEvent 处理输入事件或生命周期事件。
-func (r *RadioButton) OnEvent(evt Event) bool {
+// OnEvent 处理输入事件或生命周期事件�?func (r *RadioButton) OnEvent(evt Event) bool {
 	switch evt.Type {
 	case EventMouseEnter:
 		if !r.Hover {
@@ -369,8 +341,7 @@ func (r *RadioButton) OnEvent(evt Event) bool {
 	return false
 }
 
-// Paint 使用给定的绘制上下文完成绘制。
-func (r *RadioButton) Paint(ctx *PaintCtx) {
+// Paint 使用给定的绘制上下文完成绘制�?func (r *RadioButton) Paint(ctx *PaintCtx) {
 	if !r.Visible() || ctx == nil {
 		return
 	}
@@ -437,21 +408,18 @@ func (r *RadioButton) Paint(ctx *PaintCtx) {
 	})
 }
 
-// acceptsFocus 返回控件是否可接收键盘焦点。
-func (r *RadioButton) acceptsFocus() bool {
+// acceptsFocus 返回控件是否可接收键盘焦点�?func (r *RadioButton) acceptsFocus() bool {
 	return true
 }
 
-// cursor 返回悬停控件时应使用的光标。
-func (r *RadioButton) cursor() CursorID {
+// cursor 返回悬停控件时应使用的光标�?func (r *RadioButton) cursor() CursorID {
 	if !r.Enabled() {
 		return core.CursorArrow
 	}
 	return core.CursorHand
 }
 
-// resolveStyle 解析单选按钮的最终样式。
-func (r *RadioButton) resolveStyle(ctx *PaintCtx) ChoiceStyle {
+// resolveStyle 解析单选按钮的最终样式�?func (r *RadioButton) resolveStyle(ctx *PaintCtx) ChoiceStyle {
 	style := DefaultTheme().RadioButton
 	if ctx != nil && ctx.scene != nil && ctx.scene.theme != nil {
 		style = ctx.scene.theme.RadioButton
@@ -459,8 +427,7 @@ func (r *RadioButton) resolveStyle(ctx *PaintCtx) ChoiceStyle {
 	return mergeChoiceStyle(style, r.Style)
 }
 
-// setChecked 更新单选按钮的选中状态。
-func (r *RadioButton) setChecked(checked bool, notify bool) {
+// setChecked 更新单选按钮的选中状态�?func (r *RadioButton) setChecked(checked bool, notify bool) {
 	if r.Checked == checked {
 		return
 	}
@@ -474,8 +441,7 @@ func (r *RadioButton) setChecked(checked bool, notify bool) {
 	}
 }
 
-// syncGroup 同步当前分组中的单选按钮状态。
-func (r *RadioButton) syncGroup(notify bool) {
+// syncGroup 同步当前分组中的单选按钮状态�?func (r *RadioButton) syncGroup(notify bool) {
 	parent := r.parent()
 	if parent == nil || r.Group == "" {
 		return
@@ -493,8 +459,7 @@ func (r *RadioButton) syncGroup(notify bool) {
 	}
 }
 
-// mergeChoiceStyle 将复选框或单选按钮的样式覆盖合并到基础样式上。
-func mergeChoiceStyle(base, override ChoiceStyle) ChoiceStyle {
+// mergeChoiceStyle 将复选框或单选按钮的样式覆盖合并到基础样式上�?func mergeChoiceStyle(base, override ChoiceStyle) ChoiceStyle {
 	if override.Font.Face != "" {
 		base.Font = override.Font
 	}

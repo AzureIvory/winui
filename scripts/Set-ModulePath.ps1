@@ -6,7 +6,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $PSScriptRoot
-$oldModulePath = "github.com/yourname/winui"
+$oldModulePath = "github.com/AzureIvory/winui"
 
 if ([string]::IsNullOrWhiteSpace($ModulePath)) {
     throw "ModulePath must not be empty."

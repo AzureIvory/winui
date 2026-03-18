@@ -2,7 +2,7 @@
 
 package widgets
 
-import "github.com/yourname/winui/core"
+import "github.com/AzureIvory/winui/core"
 
 type EventType int
 
@@ -35,8 +35,7 @@ type Event struct {
 	Source  Widget
 }
 
-// eventFromMouse 将鼠标事件转换为控件事件。
-func eventFromMouse(t EventType, ev core.MouseEvent) Event {
+// eventFromMouse 将鼠标事件转换为控件事件�?func eventFromMouse(t EventType, ev core.MouseEvent) Event {
 	return Event{
 		Type:   t,
 		Point:  ev.Point,

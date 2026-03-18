@@ -2,7 +2,7 @@
 
 package widgets
 
-import "github.com/yourname/winui/core"
+import "github.com/AzureIvory/winui/core"
 
 type FontSpec struct {
 	Face   string
@@ -121,8 +121,7 @@ type Theme struct {
 	Edit            EditStyle
 }
 
-// DefaultTheme 返回控件在未覆写时使用的默认主题。
-func DefaultTheme() *Theme {
+// DefaultTheme 返回控件在未覆写时使用的默认主题�?func DefaultTheme() *Theme {
 	return &Theme{
 		BackgroundColor: core.RGB(255, 255, 255),
 		Text: TextStyle{

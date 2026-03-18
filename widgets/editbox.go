@@ -2,10 +2,9 @@
 
 package widgets
 
-import "github.com/yourname/winui/core"
+import "github.com/AzureIvory/winui/core"
 
-// EditBox 表示单行可编辑文本控件。
-type EditBox struct {
+// EditBox 表示单行可编辑文本控件�?type EditBox struct {
 	widgetBase
 	Text        string
 	Placeholder string
@@ -18,36 +17,31 @@ type EditBox struct {
 	OnSubmit    func(string)
 }
 
-// NewEditBox 创建一个新的编辑框。
-func NewEditBox(id string) *EditBox {
+// NewEditBox 创建一个新的编辑框�?func NewEditBox(id string) *EditBox {
 	return &EditBox{
 		widgetBase: newWidgetBase(id, "edit"),
 	}
 }
 
-// SetBounds 更新编辑框的边界。
-func (e *EditBox) SetBounds(rect Rect) {
+// SetBounds 更新编辑框的边界�?func (e *EditBox) SetBounds(rect Rect) {
 	e.runOnUI(func() {
 		e.widgetBase.setBounds(e, rect)
 	})
 }
 
-// SetVisible 更新编辑框的可见状态。
-func (e *EditBox) SetVisible(visible bool) {
+// SetVisible 更新编辑框的可见状态�?func (e *EditBox) SetVisible(visible bool) {
 	e.runOnUI(func() {
 		e.widgetBase.setVisible(e, visible)
 	})
 }
 
-// SetEnabled 更新编辑框的可用状态。
-func (e *EditBox) SetEnabled(enabled bool) {
+// SetEnabled 更新编辑框的可用状态�?func (e *EditBox) SetEnabled(enabled bool) {
 	e.runOnUI(func() {
 		e.widgetBase.setEnabled(e, enabled)
 	})
 }
 
-// SetText 更新编辑框的显示文本。
-func (e *EditBox) SetText(text string) {
+// SetText 更新编辑框的显示文本�?func (e *EditBox) SetText(text string) {
 	e.runOnUI(func() {
 		if e.Text == text {
 			return
@@ -58,13 +52,11 @@ func (e *EditBox) SetText(text string) {
 	})
 }
 
-// TextValue 返回编辑框当前保存的文本。
-func (e *EditBox) TextValue() string {
+// TextValue 返回编辑框当前保存的文本�?func (e *EditBox) TextValue() string {
 	return e.Text
 }
 
-// SetPlaceholder 更新编辑框的占位文本。
-func (e *EditBox) SetPlaceholder(text string) {
+// SetPlaceholder 更新编辑框的占位文本�?func (e *EditBox) SetPlaceholder(text string) {
 	e.runOnUI(func() {
 		if e.Placeholder == text {
 			return
@@ -74,8 +66,7 @@ func (e *EditBox) SetPlaceholder(text string) {
 	})
 }
 
-// SetReadOnly 更新编辑框的只读状态。
-func (e *EditBox) SetReadOnly(readOnly bool) {
+// SetReadOnly 更新编辑框的只读状态�?func (e *EditBox) SetReadOnly(readOnly bool) {
 	e.runOnUI(func() {
 		if e.ReadOnly == readOnly {
 			return
@@ -85,30 +76,26 @@ func (e *EditBox) SetReadOnly(readOnly bool) {
 	})
 }
 
-// SetStyle 更新编辑框的样式覆盖。
-func (e *EditBox) SetStyle(style EditStyle) {
+// SetStyle 更新编辑框的样式覆盖�?func (e *EditBox) SetStyle(style EditStyle) {
 	e.runOnUI(func() {
 		e.Style = style
 		e.invalidate(e)
 	})
 }
 
-// SetOnChange 注册编辑框的变更回调。
-func (e *EditBox) SetOnChange(fn func(string)) {
+// SetOnChange 注册编辑框的变更回调�?func (e *EditBox) SetOnChange(fn func(string)) {
 	e.runOnUI(func() {
 		e.OnChange = fn
 	})
 }
 
-// SetOnSubmit 注册编辑框的提交回调。
-func (e *EditBox) SetOnSubmit(fn func(string)) {
+// SetOnSubmit 注册编辑框的提交回调�?func (e *EditBox) SetOnSubmit(fn func(string)) {
 	e.runOnUI(func() {
 		e.OnSubmit = fn
 	})
 }
 
-// OnEvent 处理输入事件或生命周期事件。
-func (e *EditBox) OnEvent(evt Event) bool {
+// OnEvent 处理输入事件或生命周期事件�?func (e *EditBox) OnEvent(evt Event) bool {
 	switch evt.Type {
 	case EventMouseEnter:
 		if !e.Hover {
@@ -145,8 +132,7 @@ func (e *EditBox) OnEvent(evt Event) bool {
 	return false
 }
 
-// Paint 使用给定的绘制上下文完成绘制。
-func (e *EditBox) Paint(ctx *PaintCtx) {
+// Paint 使用给定的绘制上下文完成绘制�?func (e *EditBox) Paint(ctx *PaintCtx) {
 	if !e.Visible() || ctx == nil {
 		return
 	}
@@ -220,21 +206,18 @@ func (e *EditBox) Paint(ctx *PaintCtx) {
 	_ = ctx.FillRect(caretRect, style.CaretColor)
 }
 
-// acceptsFocus 返回控件是否可接收键盘焦点。
-func (e *EditBox) acceptsFocus() bool {
+// acceptsFocus 返回控件是否可接收键盘焦点�?func (e *EditBox) acceptsFocus() bool {
 	return true
 }
 
-// cursor 返回悬停控件时应使用的光标。
-func (e *EditBox) cursor() CursorID {
+// cursor 返回悬停控件时应使用的光标�?func (e *EditBox) cursor() CursorID {
 	if !e.Enabled() {
 		return core.CursorArrow
 	}
 	return core.CursorIBeam
 }
 
-// resolveStyle 解析编辑框的最终样式。
-func (e *EditBox) resolveStyle(ctx *PaintCtx) EditStyle {
+// resolveStyle 解析编辑框的最终样式�?func (e *EditBox) resolveStyle(ctx *PaintCtx) EditStyle {
 	style := DefaultTheme().Edit
 	if ctx != nil && ctx.scene != nil && ctx.scene.theme != nil {
 		style = ctx.scene.theme.Edit
@@ -242,8 +225,7 @@ func (e *EditBox) resolveStyle(ctx *PaintCtx) EditStyle {
 	return mergeEditStyle(style, e.Style)
 }
 
-// handleKey 处理编辑框的按键事件。
-func (e *EditBox) handleKey(key core.KeyEvent) bool {
+// handleKey 处理编辑框的按键事件�?func (e *EditBox) handleKey(key core.KeyEvent) bool {
 	if !e.Enabled() {
 		return false
 	}
@@ -298,8 +280,7 @@ func (e *EditBox) handleKey(key core.KeyEvent) bool {
 	return false
 }
 
-// handleChar 处理编辑框的字符输入。
-func (e *EditBox) handleChar(ch rune) bool {
+// handleChar 处理编辑框的字符输入�?func (e *EditBox) handleChar(ch rune) bool {
 	if !e.Enabled() || e.ReadOnly {
 		return false
 	}
@@ -321,16 +302,14 @@ func (e *EditBox) handleChar(ch rune) bool {
 	return true
 }
 
-// notifyChanged 使控件失效并触发变更回调。
-func (e *EditBox) notifyChanged() {
+// notifyChanged 使控件失效并触发变更回调�?func (e *EditBox) notifyChanged() {
 	e.invalidate(e)
 	if e.OnChange != nil {
 		e.OnChange(e.Text)
 	}
 }
 
-// mergeEditStyle 将编辑框样式覆盖合并到基础样式上。
-func mergeEditStyle(base, override EditStyle) EditStyle {
+// mergeEditStyle 将编辑框样式覆盖合并到基础样式上�?func mergeEditStyle(base, override EditStyle) EditStyle {
 	if override.Font.Face != "" {
 		base.Font = override.Font
 	}
