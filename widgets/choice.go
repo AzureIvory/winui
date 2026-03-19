@@ -528,9 +528,7 @@ func drawChoiceDot(ctx *PaintCtx, boxRect Rect, color core.Color) {
 
 // mergeChoiceStyle 把多选框或单选按钮样式覆盖合并到基础样式中。
 func mergeChoiceStyle(base, override ChoiceStyle) ChoiceStyle {
-	if override.Font.Face != "" {
-		base.Font = override.Font
-	}
+	base.Font = mergeFontSpec(base.Font, override.Font)
 	if override.TextColor != 0 {
 		base.TextColor = override.TextColor
 	}

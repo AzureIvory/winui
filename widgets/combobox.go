@@ -530,9 +530,7 @@ func (c *ComboBox) dp(value int32) int32 {
 
 // mergeComboStyle 将组合框样式覆盖合并到基础样式上。
 func mergeComboStyle(base, override ComboStyle) ComboStyle {
-	if override.Font.Face != "" {
-		base.Font = override.Font
-	}
+	base.Font = mergeFontSpec(base.Font, override.Font)
 	if override.TextColor != 0 {
 		base.TextColor = override.TextColor
 	}

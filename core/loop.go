@@ -60,6 +60,7 @@ func appWndProc(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr {
 		return 0
 
 	case wmMouseMove:
+		app.trackMouseLeave()
 		if app.opts.OnMouseMove != nil {
 			app.opts.OnMouseMove(app, MouseEvent{
 				Point: pointFromLParam(lParam),

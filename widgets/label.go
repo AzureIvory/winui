@@ -83,14 +83,5 @@ func (l *Label) resolveStyle(ctx *PaintCtx) TextStyle {
 	if ctx != nil && ctx.scene != nil && ctx.scene.theme != nil {
 		style = ctx.scene.theme.Text
 	}
-	if l.Style.Font.Face != "" {
-		style.Font = l.Style.Font
-	}
-	if l.Style.Color != 0 {
-		style.Color = l.Style.Color
-	}
-	if l.Style.Format != 0 {
-		style.Format = l.Style.Format
-	}
-	return style
+	return mergeTextStyle(style, l.Style)
 }

@@ -9,20 +9,20 @@ import (
 	"github.com/AzureIvory/winui/core"
 )
 
-// Rect 复用 core 包中的矩形类型。
+// Rect 复用 core 中的矩形类型。
 type Rect = core.Rect
 
-// Color 复用 core 包中的颜色类型。
+// Color 复用 core 中的颜色类型。
 type Color = core.Color
 
-// CursorID 复用 core 包中的光标标识类型。
+// CursorID 复用 core 中的光标标识类型。
 type CursorID = core.CursorID
 
-// Widget 定义所有控件都要实现的基础行为。
+// Widget 定义所有控件都需要实现的基础行为。
 type Widget interface {
 	// ID 返回控件标识。
 	ID() string
-	// Bounds 返回控件边界。
+	// Bounds 返回控件当前边界。
 	Bounds() Rect
 	// SetBounds 更新控件边界。
 	SetBounds(Rect)
@@ -34,53 +34,60 @@ type Widget interface {
 	Enabled() bool
 	// SetEnabled 更新控件可用状态。
 	SetEnabled(bool)
-	// HitTest 判断点是否命中控件。
+	// LayoutData 返回布局附加数据。
+	LayoutData() any
+	// SetLayoutData 更新布局附加数据。
+	SetLayoutData(any)
+	// HitTest 判断指定坐标是否命中控件。
 	HitTest(x, y int32) bool
-	// OnEvent 处理分发到控件的事件。
+	// OnEvent 处理控件事件。
 	OnEvent(evt Event) bool
-	// Paint 使用绘制上下文渲染控件。
+	// Paint 绘制控件内容。
 	Paint(ctx *PaintCtx)
 }
 
-// widgetNode 定义场景树内部节点需要实现的附加行为。
+// widgetNode 定义控件树内部使用的场景和父子关系能力。
 type widgetNode interface {
 	Widget
-	// setScene 绑定控件所属场景。
+	// setScene 绑定控件所在场景。
 	setScene(*Scene)
-	// scene 返回控件所属场景。
+	// scene 返回控件所在场景。
 	scene() *Scene
-	// setParent 绑定父容器。
+	// setParent 绑定控件父容器。
 	setParent(Container)
-	// parent 返回父容器。
+	// parent 返回控件父容器。
 	parent() Container
-	// cursor 返回悬停时应显示的光标。
+	// cursor 返回控件当前希望使用的光标。
 	cursor() CursorID
 }
 
-// focusableWidget 表示可接收键盘焦点的控件。
+// focusableWidget 表示支持接收键盘焦点的控件。
 type focusableWidget interface {
 	Widget
-	// acceptsFocus 返回控件是否允许获得焦点。
+	// acceptsFocus 返回控件是否允许被聚焦。
 	acceptsFocus() bool
 }
 
-// overlayWidget 表示需要在覆盖层阶段追加绘制的控件。
+// overlayWidget 表示支持在常规绘制后追加覆盖层的控件。
 type overlayWidget interface {
 	Widget
-	// PaintOverlay 在覆盖层阶段绘制额外内容。
+	// PaintOverlay 绘制控件覆盖层内容。
 	PaintOverlay(ctx *PaintCtx)
 }
 
-// dirtyWidget 表示可提供自定义脏区的控件。
+// dirtyWidget 表示支持自定义脏区域的控件。
 type dirtyWidget interface {
-	// dirtyRect 返回控件当前需要刷新的矩形区域。
+	// dirtyRect 返回控件的实际脏区域。
 	dirtyRect() Rect
 }
 
-// widgetSequence 用于生成自动控件标识。
+// widgetSequence 为自动生成的控件标识提供递增序号。
 var widgetSequence atomic.Uint64
 
-// newWidgetID 使用给定前缀生成唯一的控件标识。
+// layoutPassDepth 记录当前布局过程的嵌套深度。
+var layoutPassDepth atomic.Int32
+
+// newWidgetID 返回一个稳定的自动生成控件标识。
 func newWidgetID(prefix string) string {
 	if prefix == "" {
 		prefix = "widget"
@@ -88,23 +95,27 @@ func newWidgetID(prefix string) string {
 	return fmt.Sprintf("%s-%d", prefix, widgetSequence.Add(1))
 }
 
-// widgetBase 保存大多数控件共享的基础状态。
+// widgetBase 保存大部分控件都会复用的基础状态。
 type widgetBase struct {
-	// id 保存控件唯一标识。
+	// id 表示控件标识。
 	id string
-	// bounds 保存控件边界。
+	// bounds 表示控件当前边界。
 	bounds Rect
-	// visible 记录控件是否可见。
+	// preferred 表示控件在布局前声明的首选尺寸。
+	preferred core.Size
+	// visible 表示控件是否可见。
 	visible bool
-	// enabled 记录控件是否可用。
+	// enabled 表示控件是否可用。
 	enabled bool
-	// sceneRef 指向控件所属场景。
+	// sceneRef 表示控件当前所属场景。
 	sceneRef *Scene
-	// parentRef 指向控件父容器。
+	// parentRef 表示控件当前所属父容器。
 	parentRef Container
+	// layoutData 表示控件附带的布局数据。
+	layoutData any
 }
 
-// newWidgetBase 初始化具体控件共享的基础状态。
+// newWidgetBase 初始化控件公共基础状态。
 func newWidgetBase(id, prefix string) widgetBase {
 	if id == "" {
 		id = newWidgetID(prefix)
@@ -116,60 +127,86 @@ func newWidgetBase(id, prefix string) widgetBase {
 	}
 }
 
-// ID 返回控件基础对象的标识。
+// ID 返回控件标识。
 func (b *widgetBase) ID() string {
 	return b.id
 }
 
-// Bounds 返回控件基础对象的绘制边界。
+// Bounds 返回控件当前边界。
 func (b *widgetBase) Bounds() Rect {
 	return b.bounds
 }
 
-// Visible 返回控件基础对象的可见状态。
+// preferredSize 返回控件在布局前声明的首选尺寸。
+func (b *widgetBase) preferredSize() core.Size {
+	return b.preferred
+}
+
+// Visible 返回控件是否可见。
 func (b *widgetBase) Visible() bool {
 	return b.visible
 }
 
-// Enabled 返回控件基础对象的可用状态。
+// Enabled 返回控件是否可用。
 func (b *widgetBase) Enabled() bool {
 	return b.enabled
 }
 
-// HitTest 判断给定点是否命中当前控件。
+// LayoutData 返回控件附带的布局数据。
+func (b *widgetBase) LayoutData() any {
+	return b.layoutData
+}
+
+// SetLayoutData 更新控件附带的布局数据并触发布局刷新。
+func (b *widgetBase) SetLayoutData(data any) {
+	b.layoutData = data
+	if panel, ok := b.parentRef.(*Panel); ok {
+		panel.applyLayout()
+		panel.invalidate(panel)
+		return
+	}
+	if b.sceneRef != nil {
+		b.sceneRef.Invalidate(nil)
+	}
+}
+
+// HitTest 判断给定坐标是否命中当前控件。
 func (b *widgetBase) HitTest(x, y int32) bool {
 	return b.visible && b.bounds.Contains(x, y)
 }
 
-// setScene 更新控件基础对象的场景引用。
+// setScene 更新控件关联的场景引用。
 func (b *widgetBase) setScene(scene *Scene) {
 	b.sceneRef = scene
 }
 
-// scene 返回控件基础对象关联的场景。
+// scene 返回控件当前关联的场景引用。
 func (b *widgetBase) scene() *Scene {
 	return b.sceneRef
 }
 
-// setParent 更新控件基础对象的父容器。
+// setParent 更新控件关联的父容器。
 func (b *widgetBase) setParent(parent Container) {
 	b.parentRef = parent
 }
 
-// parent 返回控件基础对象的父容器。
+// parent 返回控件当前的父容器。
 func (b *widgetBase) parent() Container {
 	return b.parentRef
 }
 
-// cursor 返回悬停控件时应使用的光标。
+// cursor 返回控件默认使用的光标。
 func (b *widgetBase) cursor() CursorID {
 	return core.CursorArrow
 }
 
-// setBounds 更新控件基础对象的边界。
+// setBounds 更新控件边界并在必要时同步首选尺寸。
 func (b *widgetBase) setBounds(owner Widget, rect Rect) {
 	if b.bounds == rect {
 		return
+	}
+	if layoutPassDepth.Load() == 0 {
+		b.preferred = core.Size{Width: rect.W, Height: rect.H}
 	}
 	var oldRect Rect
 	if b.sceneRef != nil && owner != nil {
@@ -184,7 +221,7 @@ func (b *widgetBase) setBounds(owner Widget, rect Rect) {
 	}
 }
 
-// setVisible 更新控件基础对象的可见状态。
+// setVisible 更新控件可见状态并请求重绘。
 func (b *widgetBase) setVisible(owner Widget, visible bool) {
 	if b.visible == visible {
 		return
@@ -195,7 +232,7 @@ func (b *widgetBase) setVisible(owner Widget, visible bool) {
 	}
 }
 
-// setEnabled 更新控件基础对象的可用状态。
+// setEnabled 更新控件可用状态并请求重绘。
 func (b *widgetBase) setEnabled(owner Widget, enabled bool) {
 	if b.enabled == enabled {
 		return
@@ -206,7 +243,7 @@ func (b *widgetBase) setEnabled(owner Widget, enabled bool) {
 	}
 }
 
-// runOnUI 在 UI 线程执行回调。
+// runOnUI 在 UI 线程上执行给定回调。
 func (b *widgetBase) runOnUI(fn func()) {
 	if fn == nil {
 		return
@@ -218,18 +255,28 @@ func (b *widgetBase) runOnUI(fn func()) {
 	b.sceneRef.runOnUI(fn)
 }
 
-// invalidate 标记区域或控件需要重绘。
+// invalidate 请求当前控件重绘。
 func (b *widgetBase) invalidate(owner Widget) {
 	if b.sceneRef != nil {
 		b.sceneRef.Invalidate(owner)
 	}
 }
 
-// asWidgetNode 在可用时将 Widget 转换为内部节点表示。
+// asWidgetNode 把普通控件转换为内部使用的节点接口。
 func asWidgetNode(widget Widget) widgetNode {
 	if widget == nil {
 		return nil
 	}
 	node, _ := widget.(widgetNode)
 	return node
+}
+
+// beginLayoutPass 标记开始一次布局过程。
+func beginLayoutPass() {
+	layoutPassDepth.Add(1)
+}
+
+// endLayoutPass 标记结束一次布局过程。
+func endLayoutPass() {
+	layoutPassDepth.Add(-1)
 }

@@ -225,9 +225,7 @@ func (b *Button) resolveStyle(ctx *PaintCtx) ButtonStyle {
 	if ctx != nil && ctx.scene != nil && ctx.scene.theme != nil {
 		style = ctx.scene.theme.Button
 	}
-	if b.Style.Font.Face != "" {
-		style.Font = b.Style.Font
-	}
+	style.Font = mergeFontSpec(style.Font, b.Style.Font)
 	if b.Style.TextColor != 0 {
 		style.TextColor = b.Style.TextColor
 	}

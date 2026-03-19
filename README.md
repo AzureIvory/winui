@@ -33,7 +33,7 @@
 
 ## 快速开始
 
-初始化应用、创建场景、添加控件，并将 Win32 事件转发给场景：
+初始化应用，使用 `widgets.BindScene` 自动接入场景的绘制、输入和生命周期回调：
 
 ```go
 package main
@@ -43,10 +43,8 @@ import (
 	"github.com/AzureIvory/winui/widgets"
 )
 
-var scene *widgets.Scene
-
 func main() {
-	app, err := core.NewApp(core.Options{
+	opts := core.Options{
 		ClassName:      "ExampleApp",
 		Title:          "winui example",
 		Width:          800,
@@ -56,50 +54,17 @@ func main() {
 		Cursor:         core.CursorArrow,
 		Background:     core.RGB(255, 255, 255),
 		DoubleBuffered: true,
-		OnCreate: func(app *core.App) error {
-			scene = widgets.NewScene(app)
-
+	}
+	widgets.BindScene(&opts, widgets.SceneHooks{
+		OnCreate: func(_ *core.App, scene *widgets.Scene) error {
 			label := widgets.NewLabel("title", "Hello winui")
 			label.SetBounds(core.Rect{X: 24, Y: 24, W: 240, H: 32})
 			scene.Root().Add(label)
 			return nil
 		},
-		OnPaint: func(_ *core.App, canvas *core.Canvas) {
-			scene.PaintCore(canvas)
-		},
-		OnResize: func(_ *core.App, size core.Size) {
-			scene.Resize(core.Rect{X: 0, Y: 0, W: size.Width, H: size.Height})
-		},
-		OnMouseMove: func(_ *core.App, ev core.MouseEvent) {
-			scene.DispatchMouseMove(ev)
-		},
-		OnMouseLeave: func(_ *core.App) {
-			scene.DispatchMouseLeave()
-		},
-		OnMouseDown: func(_ *core.App, ev core.MouseEvent) {
-			scene.DispatchMouseDown(ev)
-		},
-		OnMouseUp: func(_ *core.App, ev core.MouseEvent) {
-			scene.DispatchMouseUp(ev)
-		},
-		OnMouseWheel: func(_ *core.App, ev core.MouseEvent) {
-			scene.DispatchMouseWheel(ev)
-		},
-		OnKeyDown: func(_ *core.App, ev core.KeyEvent) {
-			scene.DispatchKeyDown(ev)
-		},
-		OnChar: func(_ *core.App, ch rune) {
-			scene.DispatchChar(ch)
-		},
-		OnFocus: func(_ *core.App, focused bool) {
-			if !focused && scene != nil {
-				scene.Blur()
-			}
-		},
-		OnTimer: func(_ *core.App, id uintptr) {
-			scene.HandleTimer(id)
-		},
 	})
+
+	app, err := core.NewApp(opts)
 	if err != nil {
 		panic(err)
 	}

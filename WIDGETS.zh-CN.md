@@ -4,7 +4,7 @@
 
 ## 1. 快速接入
 
-最小可运行接线方式如下：
+最小可运行接线方式如下，`widgets.BindScene` 会自动完成场景的绘制、输入、焦点、定时器、DPI 和销毁接线：
 
 ```go
 package main
@@ -14,10 +14,8 @@ import (
 	"github.com/AzureIvory/winui/widgets"
 )
 
-var scene *widgets.Scene
-
 func main() {
-	app, err := core.NewApp(core.Options{
+	opts := core.Options{
 		ClassName:      "ExampleApp",
 		Title:          "winui demo",
 		Width:          800,
@@ -28,60 +26,17 @@ func main() {
 		Background:     core.RGB(255, 255, 255),
 		DoubleBuffered: true,
 		RenderMode:     core.RenderModeAuto,
-		OnCreate: func(app *core.App) error {
-			scene = widgets.NewScene(app)
-
+	}
+	widgets.BindScene(&opts, widgets.SceneHooks{
+		OnCreate: func(_ *core.App, scene *widgets.Scene) error {
 			label := widgets.NewLabel("title", "Hello winui")
 			label.SetBounds(core.Rect{X: 20, Y: 20, W: 240, H: 32})
 			scene.Root().Add(label)
 			return nil
 		},
-		OnPaint: func(_ *core.App, canvas *core.Canvas) {
-			scene.PaintCore(canvas)
-		},
-		OnResize: func(_ *core.App, size core.Size) {
-			scene.Resize(core.Rect{X: 0, Y: 0, W: size.Width, H: size.Height})
-		},
-		OnMouseMove: func(_ *core.App, ev core.MouseEvent) {
-			scene.DispatchMouseMove(ev)
-		},
-		OnMouseLeave: func(_ *core.App) {
-			scene.DispatchMouseLeave()
-		},
-		OnMouseDown: func(_ *core.App, ev core.MouseEvent) {
-			scene.DispatchMouseDown(ev)
-		},
-		OnMouseUp: func(_ *core.App, ev core.MouseEvent) {
-			scene.DispatchMouseUp(ev)
-		},
-		OnMouseWheel: func(_ *core.App, ev core.MouseEvent) {
-			scene.DispatchMouseWheel(ev)
-		},
-		OnKeyDown: func(_ *core.App, ev core.KeyEvent) {
-			scene.DispatchKeyDown(ev)
-		},
-		OnChar: func(_ *core.App, ch rune) {
-			scene.DispatchChar(ch)
-		},
-		OnFocus: func(_ *core.App, focused bool) {
-			if !focused && scene != nil {
-				scene.Blur()
-			}
-		},
-		OnTimer: func(_ *core.App, id uintptr) {
-			scene.HandleTimer(id)
-		},
-		OnDPIChanged: func(_ *core.App, _ core.DPIInfo) {
-			if scene != nil {
-				scene.ReloadResources()
-			}
-		},
-		OnDestroy: func(_ *core.App) {
-			if scene != nil {
-				_ = scene.Close()
-			}
-		},
 	})
+
+	app, err := core.NewApp(opts)
 	if err != nil {
 		panic(err)
 	}

@@ -454,9 +454,7 @@ func (l *ListBox) dp(value int32) int32 {
 
 // mergeListStyle 将列表框样式覆盖合并到基础样式上。
 func mergeListStyle(base, override ListStyle) ListStyle {
-	if override.Font.Face != "" {
-		base.Font = override.Font
-	}
+	base.Font = mergeFontSpec(base.Font, override.Font)
 	if override.TextColor != 0 {
 		base.TextColor = override.TextColor
 	}

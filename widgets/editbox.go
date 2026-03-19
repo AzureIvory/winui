@@ -341,9 +341,7 @@ func (e *EditBox) notifyChanged() {
 
 // mergeEditStyle 将编辑框样式覆盖合并到基础样式上。
 func mergeEditStyle(base, override EditStyle) EditStyle {
-	if override.Font.Face != "" {
-		base.Font = override.Font
-	}
+	base.Font = mergeFontSpec(base.Font, override.Font)
 	if override.TextColor != 0 {
 		base.TextColor = override.TextColor
 	}

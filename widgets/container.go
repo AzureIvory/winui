@@ -85,6 +85,13 @@ func (p *Panel) Add(child Widget) {
 	p.invalidate(p)
 }
 
+// AddAll 按顺序向面板追加多个子控件。
+func (p *Panel) AddAll(children ...Widget) {
+	for _, child := range children {
+		p.Add(child)
+	}
+}
+
 // Remove 从面板移除子控件。
 func (p *Panel) Remove(id string) {
 	for i, child := range p.children {
@@ -99,6 +106,7 @@ func (p *Panel) Remove(id string) {
 			node.setScene(nil)
 		}
 		p.children = append(p.children[:i], p.children[i+1:]...)
+		p.applyLayout()
 		p.invalidate(p)
 		return
 	}
@@ -190,6 +198,8 @@ func (p *Panel) applyLayout() {
 	if p.layout == nil {
 		return
 	}
+	beginLayoutPass()
+	defer endLayoutPass()
 	p.layout.Apply(p.Bounds(), p.children)
 }
 

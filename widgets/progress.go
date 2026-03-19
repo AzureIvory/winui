@@ -89,9 +89,7 @@ func (p *ProgressBar) resolveStyle(ctx *PaintCtx) ProgressStyle {
 	if ctx != nil && ctx.scene != nil && ctx.scene.theme != nil {
 		style = ctx.scene.theme.Progress
 	}
-	if p.Style.Font.Face != "" {
-		style.Font = p.Style.Font
-	}
+	style.Font = mergeFontSpec(style.Font, p.Style.Font)
 	if p.Style.TextColor != 0 {
 		style.TextColor = p.Style.TextColor
 	}
