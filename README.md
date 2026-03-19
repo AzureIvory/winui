@@ -14,7 +14,7 @@
 ## 包说明
 
 - `core`：窗口生命周期、绘制、DPI、定时器、图标、字体与输入
-- `widgets`：场景树、主题、布局辅助和可复用控件
+- `widgets`：场景树、`BindScene` 接线辅助、主题、`Absolute/Linear/Row/Column/Grid/Form` 布局和可复用控件
 
 ## 内置控件
 
@@ -86,7 +86,7 @@ go run ./cmd/demo
 
 ## 文档
 
-组件用法、构造参数和样式字段说明见 [`WIDGETS.zh-CN.md`](./WIDGETS.zh-CN.md)。
+组件用法、`BindScene` 接法、布局系统、`LayoutData` 约定、构造参数和样式字段说明见 [`WIDGETS.zh-CN.md`](./WIDGETS.zh-CN.md)。
 
 源码中的函数、自定义类型、结构体字段和常量也统一补充了中文注释，便于直接从代码阅读 API 与内部行为。
 

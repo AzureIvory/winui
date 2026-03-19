@@ -48,7 +48,55 @@ func main() {
 }
 ```
 
-### 1.1 渲染后端选择
+### 1.1 `BindScene` 与 `SceneHooks`
+
+推荐优先使用 `widgets.BindScene(&opts, hooks)` 接入场景，而不是手写一整套 `OnPaint`、`OnMouseMove`、`OnMouseDown`、`OnMouseUp`、`OnKeyDown`、`OnChar`、`OnTimer` 等转发代码。
+
+`BindScene` 会自动完成以下接线：
+
+- 创建 `Scene`
+- 在 `OnPaint` 中调用 `scene.PaintCore(...)`
+- 在 `OnResize` 中调用 `scene.Resize(...)`
+- 转发鼠标、滚轮、键盘、字符、焦点和定时器事件
+- 在 `OnDPIChanged` 时调用 `scene.ReloadResources()`
+- 在 `OnDestroy` 时调用 `scene.Close()`
+
+返回值是 `*widgets.SceneRef`，如果你需要在 hook 外部读取当前场景，可以这样写：
+
+```go
+ref := widgets.BindScene(&opts, widgets.SceneHooks{
+    OnCreate: func(_ *core.App, scene *widgets.Scene) error {
+        scene.Root().Add(widgets.NewLabel("title", "hello"))
+        return nil
+    },
+})
+
+// 稍后可以通过 ref.Scene() 读取当前场景。
+_ = ref
+```
+
+`widgets.SceneHooks` 目前支持：
+
+- `Theme`
+  - 场景创建后立即应用主题。
+- `OnCreate`
+  - 创建完 `Scene` 之后初始化控件树。
+- `BeforePaint`
+  - 在场景绘制前补充自定义绘制。
+- `AfterPaint`
+  - 在场景绘制后补充自定义绘制。
+- `OnResize`
+  - 场景同步尺寸后执行额外逻辑。
+- `OnFocus`
+  - 场景处理焦点变化后执行额外逻辑。
+- `OnTimer`
+  - 场景处理定时器后执行额外逻辑。
+- `OnDPIChanged`
+  - 场景重建 DPI 相关资源后执行额外逻辑。
+- `OnDestroy`
+  - 场景关闭前执行额外清理逻辑。
+
+### 1.2 渲染后端选择
 
 从当前版本开始，`core.Canvas` 支持双后端：
 
@@ -96,14 +144,48 @@ go run ./cmd/demo
   - 是否可见。
 - `enabled bool`
   - 是否可交互。
+- `layoutData any`
+  - 布局附加数据。
+  - 只有参与自动布局时才需要设置。
 
 大多数组件都有以下通用方法：
 
 - `SetBounds(rect core.Rect)`
 - `SetVisible(visible bool)`
 - `SetEnabled(enabled bool)`
+- `LayoutData() any`
+- `SetLayoutData(data any)`
 
-### 2.2 列表项类型 `ListItem`
+### 2.2 首选尺寸与 `LayoutData`
+
+从当前版本开始，布局系统除了读取控件当前边界，还会读取控件的“首选尺寸”。
+
+可以把规则理解成：
+
+- 当你在布局发生前调用 `SetBounds(core.Rect{W: ..., H: ...})` 时，这个宽高会被记录为控件的首选尺寸。
+- `AbsoluteLayout` 直接使用你当前设置的边界。
+- `RowLayout`、`ColumnLayout`、`GridLayout`、`FormLayout`、`LinearLayout` 会优先把这个宽高当作尺寸提示，再结合 `grow`、对齐、拉伸规则决定最终摆放结果。
+
+典型写法：
+
+```go
+label := widgets.NewLabel("name", "名称")
+label.SetBounds(core.Rect{W: 80, H: 24}) // 这里的宽高作为首选尺寸提示
+
+field := widgets.NewEditBox("keyword")
+field.SetBounds(core.Rect{W: 180, H: 36})
+field.SetLayoutData(widgets.FlexLayoutData{Grow: 1})
+```
+
+`SetLayoutData` 的常见用法：
+
+- 在线性布局里传 `widgets.FlexLayoutData`
+- 在网格布局里传 `widgets.GridLayoutData`
+- 在表单布局里传 `widgets.FormLayoutData`
+
+布局数据类型不匹配时会回退为默认值，不会 panic，但也不会产生你想要的布局效果。
+
+### 2.3 列表项类型 `ListItem`
 
 ```go
 type ListItem struct {
@@ -122,21 +204,56 @@ type ListItem struct {
   - 是否禁用该项。
   - 禁用项不会被 `ListBox` 或 `ComboBox` 选中。
 
-### 2.3 样式覆盖的零值规则
+### 2.4 样式覆盖的零值规则
 
 当前组件样式合并逻辑会把很多字段的零值视为“未设置”：
 
 - 颜色字段为 `0` 时，通常表示“不覆盖默认值”。
 - 尺寸字段为 `0` 时，通常表示“沿用默认值”。
+- `FontSpec` 现在按字段合并：
+  - `Face != ""` 时覆盖字体名
+  - `SizeDP != 0` 时只覆盖字号
+  - `Weight != 0` 时只覆盖字重
 
 这意味着：
 
 - `core.RGB(0, 0, 0)` 这样的纯黑颜色，作为覆盖值时可能会被视为“未设置”。
+- `widgets.FontSpec{SizeDP: 18}` 会保留默认字体名，只改字号。
+- `widgets.FontSpec{Weight: 700}` 会保留默认字体名和字号，只改字重。
 - 如果你需要完全控制颜色和尺寸，优先通过 `Theme` 先改默认样式，再做局部覆盖。
 
 ## 3. 场景与容器
 
-### 3.1 `Scene`
+### 3.1 `BindScene`
+
+用途：把 `Scene` 接入 `core.Options`，自动完成窗口生命周期和场景之间的事件转发。
+
+构造方式：
+
+```go
+ref := widgets.BindScene(&opts, widgets.SceneHooks{
+    OnCreate: func(_ *core.App, scene *widgets.Scene) error {
+        scene.Root().Add(widgets.NewLabel("title", "控制面板"))
+        return nil
+    },
+})
+```
+
+返回值：
+
+- `*widgets.SceneRef`
+  - 通过 `ref.Scene()` 读取当前已经创建的场景。
+  - 如果应用还没初始化完成，可能返回 `nil`。
+
+适用场景：
+
+- 常规应用。
+- 希望减少样板接线代码。
+- 需要让 `AnimatedImage`、焦点、DPI、定时器自动接入场景。
+
+如果你确实需要完全自定义事件分发顺序，也可以手动使用 `widgets.NewScene(app)`，再自己转发窗口事件。
+
+### 3.2 `Scene`
 
 用途：管理控件树、焦点、鼠标命中、重绘、主题和定时器。
 
@@ -164,7 +281,7 @@ scene := widgets.NewScene(app)
 - `Resize(bounds core.Rect)`
   - 调整场景边界，通常在 `OnResize` 中调用。
 - `PaintCore(canvas *core.PaintCtx)`
-  - 使用 `core.Canvas` 绘制整棵控件树。
+  - 绘制整棵控件树。
 - `DispatchMouseMove(ev core.MouseEvent) bool`
 - `DispatchMouseLeave() bool`
 - `DispatchMouseDown(ev core.MouseEvent) bool`
@@ -191,7 +308,7 @@ scene := widgets.NewScene(app)
 scene.Root().Add(widgets.NewLabel("title", "控制面板"))
 ```
 
-### 3.2 `Panel`
+### 3.3 `Panel`
 
 用途：容器组件，用于承载子控件和组织布局。
 
@@ -209,7 +326,9 @@ panel := widgets.NewPanel("content")
 常用方法：
 
 - `Add(child Widget)`
-  - 添加子控件。
+  - 添加一个子控件。
+- `AddAll(children ...Widget)`
+  - 按顺序追加多个子控件。
 - `Remove(id string)`
   - 按控件 ID 删除子控件。
 - `Children() []Widget`
@@ -221,18 +340,51 @@ panel := widgets.NewPanel("content")
 - `SetOnClick(fn func())`
   - 注册面板点击回调。
 
+行为说明：
+
+- `Remove(...)` 后会自动重新布局剩余子控件。
+- 如果子控件调用了 `SetLayoutData(...)`，父 `Panel` 也会自动重新布局。
+
 示例：
 
 ```go
 panel := widgets.NewPanel("form")
 panel.SetBounds(core.Rect{X: 20, Y: 20, W: 320, H: 240})
-panel.Add(widgets.NewLabel("nameLabel", "名称"))
+panel.AddAll(
+    widgets.NewLabel("nameLabel", "名称"),
+    widgets.NewEditBox("name"),
+)
 scene.Root().Add(panel)
 ```
 
-### 3.3 `Layout`
+### 3.4 `Layout`
 
-#### `AbsoluteLayout`
+布局接口统一为：
+
+```go
+type Layout interface {
+    Apply(parent Rect, children []Widget)
+}
+```
+
+除 `AbsoluteLayout` 外，其余布局都会读取子控件的首选尺寸。首选尺寸通常来自布局前调用 `SetBounds` 时传入的宽高。
+
+#### 3.4.1 对齐与内边距辅助类型
+
+- `widgets.Alignment`
+  - `widgets.AlignDefault`
+  - `widgets.AlignStart`
+  - `widgets.AlignCenter`
+  - `widgets.AlignEnd`
+  - `widgets.AlignStretch`
+- `widgets.Insets`
+  - `Top`、`Right`、`Bottom`、`Left`
+- `widgets.UniformInsets(value)`
+  - 四边使用同一个值。
+- `widgets.SymmetricInsets(horizontal, vertical)`
+  - 水平和垂直分别使用同一个值。
+
+#### 3.4.2 `AbsoluteLayout`
 
 用途：绝对布局，不自动调整子控件。
 
@@ -240,9 +392,15 @@ scene.Root().Add(panel)
 panel.SetLayout(widgets.AbsoluteLayout{})
 ```
 
-#### `LinearLayout`
+适合：
 
-用途：线性排列子控件。
+- 完全手写坐标。
+- 与旧代码兼容。
+- 需要自己控制每次 `SetBounds(...)` 的场景。
+
+#### 3.4.3 `LinearLayout`
+
+用途：兼容旧版线性布局接口。
 
 ```go
 panel.SetLayout(widgets.LinearLayout{
@@ -260,10 +418,187 @@ panel.SetLayout(widgets.LinearLayout{
 - `Gap int32`
   - 子项间距。
 - `Padding int32`
-  - 容器内边距。
+  - 容器统一内边距。
 - `ItemSize int32`
-  - 固定项目高度或宽度。
-  - 为 `0` 时按剩余空间自动分配。
+  - 主轴上的固定尺寸。
+
+说明：
+
+- 当前实现中，`LinearLayout` 只是 `RowLayout` / `ColumnLayout` 的兼容包装。
+- 和旧版本相比，`ItemSize == 0` 时不再按剩余空间平均分配，而是优先使用子控件首选尺寸。
+
+#### 3.4.4 `RowLayout`
+
+用途：从左到右排列子控件。
+
+```go
+panel.SetLayout(widgets.RowLayout{
+    Gap:        12,
+    Padding:    widgets.UniformInsets(16),
+    CrossAlign: widgets.AlignCenter,
+})
+```
+
+参数：
+
+- `Gap int32`
+  - 子项间距。
+- `Padding widgets.Insets`
+  - 内容区域内边距。
+- `ItemSize int32`
+  - 主轴固定宽度。
+- `CrossAlign widgets.Alignment`
+  - 交叉轴默认对齐方式。
+
+子项布局数据：
+
+```go
+child.SetLayoutData(widgets.FlexLayoutData{
+    Grow:  1,
+    Align: widgets.AlignStretch,
+})
+```
+
+- `Grow`
+  - 剩余空间分配权重。
+- `Align`
+  - 该子项在交叉轴上的对齐方式。
+
+#### 3.4.5 `ColumnLayout`
+
+用途：从上到下排列子控件。
+
+```go
+panel.SetLayout(widgets.ColumnLayout{
+    Gap:        10,
+    Padding:    widgets.UniformInsets(12),
+    CrossAlign: widgets.AlignStretch,
+})
+```
+
+参数和 `RowLayout` 相同，只是主轴改为垂直方向。
+
+#### 3.4.6 `GridLayout`
+
+用途：按网格排布子控件，支持跨列、跨行和剩余空间权重分配。
+
+```go
+panel.SetLayout(widgets.GridLayout{
+    Columns:   3,
+    Gap:       12,
+    Padding:   widgets.UniformInsets(12),
+    RowWeights:    []int32{0, 1},
+    ColumnWeights: []int32{1, 1, 1},
+})
+```
+
+参数：
+
+- `Columns int`
+  - 总列数。
+- `Gap int32`
+  - 行列通用默认间距。
+- `RowGap int32`
+  - 行间距，非零时覆盖 `Gap`。
+- `ColumnGap int32`
+  - 列间距，非零时覆盖 `Gap`。
+- `Padding widgets.Insets`
+  - 内容区域内边距。
+- `ColumnWeights []int32`
+  - 额外宽度在列之间的分配权重。
+- `RowWeights []int32`
+  - 额外高度在行之间的分配权重。
+- `HorizontalAlign`
+  - 单元格内默认水平对齐方式。
+- `VerticalAlign`
+  - 单元格内默认垂直对齐方式。
+
+子项布局数据：
+
+```go
+child.SetLayoutData(widgets.GridLayoutData{
+    ColumnSpan:      2,
+    RowSpan:         1,
+    HorizontalAlign: widgets.AlignStretch,
+    VerticalAlign:   widgets.AlignCenter,
+})
+```
+
+#### 3.4.7 `FormLayout`
+
+用途：按“标签列 + 字段列”的形式排布控件。
+
+```go
+panel.SetLayout(widgets.FormLayout{
+    Padding:    widgets.UniformInsets(16),
+    RowGap:     12,
+    ColumnGap:  12,
+    LabelWidth: 96,
+    CrossAlign: widgets.AlignCenter,
+})
+```
+
+参数：
+
+- `Padding widgets.Insets`
+  - 内容区域内边距。
+- `RowGap int32`
+  - 行间距。
+- `ColumnGap int32`
+  - 标签列和字段列的间距。
+- `LabelWidth int32`
+  - 标签列宽度。
+  - 为 `0` 时，会按标签控件首选宽度自动推导。
+- `CrossAlign widgets.Alignment`
+  - 行内默认垂直对齐方式。
+
+约定：
+
+- `FormLayout` 按两个一组读取子控件。
+- 第 `0` 个子控件是第 1 行标签，第 `1` 个子控件是第 1 行字段。
+- 第 `2`、`3` 个子控件是第 2 行，以此类推。
+
+字段布局数据：
+
+```go
+field.SetLayoutData(widgets.FormLayoutData{
+    Grow:  1,
+    Align: widgets.AlignStretch,
+})
+```
+
+如果一行只有一个控件，它会占用整行可用空间。
+
+#### 3.4.8 布局示例
+
+```go
+form := widgets.NewPanel("settings")
+form.SetBounds(core.Rect{X: 20, Y: 20, W: 420, H: 220})
+form.SetLayout(widgets.FormLayout{
+    Padding:    widgets.UniformInsets(16),
+    RowGap:     12,
+    ColumnGap:  12,
+    LabelWidth: 80,
+    CrossAlign: widgets.AlignCenter,
+})
+
+nameLabel := widgets.NewLabel("name-label", "名称")
+nameLabel.SetBounds(core.Rect{W: 80, H: 24})
+
+nameEdit := widgets.NewEditBox("name")
+nameEdit.SetBounds(core.Rect{W: 180, H: 36})
+nameEdit.SetLayoutData(widgets.FormLayoutData{Grow: 1})
+
+modeLabel := widgets.NewLabel("mode-label", "模式")
+modeLabel.SetBounds(core.Rect{W: 80, H: 24})
+
+modeCombo := widgets.NewComboBox("mode")
+modeCombo.SetBounds(core.Rect{W: 180, H: 36})
+modeCombo.SetLayoutData(widgets.FormLayoutData{Grow: 1})
+
+form.AddAll(nameLabel, nameEdit, modeLabel, modeCombo)
+scene.Root().Add(form)
+```
 
 ## 4. 显示类组件
 
@@ -984,21 +1319,33 @@ scene.SetTheme(theme)
 
 ### 9.1 为什么组件不响应点击？
 
-通常有三个原因：
+通常有这些原因：
 
 - 没有把窗口事件转发给 `Scene`。
+  - 最简单的做法是直接使用 `widgets.BindScene(...)`。
+  - 如果你手动接线，至少要确保鼠标移动、离开、按下、抬起、滚轮、键盘、字符和焦点事件都转发到了 `Scene`。
 - 控件 `Visible` 为 `false`。
 - 控件 `Enabled` 为 `false`。
+- 控件边界为空，或者被其他控件遮挡。
 
 ### 9.2 为什么动画图片不动？
 
-确认以下接线已经存在：
+如果你使用的是 `widgets.BindScene(...)`，这部分已经自动处理。
+
+如果你手动接线，确认以下逻辑已经存在：
 
 ```go
 OnTimer: func(_ *core.App, id uintptr) {
     scene.HandleTimer(id)
 }
 ```
+
+另外还要确认：
+
+- `AnimatedImage` 已经被加入场景树。
+- 控件当前 `Visible == true`。
+- 已经成功加载至少两帧。
+- 没有调用 `SetPlaying(false)`。
 
 ### 9.3 为什么 `RadioButton` 没有互斥？
 
@@ -1009,7 +1356,17 @@ OnTimer: func(_ *core.App, id uintptr) {
 
 ### 9.4 为什么样式覆盖有时不生效？
 
-当前实现里，很多样式字段的零值表示“不覆盖默认值”。如果你传入的是零值颜色或零尺寸，可能会被忽略。
+当前实现里，很多样式字段的零值表示“不覆盖默认值”。
+
+常见情况：
+
+- 颜色字段传 `0` 会被视为“不覆盖默认值”。
+- 尺寸字段传 `0` 会被视为“沿用默认值”。
+- 字体字段现在按字段合并：
+  - `FontSpec{SizeDP: 18}` 只改字号，不改字体名。
+  - `FontSpec{Weight: 700}` 只改字重，不改字体名和字号。
+
+如果你希望统一改变控件默认外观，优先修改 `Theme`；如果你希望覆盖成零值颜色或零尺寸，当前设计并不适合直接这样做。
 
 ### 9.5 如何确认是否已经回退到 GDI？
 
@@ -1021,4 +1378,18 @@ reason := app.RenderFallbackReason()
 ```
 
 如果 `backend == core.RenderBackendGDI` 且 `reason != ""`，说明应用在 `RenderModeAuto` 下尝试过 Direct2D，但最终回退到了 GDI。
+
+### 9.6 为什么 `RowLayout`、`ColumnLayout`、`GridLayout` 或 `FormLayout` 排出来的尺寸不对？
+
+先检查这三件事：
+
+- 你是否在加入自动布局之前，为子控件通过 `SetBounds` 提供了宽高提示。
+- 你是否给对的布局传了对的 `LayoutData` 类型。
+- 你是否误以为 `LinearLayout` 在 `ItemSize == 0` 时还会像旧版本一样平均分配空间。
+
+当前版本中：
+
+- 自动布局优先使用子控件的首选尺寸。
+- `SetLayoutData(...)` 会触发父容器重新布局。
+- `LinearLayout` 已经委托给 `RowLayout` / `ColumnLayout`，语义更接近“基于首选尺寸排版”，而不是“平均切块”。
 
