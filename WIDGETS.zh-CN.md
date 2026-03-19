@@ -752,7 +752,8 @@ check := widgets.NewCheckBox("agree", "同意协议")
 行为说明：
 
 - 点击会在选中和未选中之间切换。
-- 选中时会绘制居中的圆点标记，不再使用 `"X"` 字符。
+- 默认主题下选中时会绘制居中的圆点标记。
+- 可以通过 `ChoiceStyle.IndicatorStyle` 切换为打钩样式。
 - 支持键盘焦点。
 
 示例：
@@ -760,6 +761,9 @@ check := widgets.NewCheckBox("agree", "同意协议")
 ```go
 check := widgets.NewCheckBox("agree", "同意协议")
 check.SetBounds(core.Rect{X: 20, Y: 170, W: 200, H: 32})
+check.SetStyle(widgets.ChoiceStyle{
+    IndicatorStyle: widgets.ChoiceIndicatorCheck,
+})
 check.SetOnChange(func(v bool) {
     if v {
         app.SetTitle("已勾选")
@@ -799,6 +803,7 @@ radio := widgets.NewRadioButton("planA", "方案 A")
 
 - 同一父容器下、`Group` 相同的单选按钮互斥。
 - 不在同一个 `Panel` 下时，即使分组名相同也不会互斥。
+- 默认使用圆点标记，也可以切换成打钩样式。
 
 示例：
 
@@ -807,6 +812,9 @@ radioA := widgets.NewRadioButton("planA", "方案 A")
 radioB := widgets.NewRadioButton("planB", "方案 B")
 radioA.SetGroup("plan")
 radioB.SetGroup("plan")
+radioA.SetStyle(widgets.ChoiceStyle{
+    IndicatorStyle: widgets.ChoiceIndicatorCheck,
+})
 radioA.SetChecked(true)
 panel.Add(radioA)
 panel.Add(radioB)
@@ -1183,7 +1191,10 @@ type TextStyle struct {
 - `IndicatorColor`
   - 选中标记颜色。
 - `CheckColor`
-  - 复选框圆心点颜色。
+  - 打钩或内部标记颜色。
+- `IndicatorStyle`
+  - 选中标记样式。
+  - 可选值为 `widgets.ChoiceIndicatorAuto`、`widgets.ChoiceIndicatorDot`、`widgets.ChoiceIndicatorCheck`。
 - `HoverBackground`
   - 整行悬停背景色。
 - `DisabledBg`
@@ -1314,6 +1325,37 @@ scene.SetTheme(theme)
 
 - `Text` 和 `Title` 用于普通文本和标题文本样式。
 - 其余字段分别对应同名组件的默认样式。
+
+### 8.10 `ThemeOptions` 与硬核模式
+
+```go
+theme := widgets.NewTheme(widgets.ThemeOptions{
+    HardMode: true,
+})
+scene.SetTheme(theme)
+```
+
+也可以直接在 `BindScene` 时传入：
+
+```go
+widgets.BindScene(&opts, widgets.SceneHooks{
+    Theme: widgets.NewTheme(widgets.ThemeOptions{
+        HardMode: true,
+    }),
+    OnCreate: func(_ *core.App, scene *widgets.Scene) error {
+        return nil
+    },
+})
+```
+
+说明：
+
+- `widgets.DefaultTheme()` 等价于 `widgets.NewTheme(widgets.ThemeOptions{})`。
+- `HardMode`
+  - 启用后会切换到更接近系统原生控件的默认外观。
+  - 按钮、进度条、输入框、列表框、组合框等默认改为方角。
+  - 复选框默认改为打钩样式，单选按钮默认保留圆点样式。
+  - 进度条默认隐藏百分比气泡，减少装饰性绘制。
 
 ## 9. 常见问题
 

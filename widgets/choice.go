@@ -169,7 +169,7 @@ func (c *CheckBox) Paint(ctx *PaintCtx) {
 	wrapRect := Rect{X: content.X, Y: content.Y, W: content.W, H: content.H}
 
 	if c.Hover || c.Focused {
-		_ = ctx.FillRoundRect(wrapRect, ctx.DP(style.CornerRadius)+ctx.DP(4), style.HoverBackground)
+		_ = ctx.FillRoundRect(wrapRect, choiceWrapRadius(ctx, style), style.HoverBackground)
 	}
 
 	background := style.Background
@@ -188,7 +188,7 @@ func (c *CheckBox) Paint(ctx *PaintCtx) {
 	_ = ctx.FillRoundRect(boxRect, ctx.DP(style.CornerRadius), background)
 	if c.Checked {
 		_ = ctx.FillRoundRect(boxRect, ctx.DP(style.CornerRadius), style.IndicatorColor)
-		drawChoiceDot(ctx, boxRect, style.CheckColor)
+		drawChoiceMark(ctx, boxRect, style, false)
 	}
 	_ = ctx.StrokeRoundRect(boxRect, ctx.DP(style.CornerRadius), borderColor, 1)
 
@@ -419,7 +419,7 @@ func (r *RadioButton) Paint(ctx *PaintCtx) {
 	wrapRect := Rect{X: content.X, Y: content.Y, W: content.W, H: content.H}
 
 	if r.Hover || r.Focused {
-		_ = ctx.FillRoundRect(wrapRect, ctx.DP(style.CornerRadius)+ctx.DP(4), style.HoverBackground)
+		_ = ctx.FillRoundRect(wrapRect, choiceWrapRadius(ctx, style), style.HoverBackground)
 	}
 
 	background := style.Background
@@ -437,10 +437,13 @@ func (r *RadioButton) Paint(ctx *PaintCtx) {
 
 	radius := max32(1, boxSize/2)
 	_ = ctx.FillRoundRect(boxRect, radius, background)
-	_ = ctx.StrokeRoundRect(boxRect, radius, borderColor, 1)
 	if r.Checked {
-		drawChoiceDot(ctx, boxRect, style.IndicatorColor)
+		if resolveChoiceIndicatorStyle(style, true) == ChoiceIndicatorCheck {
+			_ = ctx.FillRoundRect(boxRect, radius, style.IndicatorColor)
+		}
+		drawChoiceMark(ctx, boxRect, style, true)
 	}
+	_ = ctx.StrokeRoundRect(boxRect, radius, borderColor, 1)
 
 	textRect := Rect{
 		X: boxRect.X + boxRect.W + gap,
@@ -511,7 +514,44 @@ func (r *RadioButton) syncGroup(notify bool) {
 	}
 }
 
-// drawChoiceDot 在选择框内部绘制选中标记。
+// choiceWrapRadius 返回选择类控件外层悬停区域应使用的圆角半径。
+func choiceWrapRadius(ctx *PaintCtx, style ChoiceStyle) int32 {
+	if ctx == nil {
+		return 0
+	}
+	radius := ctx.DP(style.CornerRadius)
+	if radius <= 0 {
+		return 0
+	}
+	return radius + ctx.DP(4)
+}
+
+// resolveChoiceIndicatorStyle 返回当前选择类控件应使用的选中标记样式。
+func resolveChoiceIndicatorStyle(style ChoiceStyle, isRadio bool) ChoiceIndicatorStyle {
+	if style.IndicatorStyle != ChoiceIndicatorAuto {
+		return style.IndicatorStyle
+	}
+	if isRadio {
+		return ChoiceIndicatorDot
+	}
+	return ChoiceIndicatorCheck
+}
+
+// drawChoiceMark 按给定样式绘制选择类控件的选中标记。
+func drawChoiceMark(ctx *PaintCtx, boxRect Rect, style ChoiceStyle, isRadio bool) {
+	switch resolveChoiceIndicatorStyle(style, isRadio) {
+	case ChoiceIndicatorCheck:
+		drawChoiceCheck(ctx, boxRect, style.CheckColor)
+	default:
+		color := style.CheckColor
+		if isRadio {
+			color = style.IndicatorColor
+		}
+		drawChoiceDot(ctx, boxRect, color)
+	}
+}
+
+// drawChoiceDot 在选择框内部绘制圆点选中标记。
 func drawChoiceDot(ctx *PaintCtx, boxRect Rect, color core.Color) {
 	if ctx == nil || boxRect.Empty() {
 		return
@@ -524,6 +564,43 @@ func drawChoiceDot(ctx *PaintCtx, boxRect Rect, color core.Color) {
 		H: dotSize,
 	}
 	_ = ctx.FillRoundRect(dotRect, max32(1, dotSize/2), color)
+}
+
+// drawChoiceCheck 在选择框内部绘制打钩选中标记。
+func drawChoiceCheck(ctx *PaintCtx, boxRect Rect, color core.Color) {
+	if ctx == nil || boxRect.Empty() {
+		return
+	}
+
+	segments := []Rect{
+		{
+			X: boxRect.X + boxRect.W/5,
+			Y: boxRect.Y + boxRect.H/2,
+			W: max32(1, boxRect.W/6),
+			H: max32(1, boxRect.H/4),
+		},
+		{
+			X: boxRect.X + boxRect.W/3,
+			Y: boxRect.Y + boxRect.H/2 + boxRect.H/6,
+			W: max32(1, boxRect.W/6),
+			H: max32(1, boxRect.H/5),
+		},
+		{
+			X: boxRect.X + boxRect.W/2,
+			Y: boxRect.Y + boxRect.H/3,
+			W: max32(1, boxRect.W/6),
+			H: max32(1, boxRect.H/2),
+		},
+		{
+			X: boxRect.X + boxRect.W*2/3,
+			Y: boxRect.Y + boxRect.H/5,
+			W: max32(1, boxRect.W/6),
+			H: max32(1, boxRect.H/2),
+		},
+	}
+	for _, segment := range segments {
+		_ = ctx.FillRect(segment, color)
+	}
 }
 
 // mergeChoiceStyle 把多选框或单选按钮样式覆盖合并到基础样式中。
@@ -552,6 +629,9 @@ func mergeChoiceStyle(base, override ChoiceStyle) ChoiceStyle {
 	}
 	if override.CheckColor != 0 {
 		base.CheckColor = override.CheckColor
+	}
+	if override.IndicatorStyle != ChoiceIndicatorAuto {
+		base.IndicatorStyle = override.IndicatorStyle
 	}
 	if override.HoverBackground != 0 {
 		base.HoverBackground = override.HoverBackground

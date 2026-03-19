@@ -168,9 +168,7 @@ func (p *Panel) Paint(ctx *PaintCtx) {
 			if width <= 0 {
 				width = 1
 			}
-			if radius > 0 {
-				_ = ctx.StrokeRoundRect(p.Bounds(), radius, p.Style.BorderColor, width)
-			}
+			_ = ctx.StrokeRoundRect(p.Bounds(), max32(0, radius), p.Style.BorderColor, width)
 		}
 	}
 	for _, child := range p.children {

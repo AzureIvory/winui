@@ -74,6 +74,18 @@ type ProgressStyle struct {
 	ShowPercent bool
 }
 
+// ChoiceIndicatorStyle 表示单选框或多选框选中标记的绘制样式。
+type ChoiceIndicatorStyle uint8
+
+const (
+	// ChoiceIndicatorAuto 表示沿用主题或控件默认的选中标记样式。
+	ChoiceIndicatorAuto ChoiceIndicatorStyle = iota
+	// ChoiceIndicatorDot 表示使用圆点样式绘制选中标记。
+	ChoiceIndicatorDot
+	// ChoiceIndicatorCheck 表示使用打钩样式绘制选中标记。
+	ChoiceIndicatorCheck
+)
+
 // ChoiceStyle 描述复选框和单选框的外观样式。
 type ChoiceStyle struct {
 	// Font 指定标签文本使用的字体规格。
@@ -92,8 +104,10 @@ type ChoiceStyle struct {
 	FocusBorder core.Color
 	// IndicatorColor 指定选中指示器颜色。
 	IndicatorColor core.Color
-	// CheckColor 指定复选框勾选图形颜色。
+	// CheckColor 指定打钩图形颜色。
 	CheckColor core.Color
+	// IndicatorStyle 指定选中标记的绘制样式。
+	IndicatorStyle ChoiceIndicatorStyle
 	// HoverBackground 指定悬停时包裹区域背景色。
 	HoverBackground core.Color
 	// DisabledBg 指定禁用状态背景色。
@@ -170,7 +184,7 @@ type ComboStyle struct {
 	PaddingDP int32
 	// CornerRadius 指定圆角半径。
 	CornerRadius int32
-	// MaxVisibleItems 指定弹出层最大可见条目数。
+	// MaxVisibleItems 指定弹出层最多可见条目数。
 	MaxVisibleItems int32
 }
 
@@ -226,8 +240,166 @@ type Theme struct {
 	Edit EditStyle
 }
 
-// DefaultTheme 返回控件未覆写时使用的默认主题。
-func DefaultTheme() *Theme {
+// ThemeOptions 描述创建主题时可选的附加参数。
+type ThemeOptions struct {
+	// HardMode 控制是否启用偏系统原生、方角和低装饰的硬核模式。
+	HardMode bool
+}
+
+// NewTheme 根据给定参数创建一份新的主题配置。
+func NewTheme(options ThemeOptions) *Theme {
+	if options.HardMode {
+		return &Theme{
+			BackgroundColor: core.RGB(240, 240, 240),
+			Text: TextStyle{
+				Font: FontSpec{
+					Face:   "Microsoft YaHei UI",
+					SizeDP: 16,
+				},
+				Color:  core.RGB(16, 16, 16),
+				Format: core.DTCenter | core.DTVCenter | core.DTSingleLine,
+			},
+			Title: TextStyle{
+				Font: FontSpec{
+					Face:   "Microsoft YaHei UI",
+					SizeDP: 20,
+					Weight: 700,
+				},
+				Color:  core.RGB(16, 16, 16),
+				Format: core.DTCenter | core.DTVCenter | core.DTSingleLine,
+			},
+			Button: ButtonStyle{
+				Font: FontSpec{
+					Face:   "Microsoft YaHei UI",
+					SizeDP: 16,
+				},
+				TextColor:    core.RGB(16, 16, 16),
+				DownText:     core.RGB(16, 16, 16),
+				DisabledText: core.RGB(131, 131, 131),
+				Background:   core.RGB(240, 240, 240),
+				Hover:        core.RGB(229, 241, 251),
+				Pressed:      core.RGB(204, 228, 247),
+				Disabled:     core.RGB(244, 244, 244),
+				Border:       core.RGB(173, 173, 173),
+				CornerRadius: 0,
+				TextInsetDP:  18,
+				GapDP:        8,
+				PadDP:        10,
+			},
+			Progress: ProgressStyle{
+				Font: FontSpec{
+					Face:   "Microsoft YaHei UI",
+					SizeDP: 14,
+					Weight: 700,
+				},
+				TextColor:    core.RGB(255, 255, 255),
+				TrackColor:   core.RGB(229, 229, 229),
+				FillColor:    core.RGB(0, 120, 215),
+				BubbleColor:  core.RGB(0, 120, 215),
+				CornerRadius: 0,
+				ShowPercent:  false,
+			},
+			CheckBox: ChoiceStyle{
+				Font: FontSpec{
+					Face:   "Microsoft YaHei UI",
+					SizeDP: 15,
+				},
+				TextColor:       core.RGB(16, 16, 16),
+				DisabledText:    core.RGB(131, 131, 131),
+				Background:      core.RGB(255, 255, 255),
+				BorderColor:     core.RGB(112, 112, 112),
+				HoverBorder:     core.RGB(0, 120, 215),
+				FocusBorder:     core.RGB(0, 120, 215),
+				IndicatorColor:  core.RGB(0, 120, 215),
+				CheckColor:      core.RGB(255, 255, 255),
+				IndicatorStyle:  ChoiceIndicatorCheck,
+				HoverBackground: core.RGB(245, 245, 245),
+				DisabledBg:      core.RGB(242, 242, 242),
+				DisabledBorder:  core.RGB(191, 191, 191),
+				CornerRadius:    0,
+				IndicatorSizeDP: 16,
+				IndicatorGapDP:  8,
+			},
+			RadioButton: ChoiceStyle{
+				Font: FontSpec{
+					Face:   "Microsoft YaHei UI",
+					SizeDP: 15,
+				},
+				TextColor:       core.RGB(16, 16, 16),
+				DisabledText:    core.RGB(131, 131, 131),
+				Background:      core.RGB(255, 255, 255),
+				BorderColor:     core.RGB(112, 112, 112),
+				HoverBorder:     core.RGB(0, 120, 215),
+				FocusBorder:     core.RGB(0, 120, 215),
+				IndicatorColor:  core.RGB(0, 120, 215),
+				CheckColor:      core.RGB(255, 255, 255),
+				IndicatorStyle:  ChoiceIndicatorDot,
+				HoverBackground: core.RGB(245, 245, 245),
+				DisabledBg:      core.RGB(242, 242, 242),
+				DisabledBorder:  core.RGB(191, 191, 191),
+				CornerRadius:    0,
+				IndicatorSizeDP: 16,
+				IndicatorGapDP:  8,
+			},
+			ListBox: ListStyle{
+				Font: FontSpec{
+					Face:   "Microsoft YaHei UI",
+					SizeDP: 15,
+				},
+				TextColor:         core.RGB(16, 16, 16),
+				DisabledText:      core.RGB(131, 131, 131),
+				Background:        core.RGB(255, 255, 255),
+				BorderColor:       core.RGB(173, 173, 173),
+				HoverBorder:       core.RGB(112, 112, 112),
+				FocusBorder:       core.RGB(0, 120, 215),
+				ItemHoverColor:    core.RGB(235, 235, 235),
+				ItemSelectedColor: core.RGB(0, 120, 215),
+				ItemTextColor:     core.RGB(255, 255, 255),
+				ItemHeightDP:      30,
+				PaddingDP:         6,
+				CornerRadius:      0,
+			},
+			ComboBox: ComboStyle{
+				Font: FontSpec{
+					Face:   "Microsoft YaHei UI",
+					SizeDP: 15,
+				},
+				TextColor:         core.RGB(16, 16, 16),
+				PlaceholderColor:  core.RGB(131, 131, 131),
+				Background:        core.RGB(255, 255, 255),
+				BorderColor:       core.RGB(173, 173, 173),
+				HoverBorder:       core.RGB(112, 112, 112),
+				FocusBorder:       core.RGB(0, 120, 215),
+				ArrowColor:        core.RGB(16, 16, 16),
+				PopupBackground:   core.RGB(255, 255, 255),
+				ItemHoverColor:    core.RGB(235, 235, 235),
+				ItemSelectedColor: core.RGB(0, 120, 215),
+				ItemTextColor:     core.RGB(255, 255, 255),
+				ItemHeightDP:      30,
+				PaddingDP:         8,
+				CornerRadius:      0,
+				MaxVisibleItems:   6,
+			},
+			Edit: EditStyle{
+				Font: FontSpec{
+					Face:   "Microsoft YaHei UI",
+					SizeDP: 15,
+				},
+				TextColor:        core.RGB(16, 16, 16),
+				PlaceholderColor: core.RGB(131, 131, 131),
+				Background:       core.RGB(255, 255, 255),
+				BorderColor:      core.RGB(173, 173, 173),
+				HoverBorder:      core.RGB(112, 112, 112),
+				FocusBorder:      core.RGB(0, 120, 215),
+				DisabledText:     core.RGB(131, 131, 131),
+				DisabledBg:       core.RGB(242, 242, 242),
+				CaretColor:       core.RGB(0, 0, 0),
+				PaddingDP:        8,
+				CornerRadius:     0,
+			},
+		}
+	}
+
 	return &Theme{
 		BackgroundColor: core.RGB(255, 255, 255),
 		Text: TextStyle{
@@ -290,6 +462,7 @@ func DefaultTheme() *Theme {
 			FocusBorder:     core.RGB(14, 165, 233),
 			IndicatorColor:  core.RGB(14, 165, 233),
 			CheckColor:      core.RGB(255, 255, 255),
+			IndicatorStyle:  ChoiceIndicatorDot,
 			HoverBackground: core.RGB(240, 249, 255),
 			DisabledBg:      core.RGB(243, 244, 246),
 			DisabledBorder:  core.RGB(209, 213, 219),
@@ -310,6 +483,7 @@ func DefaultTheme() *Theme {
 			FocusBorder:     core.RGB(14, 165, 233),
 			IndicatorColor:  core.RGB(14, 165, 233),
 			CheckColor:      core.RGB(255, 255, 255),
+			IndicatorStyle:  ChoiceIndicatorDot,
 			HoverBackground: core.RGB(240, 249, 255),
 			DisabledBg:      core.RGB(243, 244, 246),
 			DisabledBorder:  core.RGB(209, 213, 219),
@@ -374,4 +548,9 @@ func DefaultTheme() *Theme {
 			CornerRadius:     10,
 		},
 	}
+}
+
+// DefaultTheme 返回控件未覆写时使用的默认主题。
+func DefaultTheme() *Theme {
+	return NewTheme(ThemeOptions{})
 }

@@ -287,6 +287,10 @@ func (c *ComboBox) PaintOverlay(ctx *PaintCtx) {
 	radius := ctx.DP(style.CornerRadius)
 	_ = ctx.FillRoundRect(popup, radius, style.PopupBackground)
 	_ = ctx.StrokeRoundRect(popup, radius, style.FocusBorder, 1)
+	itemRadius := radius - ctx.DP(2)
+	if itemRadius < 0 {
+		itemRadius = 0
+	}
 
 	start, end := c.popupRange()
 	for index := start; index < end; index++ {
@@ -297,10 +301,10 @@ func (c *ComboBox) PaintOverlay(ctx *PaintCtx) {
 			textColor = style.PlaceholderColor
 		}
 		if index == c.selected {
-			_ = ctx.FillRoundRect(rowRect, max32(1, radius-ctx.DP(2)), style.ItemSelectedColor)
+			_ = ctx.FillRoundRect(rowRect, itemRadius, style.ItemSelectedColor)
 			textColor = style.ItemTextColor
 		} else if index == c.hover {
-			_ = ctx.FillRoundRect(rowRect, max32(1, radius-ctx.DP(2)), style.ItemHoverColor)
+			_ = ctx.FillRoundRect(rowRect, itemRadius, style.ItemHoverColor)
 		}
 
 		textRect := Rect{

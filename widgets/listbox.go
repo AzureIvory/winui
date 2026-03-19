@@ -260,6 +260,14 @@ func (l *ListBox) Paint(ctx *PaintCtx) {
 	radius := ctx.DP(style.CornerRadius)
 	_ = ctx.FillRoundRect(bounds, radius, style.Background)
 	_ = ctx.StrokeRoundRect(bounds, radius, borderColor, 1)
+	itemRadius := radius - ctx.DP(2)
+	if itemRadius < 0 {
+		itemRadius = 0
+	}
+	scrollRadius := ctx.DP(2)
+	if radius <= 0 {
+		scrollRadius = 0
+	}
 
 	start := l.scroll
 	end := len(l.items)
@@ -282,10 +290,10 @@ func (l *ListBox) Paint(ctx *PaintCtx) {
 			textColor = style.DisabledText
 		}
 		if index == l.selected {
-			_ = ctx.FillRoundRect(rowRect, max32(1, radius-ctx.DP(2)), style.ItemSelectedColor)
+			_ = ctx.FillRoundRect(rowRect, itemRadius, style.ItemSelectedColor)
 			textColor = style.ItemTextColor
 		} else if index == l.hover {
-			_ = ctx.FillRoundRect(rowRect, max32(1, radius-ctx.DP(2)), style.ItemHoverColor)
+			_ = ctx.FillRoundRect(rowRect, itemRadius, style.ItemHoverColor)
 		}
 
 		textRect := Rect{
@@ -315,10 +323,10 @@ func (l *ListBox) Paint(ctx *PaintCtx) {
 			if maxScroll > 0 {
 				thumbY += thumbRange * int32(l.scroll) / int32(maxScroll)
 			}
-			_ = ctx.FillRoundRect(track, ctx.DP(2), core.RGB(241, 245, 249))
+			_ = ctx.FillRoundRect(track, scrollRadius, core.RGB(241, 245, 249))
 			_ = ctx.FillRoundRect(
 				Rect{X: track.X, Y: thumbY, W: track.W, H: thumbH},
-				ctx.DP(2),
+				scrollRadius,
 				core.RGB(148, 163, 184),
 			)
 		}

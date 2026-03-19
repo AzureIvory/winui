@@ -112,23 +112,33 @@ func (p *PaintCtx) DrawProgress(rect Rect, value int32, style ProgressStyle) err
 	}
 	value = clampValue(value, 0, 100)
 	trackRadius := p.DP(style.CornerRadius)
-	if trackRadius <= 0 {
-		trackRadius = max32(1, rect.H/2)
+	if trackRadius < 0 {
+		trackRadius = 0
 	}
 
-	if err := p.canvas.FillRoundRect(rect, trackRadius, style.TrackColor); err != nil {
-		return err
+	if trackRadius > 0 {
+		if err := p.canvas.FillRoundRect(rect, trackRadius, style.TrackColor); err != nil {
+			return err
+		}
+	} else {
+		if err := p.canvas.FillRect(rect, style.TrackColor); err != nil {
+			return err
+		}
 	}
 
 	fillW := rect.W * value / 100
 	if fillW > 0 {
 		fillW = clampValue(fillW, 1, rect.W)
-		if err := p.canvas.FillRoundRect(
-			Rect{X: rect.X, Y: rect.Y, W: fillW, H: rect.H},
-			min32(trackRadius, max32(1, fillW)),
-			style.FillColor,
-		); err != nil {
-			return err
+		fillRect := Rect{X: rect.X, Y: rect.Y, W: fillW, H: rect.H}
+		fillRadius := min32(trackRadius, max32(0, fillW/2))
+		if fillRadius > 0 {
+			if err := p.canvas.FillRoundRect(fillRect, fillRadius, style.FillColor); err != nil {
+				return err
+			}
+		} else {
+			if err := p.canvas.FillRect(fillRect, style.FillColor); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -151,7 +161,7 @@ func (p *PaintCtx) DrawProgress(rect Rect, value int32, style ProgressStyle) err
 	pointerH := p.DP(6)
 	pointerHalfW := p.DP(6)
 	pointerInset := p.DP(10)
-	bubbleRadius := min32(max32(1, trackRadius), max32(1, bubbleH/2))
+	bubbleRadius := min32(trackRadius, max32(0, bubbleH/2))
 
 	anchorX := rect.X + fillW
 	if anchorX < rect.X {
@@ -193,8 +203,14 @@ func (p *PaintCtx) DrawProgress(rect Rect, value int32, style ProgressStyle) err
 	}, bubbleColor); err != nil {
 		return err
 	}
-	if err := p.canvas.FillRoundRect(bubbleRect, bubbleRadius, bubbleColor); err != nil {
-		return err
+	if bubbleRadius > 0 {
+		if err := p.canvas.FillRoundRect(bubbleRect, bubbleRadius, bubbleColor); err != nil {
+			return err
+		}
+	} else {
+		if err := p.canvas.FillRect(bubbleRect, bubbleColor); err != nil {
+			return err
+		}
 	}
 
 	return p.DrawText(

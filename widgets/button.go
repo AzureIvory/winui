@@ -193,8 +193,8 @@ func (b *Button) Paint(ctx *PaintCtx) {
 	}
 
 	radius := ctx.DP(style.CornerRadius)
-	if radius <= 0 {
-		radius = ctx.DP(10)
+	if radius < 0 {
+		radius = 0
 	}
 
 	_ = ctx.FillRoundRect(bounds, radius, bgColor)
