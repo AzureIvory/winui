@@ -10,7 +10,7 @@ import (
 
 // TestButtonStateMachine 测试按钮状态机。
 func TestButtonStateMachine(t *testing.T) {
-	button := NewButton("button", "demo")
+	button := NewButton("button", "demo", ModeCustom)
 	button.SetBounds(Rect{X: 0, Y: 0, W: 100, H: 40})
 
 	clicked := 0
@@ -46,7 +46,7 @@ func TestButtonStateMachine(t *testing.T) {
 
 // TestButtonStyleOverride 测试按钮样式覆盖和布局模式。
 func TestButtonStyleOverride(t *testing.T) {
-	button := NewButton("button", "demo")
+	button := NewButton("button", "demo", ModeCustom)
 	button.SetKind(BtnLeft)
 	button.SetStyle(ButtonStyle{
 		TextColor: core.RGB(1, 2, 3),

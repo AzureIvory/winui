@@ -58,6 +58,7 @@ func main() {
 - 在 `OnPaint` 中调用 `scene.PaintCore(...)`
 - 在 `OnResize` 中调用 `scene.Resize(...)`
 - 转发鼠标、滚轮、键盘、字符、焦点和定时器事件
+- 转发原生子控件的 `WM_COMMAND` 通知
 - 在 `OnDPIChanged` 时调用 `scene.ReloadResources()`
 - 在 `OnDestroy` 时调用 `scene.Close()`
 
@@ -172,7 +173,7 @@ go run ./cmd/demo
 label := widgets.NewLabel("name", "名称")
 label.SetBounds(core.Rect{W: 80, H: 24}) // 这里的宽高作为首选尺寸提示
 
-field := widgets.NewEditBox("keyword")
+field := widgets.NewEditBox("keyword", widgets.ModeCustom)
 field.SetBounds(core.Rect{W: 180, H: 36})
 field.SetLayoutData(widgets.FlexLayoutData{Grow: 1})
 ```
@@ -185,7 +186,39 @@ field.SetLayoutData(widgets.FlexLayoutData{Grow: 1})
 
 布局数据类型不匹配时会回退为默认值，不会 panic，但也不会产生你想要的布局效果。
 
-### 2.3 列表项类型 `ListItem`
+### 2.3 控件后端模式 `ControlMode`
+
+部分控件在构造时支持通过 `mode` 参数切换后端：
+
+- `widgets.ModeCustom`
+  - 使用当前库的自绘控件后端。
+  - 主题和样式外观字段会正常生效。
+- `widgets.ModeNative`
+  - 使用原生系统 API 子控件后端。
+  - 目前仅 `Button`、`EditBox`、`CheckBox`、`RadioButton`、`ComboBox` 支持。
+  - 外观主要由系统控件决定，主题和样式中的圆角、填充、边框色、图标布局等绘制参数通常不会生效。
+
+示例：
+
+```go
+saveBtn := widgets.NewButton("save", "保存", widgets.ModeCustom)
+keywordEdit := widgets.NewEditBox("keyword", widgets.ModeNative)
+agree := widgets.NewCheckBox("agree", "同意协议", widgets.ModeNative)
+plan := widgets.NewRadioButton("planA", "方案 A", widgets.ModeNative)
+city := widgets.NewComboBox("city", widgets.ModeNative)
+```
+
+如果你使用 `widgets.BindScene(...)`，原生模式所需的 `WM_COMMAND` 转发已经自动处理。
+
+如果你手动接线，除了常规的 `Scene` 绘制和输入转发外，还要补上：
+
+```go
+opts.OnCommand = func(_ *core.App, evt core.CommandEvent) bool {
+    return scene.HandleNativeCommand(evt)
+}
+```
+
+### 2.4 列表项类型 `ListItem`
 
 ```go
 type ListItem struct {
@@ -204,7 +237,7 @@ type ListItem struct {
   - 是否禁用该项。
   - 禁用项不会被 `ListBox` 或 `ComboBox` 选中。
 
-### 2.4 样式覆盖的零值规则
+### 2.5 样式覆盖的零值规则
 
 当前组件样式合并逻辑会把很多字段的零值视为“未设置”：
 
@@ -352,7 +385,7 @@ panel := widgets.NewPanel("form")
 panel.SetBounds(core.Rect{X: 20, Y: 20, W: 320, H: 240})
 panel.AddAll(
     widgets.NewLabel("nameLabel", "名称"),
-    widgets.NewEditBox("name"),
+    widgets.NewEditBox("name", widgets.ModeCustom),
 )
 scene.Root().Add(panel)
 ```
@@ -585,14 +618,14 @@ form.SetLayout(widgets.FormLayout{
 nameLabel := widgets.NewLabel("name-label", "名称")
 nameLabel.SetBounds(core.Rect{W: 80, H: 24})
 
-nameEdit := widgets.NewEditBox("name")
+nameEdit := widgets.NewEditBox("name", widgets.ModeCustom)
 nameEdit.SetBounds(core.Rect{W: 180, H: 36})
 nameEdit.SetLayoutData(widgets.FormLayoutData{Grow: 1})
 
 modeLabel := widgets.NewLabel("mode-label", "模式")
 modeLabel.SetBounds(core.Rect{W: 80, H: 24})
 
-modeCombo := widgets.NewComboBox("mode")
+modeCombo := widgets.NewComboBox("mode", widgets.ModeCustom)
 modeCombo.SetBounds(core.Rect{W: 180, H: 36})
 modeCombo.SetLayoutData(widgets.FormLayoutData{Grow: 1})
 
@@ -646,7 +679,7 @@ scene.Root().Add(label)
 构造函数：
 
 ```go
-btn := widgets.NewButton("save", "保存")
+btn := widgets.NewButton("save", "保存", widgets.ModeCustom)
 ```
 
 参数：
@@ -655,6 +688,10 @@ btn := widgets.NewButton("save", "保存")
   - 按钮 ID。
 - `text string`
   - 按钮标题。
+- `mode widgets.ControlMode`
+  - 控件后端模式。
+  - `widgets.ModeCustom` 为自绘按钮。
+  - `widgets.ModeNative` 为原生系统按钮。
 
 常用方法：
 
@@ -675,7 +712,7 @@ btn := widgets.NewButton("save", "保存")
 示例：
 
 ```go
-btn := widgets.NewButton("save", "保存")
+btn := widgets.NewButton("save", "保存", widgets.ModeCustom)
 btn.SetBounds(core.Rect{X: 20, Y: 70, W: 120, H: 44})
 btn.SetKind(widgets.BtnLeft)
 btn.SetOnClick(func() {
@@ -731,7 +768,7 @@ scene.Root().Add(progress)
 构造函数：
 
 ```go
-check := widgets.NewCheckBox("agree", "同意协议")
+check := widgets.NewCheckBox("agree", "同意协议", widgets.ModeCustom)
 ```
 
 参数：
@@ -740,6 +777,10 @@ check := widgets.NewCheckBox("agree", "同意协议")
   - 复选框 ID。
 - `text string`
   - 标题文本。
+- `mode widgets.ControlMode`
+  - 控件后端模式。
+  - `widgets.ModeCustom` 为自绘复选框。
+  - `widgets.ModeNative` 为原生系统复选框。
 
 常用方法：
 
@@ -755,11 +796,12 @@ check := widgets.NewCheckBox("agree", "同意协议")
 - 默认主题下选中时会绘制居中的圆点标记。
 - 可以通过 `ChoiceStyle.IndicatorStyle` 切换为打钩样式。
 - 支持键盘焦点。
+- 原生模式下会使用系统复选框，主题外观和指示器绘制样式不会参与实际绘制。
 
 示例：
 
 ```go
-check := widgets.NewCheckBox("agree", "同意协议")
+check := widgets.NewCheckBox("agree", "同意协议", widgets.ModeCustom)
 check.SetBounds(core.Rect{X: 20, Y: 170, W: 200, H: 32})
 check.SetStyle(widgets.ChoiceStyle{
     IndicatorStyle: widgets.ChoiceIndicatorCheck,
@@ -779,7 +821,7 @@ scene.Root().Add(check)
 构造函数：
 
 ```go
-radio := widgets.NewRadioButton("planA", "方案 A")
+radio := widgets.NewRadioButton("planA", "方案 A", widgets.ModeCustom)
 ```
 
 参数：
@@ -788,6 +830,10 @@ radio := widgets.NewRadioButton("planA", "方案 A")
   - 单选按钮 ID。
 - `text string`
   - 标题文本。
+- `mode widgets.ControlMode`
+  - 控件后端模式。
+  - `widgets.ModeCustom` 为自绘单选按钮。
+  - `widgets.ModeNative` 为原生系统单选按钮。
 
 常用方法：
 
@@ -804,12 +850,13 @@ radio := widgets.NewRadioButton("planA", "方案 A")
 - 同一父容器下、`Group` 相同的单选按钮互斥。
 - 不在同一个 `Panel` 下时，即使分组名相同也不会互斥。
 - 默认使用圆点标记，也可以切换成打钩样式。
+- 原生模式下会使用系统单选按钮，主题外观和指示器绘制样式不会参与实际绘制。
 
 示例：
 
 ```go
-radioA := widgets.NewRadioButton("planA", "方案 A")
-radioB := widgets.NewRadioButton("planB", "方案 B")
+radioA := widgets.NewRadioButton("planA", "方案 A", widgets.ModeCustom)
+radioB := widgets.NewRadioButton("planB", "方案 B", widgets.ModeCustom)
 radioA.SetGroup("plan")
 radioB.SetGroup("plan")
 radioA.SetStyle(widgets.ChoiceStyle{
@@ -883,13 +930,17 @@ scene.Root().Add(list)
 构造函数：
 
 ```go
-combo := widgets.NewComboBox("city")
+combo := widgets.NewComboBox("city", widgets.ModeCustom)
 ```
 
 参数：
 
 - `id string`
   - 组合框 ID。
+- `mode widgets.ControlMode`
+  - 控件后端模式。
+  - `widgets.ModeCustom` 为自绘组合框。
+  - `widgets.ModeNative` 为原生系统组合框。
 
 常用方法：
 
@@ -912,11 +963,12 @@ combo := widgets.NewComboBox("city")
   - `Esc` 关闭下拉层
   - `Up` / `Down` 选择上一项或下一项
   - `Home` / `End` 跳到首项或末项
+- 原生模式下使用系统组合框，`Placeholder` 当前不会显示为系统占位文本。
 
 示例：
 
 ```go
-combo := widgets.NewComboBox("city")
+combo := widgets.NewComboBox("city", widgets.ModeCustom)
 combo.SetBounds(core.Rect{X: 260, Y: 220, W: 180, H: 36})
 combo.SetPlaceholder("请选择城市")
 combo.SetItems([]widgets.ListItem{
@@ -939,13 +991,17 @@ scene.Root().Add(combo)
 构造函数：
 
 ```go
-edit := widgets.NewEditBox("keyword")
+edit := widgets.NewEditBox("keyword", widgets.ModeCustom)
 ```
 
 参数：
 
 - `id string`
   - 输入框 ID。
+- `mode widgets.ControlMode`
+  - 控件后端模式。
+  - `widgets.ModeCustom` 为自绘输入框。
+  - `widgets.ModeNative` 为原生系统编辑框。
 
 常用方法：
 
@@ -967,11 +1023,12 @@ edit := widgets.NewEditBox("keyword")
   - `Backspace`
   - `Delete`
   - `Enter` 触发 `OnSubmit`
+- 原生模式下使用系统编辑框，主题外观字段不会参与实际绘制。
 
 示例：
 
 ```go
-edit := widgets.NewEditBox("keyword")
+edit := widgets.NewEditBox("keyword", widgets.ModeCustom)
 edit.SetBounds(core.Rect{X: 20, Y: 380, W: 240, H: 36})
 edit.SetPlaceholder("输入关键字")
 edit.SetOnChange(func(text string) {
@@ -1326,36 +1383,30 @@ scene.SetTheme(theme)
 - `Text` 和 `Title` 用于普通文本和标题文本样式。
 - 其余字段分别对应同名组件的默认样式。
 
-### 8.10 `ThemeOptions` 与硬核模式
+### 8.10 主题与原生控件后端的关系
 
 ```go
-theme := widgets.NewTheme(widgets.ThemeOptions{
-    HardMode: true,
-})
+theme := widgets.DefaultTheme()
+theme.Button.Background = core.RGB(30, 41, 59)
 scene.SetTheme(theme)
-```
-
-也可以直接在 `BindScene` 时传入：
-
-```go
-widgets.BindScene(&opts, widgets.SceneHooks{
-    Theme: widgets.NewTheme(widgets.ThemeOptions{
-        HardMode: true,
-    }),
-    OnCreate: func(_ *core.App, scene *widgets.Scene) error {
-        return nil
-    },
-})
 ```
 
 说明：
 
-- `widgets.DefaultTheme()` 等价于 `widgets.NewTheme(widgets.ThemeOptions{})`。
-- `HardMode`
-  - 启用后会切换到更接近系统原生控件的默认外观。
-  - 按钮、进度条、输入框、列表框、组合框等默认改为方角。
-  - 复选框默认改为打钩样式，单选按钮默认保留圆点样式。
-  - 进度条默认隐藏百分比气泡，减少装饰性绘制。
+- `Theme` 只控制自绘后端的默认外观。
+- 当控件以 `widgets.ModeNative` 创建时，按钮、输入框、单选框、复选框、组合框的外观主要由系统原生控件决定。
+- 原生模式下，`SetStyle(...)` 和主题字段里与绘制有关的颜色、圆角、边框、图标布局等参数通常不会体现在最终外观上。
+- 组件的文本、可见性、启用状态、选中状态、回调和数据项等行为仍然有效。
+
+如果你手动接线，原生模式还需要转发 `WM_COMMAND`：
+
+```go
+opts.OnCommand = func(_ *core.App, evt core.CommandEvent) bool {
+    return scene.HandleNativeCommand(evt)
+}
+```
+
+如果你使用 `widgets.BindScene(...)`，这一段不需要自己写。
 
 ## 9. 常见问题
 
@@ -1366,6 +1417,7 @@ widgets.BindScene(&opts, widgets.SceneHooks{
 - 没有把窗口事件转发给 `Scene`。
   - 最简单的做法是直接使用 `widgets.BindScene(...)`。
   - 如果你手动接线，至少要确保鼠标移动、离开、按下、抬起、滚轮、键盘、字符和焦点事件都转发到了 `Scene`。
+  - 如果你用了 `widgets.ModeNative` 的按钮、输入框、单选框、复选框或组合框，还要转发 `WM_COMMAND` 到 `scene.HandleNativeCommand(...)`。
 - 控件 `Visible` 为 `false`。
 - 控件 `Enabled` 为 `false`。
 - 控件边界为空，或者被其他控件遮挡。
@@ -1434,4 +1486,16 @@ reason := app.RenderFallbackReason()
 - 自动布局优先使用子控件的首选尺寸。
 - `SetLayoutData(...)` 会触发父容器重新布局。
 - `LinearLayout` 已经委托给 `RowLayout` / `ColumnLayout`，语义更接近“基于首选尺寸排版”，而不是“平均切块”。
+
+### 9.7 为什么原生模式下主题或样式看起来不生效？
+
+先确认控件是不是以 `widgets.ModeNative` 创建的。
+
+当前版本中：
+
+- `widgets.ModeNative` 会创建系统原生子控件。
+- 系统控件的外观主要由 Windows 控件本身决定。
+- `Theme` 和 `SetStyle(...)` 仍然可以保留代码层统一写法，但其中依赖自绘的颜色、圆角、阴影、图标布局、指示器绘制等参数通常不会影响原生控件外观。
+
+如果你需要完全可控的视觉样式，请改用 `widgets.ModeCustom`。
 

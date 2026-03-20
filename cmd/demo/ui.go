@@ -133,7 +133,7 @@ func (d *demoUI) initProgress() {
 
 // initChoices 初始化复选与单选控件。
 func (d *demoUI) initChoices() {
-	d.check = widgets.NewCheckBox("check", "Enable safe mode")
+	d.check = widgets.NewCheckBox("check", "Enable safe mode", widgets.ModeCustom)
 	d.check.SetStyle(widgets.ChoiceStyle{
 		HoverBorder:     core.RGB(20, 184, 166),
 		FocusBorder:     core.RGB(13, 148, 136),
@@ -148,7 +148,7 @@ func (d *demoUI) initChoices() {
 		d.status.SetText("Safe mode disabled")
 	})
 
-	d.radioA = widgets.NewRadioButton("radio-quick", "Quick install")
+	d.radioA = widgets.NewRadioButton("radio-quick", "Quick install", widgets.ModeCustom)
 	d.radioA.SetGroup("mode")
 	d.radioA.SetStyle(widgets.ChoiceStyle{
 		HoverBorder:     core.RGB(249, 115, 22),
@@ -163,7 +163,7 @@ func (d *demoUI) initChoices() {
 		}
 	})
 
-	d.radioB = widgets.NewRadioButton("radio-full", "Full install")
+	d.radioB = widgets.NewRadioButton("radio-full", "Full install", widgets.ModeCustom)
 	d.radioB.SetGroup("mode")
 	d.radioB.SetStyle(d.radioA.Style)
 	d.radioB.SetOnChange(func(checked bool) {
@@ -192,7 +192,7 @@ func (d *demoUI) initSelectors() {
 		d.status.SetText("List item: " + displayItem(item))
 	})
 
-	d.combo = widgets.NewComboBox("combo")
+	d.combo = widgets.NewComboBox("combo", widgets.ModeCustom)
 	d.combo.SetStyle(widgets.ComboStyle{
 		HoverBorder:       core.RGB(251, 191, 36),
 		FocusBorder:       core.RGB(249, 115, 22),
@@ -211,7 +211,7 @@ func (d *demoUI) initSelectors() {
 		d.status.SetText("Accent color: " + displayItem(item))
 	})
 
-	d.edit = widgets.NewEditBox("edit")
+	d.edit = widgets.NewEditBox("edit", widgets.ModeCustom)
 	d.edit.SetStyle(widgets.EditStyle{
 		HoverBorder: core.RGB(125, 211, 252),
 		FocusBorder: core.RGB(14, 165, 233),
@@ -234,7 +234,7 @@ func (d *demoUI) initButtons() {
 		color.RGBA{R: 191, G: 219, B: 254, A: 255},
 	)
 
-	d.btnStep = widgets.NewButton("step", "Advance")
+	d.btnStep = widgets.NewButton("step", "Advance", widgets.ModeCustom)
 	d.btnStep.SetKind(widgets.BtnLeft)
 	d.btnStep.SetIcon(d.stepIcon)
 	d.btnStep.SetStyle(widgets.ButtonStyle{
@@ -258,7 +258,7 @@ func (d *demoUI) initButtons() {
 		d.status.SetText("Progress updated")
 	})
 
-	d.btnReset = widgets.NewButton("reset", "Reset")
+	d.btnReset = widgets.NewButton("reset", "Reset", widgets.ModeCustom)
 	d.btnReset.SetStyle(widgets.ButtonStyle{
 		TextColor:    core.RGB(194, 65, 12),
 		DownText:     core.RGB(255, 255, 255),

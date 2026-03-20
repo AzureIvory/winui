@@ -88,7 +88,7 @@ go run ./cmd/demo
 
 组件用法、`BindScene` 接法、布局系统、`LayoutData` 约定、构造参数和样式字段说明见 [`WIDGETS.zh-CN.md`](./WIDGETS.zh-CN.md)。
 
-如需启用更接近系统原生控件的硬核模式，可以使用 `widgets.NewTheme(widgets.ThemeOptions{HardMode: true})` 并通过 `scene.SetTheme(...)` 或 `SceneHooks.Theme` 应用。
+`Button`、`EditBox`、`CheckBox`、`RadioButton`、`ComboBox` 在构造时支持通过 `mode` 参数切换自绘后端或原生系统 API 控件后端。
 
 源码中的函数、自定义类型、结构体字段和常量也统一补充了中文注释，便于直接从代码阅读 API 与内部行为。
 

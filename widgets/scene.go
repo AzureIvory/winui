@@ -250,17 +250,25 @@ type Scene struct {
 	timers map[uintptr]Widget
 	// nextTimerID 保存下一个自动分配的定时器标识。
 	nextTimerID uintptr
+
+	// nativeMu 保护原生子控件命令路由表。
+	nativeMu sync.RWMutex
+	// nativeTargets 保存原生子控件句柄到处理器的映射。
+	nativeTargets map[uintptr]nativeCommandHandler
+	// nextNativeID 保存下一个自动分配给原生子控件的命令标识。
+	nextNativeID uint16
 }
 
 // NewScene 创建一个新的场景。
 func NewScene(coreApp *core.App) *Scene {
 	root := NewPanel("scene-root")
 	scene := &Scene{
-		app:    coreApp,
-		root:   root,
-		theme:  DefaultTheme(),
-		fonts:  make(map[FontSpec]*core.Font),
-		timers: make(map[uintptr]Widget),
+		app:           coreApp,
+		root:          root,
+		theme:         DefaultTheme(),
+		fonts:         make(map[FontSpec]*core.Font),
+		timers:        make(map[uintptr]Widget),
+		nativeTargets: make(map[uintptr]nativeCommandHandler),
 	}
 	root.setScene(scene)
 	root.SetBounds(Rect{W: coreApp.ClientSize().Width, H: coreApp.ClientSize().Height})

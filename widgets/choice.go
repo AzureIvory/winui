@@ -9,6 +9,10 @@ import "github.com/AzureIvory/winui/core"
 type CheckBox struct {
 	// widgetBase 提供选项控件共享的基础控件能力。
 	widgetBase
+	// mode 表示复选框当前使用的后端模式。
+	mode ControlMode
+	// native 保存复选框在原生后端下的运行时状态。
+	native nativeControlState
 	// Text 保存复选框文本。
 	Text string
 	// Checked 记录当前是否已选中。
@@ -26,9 +30,10 @@ type CheckBox struct {
 }
 
 // NewCheckBox 创建一个新的多选框。
-func NewCheckBox(id, text string) *CheckBox {
+func NewCheckBox(id, text string, mode ControlMode) *CheckBox {
 	return &CheckBox{
 		widgetBase: newWidgetBase(id, "checkbox"),
+		mode:       normalizeControlMode(mode),
 		Text:       text,
 	}
 }
@@ -37,6 +42,7 @@ func NewCheckBox(id, text string) *CheckBox {
 func (c *CheckBox) SetBounds(rect Rect) {
 	c.runOnUI(func() {
 		c.widgetBase.setBounds(c, rect)
+		c.syncNativeBounds()
 	})
 }
 
@@ -44,6 +50,7 @@ func (c *CheckBox) SetBounds(rect Rect) {
 func (c *CheckBox) SetVisible(visible bool) {
 	c.runOnUI(func() {
 		c.widgetBase.setVisible(c, visible)
+		c.syncNativeVisible()
 	})
 }
 
@@ -51,6 +58,7 @@ func (c *CheckBox) SetVisible(visible bool) {
 func (c *CheckBox) SetEnabled(enabled bool) {
 	c.runOnUI(func() {
 		c.widgetBase.setEnabled(c, enabled)
+		c.syncNativeEnabled()
 	})
 }
 
@@ -61,6 +69,7 @@ func (c *CheckBox) SetText(text string) {
 			return
 		}
 		c.Text = text
+		c.syncNativeText()
 		c.invalidate(c)
 	})
 }
@@ -92,8 +101,19 @@ func (c *CheckBox) SetOnChange(fn func(bool)) {
 	})
 }
 
+// HitTest 判断给定点是否命中当前复选框。
+func (c *CheckBox) HitTest(x, y int32) bool {
+	if isNativeMode(c.mode) {
+		return false
+	}
+	return c.widgetBase.HitTest(x, y)
+}
+
 // OnEvent 处理输入事件或生命周期事件。
 func (c *CheckBox) OnEvent(evt Event) bool {
+	if isNativeMode(c.mode) {
+		return false
+	}
 	switch evt.Type {
 	case EventMouseEnter:
 		if !c.Hover {
@@ -141,7 +161,7 @@ func (c *CheckBox) OnEvent(evt Event) bool {
 
 // Paint 使用给定绘制上下文完成绘制。
 func (c *CheckBox) Paint(ctx *PaintCtx) {
-	if !c.Visible() || ctx == nil {
+	if isNativeMode(c.mode) || !c.Visible() || ctx == nil {
 		return
 	}
 
@@ -205,8 +225,142 @@ func (c *CheckBox) Paint(ctx *PaintCtx) {
 	})
 }
 
+// setScene 更新复选框关联的场景，并在原生模式下同步子控件生命周期。
+func (c *CheckBox) setScene(scene *Scene) {
+	current := c.scene()
+	if current != scene {
+		c.destroyNativeControl(current)
+	}
+	c.widgetBase.setScene(scene)
+	c.ensureNativeControl(scene)
+}
+
+// Close 释放复选框持有的原生后端资源。
+func (c *CheckBox) Close() error {
+	c.runOnUI(func() {
+		c.destroyNativeControl(c.scene())
+	})
+	return nil
+}
+
+// handleNativeCommand 处理原生复选框发送的命令通知。
+func (c *CheckBox) handleNativeCommand(code uint16) bool {
+	if !isNativeMode(c.mode) {
+		return false
+	}
+	switch code {
+	case nativeButtonSetFocus:
+		if scene := c.scene(); scene != nil {
+			scene.Blur()
+		}
+		return true
+	case nativeButtonClicked:
+		if !c.Enabled() {
+			return true
+		}
+		checked := sendNativeMessage(c.native.handle, nativeButtonGetCheck, 0, 0) == nativeButtonStateChecked
+		c.setChecked(checked, true)
+		return true
+	default:
+		return false
+	}
+}
+
+// ensureNativeControl 确保复选框在原生模式下已创建系统子控件。
+func (c *CheckBox) ensureNativeControl(scene *Scene) {
+	if !isNativeMode(c.mode) || scene == nil || scene.app == nil {
+		return
+	}
+	if c.native.valid() {
+		c.syncNativeBounds()
+		c.syncNativeVisible()
+		c.syncNativeEnabled()
+		c.syncNativeText()
+		c.syncNativeChecked()
+		return
+	}
+	commandID := scene.allocateNativeCommandID()
+	handle, err := createNativeControl(
+		scene,
+		"BUTTON",
+		c.Text,
+		nativeWindowChild|nativeWindowVisible|nativeWindowTabStop|nativeButtonCheckBox,
+		c.Bounds(),
+		commandID,
+	)
+	if err != nil {
+		return
+	}
+	c.native.handle = handle
+	c.native.commandID = commandID
+	scene.registerNativeControl(handle, c)
+	c.syncNativeBounds()
+	c.syncNativeVisible()
+	c.syncNativeEnabled()
+	c.syncNativeText()
+	c.syncNativeChecked()
+}
+
+// destroyNativeControl 销毁复选框对应的原生系统子控件。
+func (c *CheckBox) destroyNativeControl(scene *Scene) {
+	if !c.native.valid() {
+		c.native.commandID = 0
+		return
+	}
+	if scene != nil {
+		scene.unregisterNativeControl(c.native.handle)
+	}
+	destroyNativeControl(c.native.handle)
+	c.native.handle = 0
+	c.native.commandID = 0
+	c.native.oldWndProc = 0
+}
+
+// syncNativeBounds 同步复选框原生控件边界。
+func (c *CheckBox) syncNativeBounds() {
+	if c.native.valid() {
+		setNativeBounds(c.native.handle, c.Bounds())
+	}
+}
+
+// syncNativeVisible 同步复选框原生控件可见性。
+func (c *CheckBox) syncNativeVisible() {
+	if c.native.valid() {
+		setNativeVisible(c.native.handle, c.Visible())
+	}
+}
+
+// syncNativeEnabled 同步复选框原生控件启用状态。
+func (c *CheckBox) syncNativeEnabled() {
+	if c.native.valid() {
+		setNativeEnabled(c.native.handle, c.Enabled())
+	}
+}
+
+// syncNativeText 同步复选框原生控件文本。
+func (c *CheckBox) syncNativeText() {
+	if c.native.valid() {
+		setNativeText(c.native.handle, c.Text)
+	}
+}
+
+// syncNativeChecked 同步复选框原生控件勾选状态。
+func (c *CheckBox) syncNativeChecked() {
+	if !c.native.valid() {
+		return
+	}
+	state := uintptr(nativeButtonStateUnchecked)
+	if c.Checked {
+		state = nativeButtonStateChecked
+	}
+	sendNativeMessage(c.native.handle, nativeButtonSetCheck, state, 0)
+}
+
 // acceptsFocus 返回控件是否可接受键盘焦点。
 func (c *CheckBox) acceptsFocus() bool {
+	if isNativeMode(c.mode) {
+		return false
+	}
 	return true
 }
 
@@ -233,6 +387,7 @@ func (c *CheckBox) setChecked(checked bool, notify bool) {
 		return
 	}
 	c.Checked = checked
+	c.syncNativeChecked()
 	c.invalidate(c)
 	if notify && c.OnChange != nil {
 		c.OnChange(checked)
@@ -244,6 +399,10 @@ func (c *CheckBox) setChecked(checked bool, notify bool) {
 type RadioButton struct {
 	// widgetBase 提供选项控件共享的基础控件能力。
 	widgetBase
+	// mode 表示单选按钮当前使用的后端模式。
+	mode ControlMode
+	// native 保存单选按钮在原生后端下的运行时状态。
+	native nativeControlState
 	// Text 保存单选按钮文本。
 	Text string
 	// Group 指定互斥分组名称。
@@ -263,9 +422,10 @@ type RadioButton struct {
 }
 
 // NewRadioButton 创建一个新的单选按钮。
-func NewRadioButton(id, text string) *RadioButton {
+func NewRadioButton(id, text string, mode ControlMode) *RadioButton {
 	return &RadioButton{
 		widgetBase: newWidgetBase(id, "radio"),
+		mode:       normalizeControlMode(mode),
 		Text:       text,
 	}
 }
@@ -274,6 +434,7 @@ func NewRadioButton(id, text string) *RadioButton {
 func (r *RadioButton) SetBounds(rect Rect) {
 	r.runOnUI(func() {
 		r.widgetBase.setBounds(r, rect)
+		r.syncNativeBounds()
 	})
 }
 
@@ -281,6 +442,7 @@ func (r *RadioButton) SetBounds(rect Rect) {
 func (r *RadioButton) SetVisible(visible bool) {
 	r.runOnUI(func() {
 		r.widgetBase.setVisible(r, visible)
+		r.syncNativeVisible()
 	})
 }
 
@@ -288,6 +450,7 @@ func (r *RadioButton) SetVisible(visible bool) {
 func (r *RadioButton) SetEnabled(enabled bool) {
 	r.runOnUI(func() {
 		r.widgetBase.setEnabled(r, enabled)
+		r.syncNativeEnabled()
 	})
 }
 
@@ -298,6 +461,7 @@ func (r *RadioButton) SetText(text string) {
 			return
 		}
 		r.Text = text
+		r.syncNativeText()
 		r.invalidate(r)
 	})
 }
@@ -342,8 +506,19 @@ func (r *RadioButton) SetOnChange(fn func(bool)) {
 	})
 }
 
+// HitTest 判断给定点是否命中当前单选按钮。
+func (r *RadioButton) HitTest(x, y int32) bool {
+	if isNativeMode(r.mode) {
+		return false
+	}
+	return r.widgetBase.HitTest(x, y)
+}
+
 // OnEvent 处理输入事件或生命周期事件。
 func (r *RadioButton) OnEvent(evt Event) bool {
+	if isNativeMode(r.mode) {
+		return false
+	}
 	switch evt.Type {
 	case EventMouseEnter:
 		if !r.Hover {
@@ -391,7 +566,7 @@ func (r *RadioButton) OnEvent(evt Event) bool {
 
 // Paint 使用给定绘制上下文完成绘制。
 func (r *RadioButton) Paint(ctx *PaintCtx) {
-	if !r.Visible() || ctx == nil {
+	if isNativeMode(r.mode) || !r.Visible() || ctx == nil {
 		return
 	}
 
@@ -458,8 +633,140 @@ func (r *RadioButton) Paint(ctx *PaintCtx) {
 	})
 }
 
+// setScene 更新单选按钮关联的场景，并在原生模式下同步子控件生命周期。
+func (r *RadioButton) setScene(scene *Scene) {
+	current := r.scene()
+	if current != scene {
+		r.destroyNativeControl(current)
+	}
+	r.widgetBase.setScene(scene)
+	r.ensureNativeControl(scene)
+}
+
+// Close 释放单选按钮持有的原生后端资源。
+func (r *RadioButton) Close() error {
+	r.runOnUI(func() {
+		r.destroyNativeControl(r.scene())
+	})
+	return nil
+}
+
+// handleNativeCommand 处理原生单选按钮发送的命令通知。
+func (r *RadioButton) handleNativeCommand(code uint16) bool {
+	if !isNativeMode(r.mode) {
+		return false
+	}
+	switch code {
+	case nativeButtonSetFocus:
+		if scene := r.scene(); scene != nil {
+			scene.Blur()
+		}
+		return true
+	case nativeButtonClicked:
+		if r.Enabled() {
+			r.setChecked(true, true)
+		}
+		return true
+	default:
+		return false
+	}
+}
+
+// ensureNativeControl 确保单选按钮在原生模式下已创建系统子控件。
+func (r *RadioButton) ensureNativeControl(scene *Scene) {
+	if !isNativeMode(r.mode) || scene == nil || scene.app == nil {
+		return
+	}
+	if r.native.valid() {
+		r.syncNativeBounds()
+		r.syncNativeVisible()
+		r.syncNativeEnabled()
+		r.syncNativeText()
+		r.syncNativeChecked()
+		return
+	}
+	commandID := scene.allocateNativeCommandID()
+	handle, err := createNativeControl(
+		scene,
+		"BUTTON",
+		r.Text,
+		nativeWindowChild|nativeWindowVisible|nativeWindowTabStop|nativeButtonRadio,
+		r.Bounds(),
+		commandID,
+	)
+	if err != nil {
+		return
+	}
+	r.native.handle = handle
+	r.native.commandID = commandID
+	scene.registerNativeControl(handle, r)
+	r.syncNativeBounds()
+	r.syncNativeVisible()
+	r.syncNativeEnabled()
+	r.syncNativeText()
+	r.syncNativeChecked()
+}
+
+// destroyNativeControl 销毁单选按钮对应的原生系统子控件。
+func (r *RadioButton) destroyNativeControl(scene *Scene) {
+	if !r.native.valid() {
+		r.native.commandID = 0
+		return
+	}
+	if scene != nil {
+		scene.unregisterNativeControl(r.native.handle)
+	}
+	destroyNativeControl(r.native.handle)
+	r.native.handle = 0
+	r.native.commandID = 0
+	r.native.oldWndProc = 0
+}
+
+// syncNativeBounds 同步单选按钮原生控件边界。
+func (r *RadioButton) syncNativeBounds() {
+	if r.native.valid() {
+		setNativeBounds(r.native.handle, r.Bounds())
+	}
+}
+
+// syncNativeVisible 同步单选按钮原生控件可见性。
+func (r *RadioButton) syncNativeVisible() {
+	if r.native.valid() {
+		setNativeVisible(r.native.handle, r.Visible())
+	}
+}
+
+// syncNativeEnabled 同步单选按钮原生控件启用状态。
+func (r *RadioButton) syncNativeEnabled() {
+	if r.native.valid() {
+		setNativeEnabled(r.native.handle, r.Enabled())
+	}
+}
+
+// syncNativeText 同步单选按钮原生控件文本。
+func (r *RadioButton) syncNativeText() {
+	if r.native.valid() {
+		setNativeText(r.native.handle, r.Text)
+	}
+}
+
+// syncNativeChecked 同步单选按钮原生控件勾选状态。
+func (r *RadioButton) syncNativeChecked() {
+	if !r.native.valid() {
+		return
+	}
+	state := uintptr(nativeButtonStateUnchecked)
+	if r.Checked {
+		state = nativeButtonStateChecked
+	}
+	sendNativeMessage(r.native.handle, nativeButtonSetCheck, state, 0)
+}
+
 // acceptsFocus 返回控件是否可接受键盘焦点。
 func (r *RadioButton) acceptsFocus() bool {
+	if isNativeMode(r.mode) {
+		return false
+	}
 	return true
 }
 
@@ -486,6 +793,7 @@ func (r *RadioButton) setChecked(checked bool, notify bool) {
 		return
 	}
 	r.Checked = checked
+	r.syncNativeChecked()
 	if checked {
 		r.syncGroup(notify)
 	}
@@ -507,6 +815,7 @@ func (r *RadioButton) syncGroup(notify bool) {
 			continue
 		}
 		peer.Checked = false
+		peer.syncNativeChecked()
 		peer.invalidate(peer)
 		if notify && peer.OnChange != nil {
 			peer.OnChange(false)

@@ -2,12 +2,21 @@
 
 package widgets
 
-import "github.com/AzureIvory/winui/core"
+import (
+	"unsafe"
+
+	"github.com/AzureIvory/winui/core"
+	"golang.org/x/sys/windows"
+)
 
 // ComboBox 表示带弹出列表的选择控件。
 type ComboBox struct {
 	// widgetBase 提供组合框共享的基础控件能力。
 	widgetBase
+	// mode 表示组合框当前使用的后端模式。
+	mode ControlMode
+	// native 保存组合框在原生后端下的运行时状态。
+	native nativeControlState
 	// items 保存可选项目集合。
 	items []ListItem
 	// selected 保存当前选中索引。
@@ -27,9 +36,10 @@ type ComboBox struct {
 }
 
 // NewComboBox 创建一个新的组合框。
-func NewComboBox(id string) *ComboBox {
+func NewComboBox(id string, mode ControlMode) *ComboBox {
 	return &ComboBox{
 		widgetBase: newWidgetBase(id, "combobox"),
+		mode:       normalizeControlMode(mode),
 		selected:   -1,
 		hover:      -1,
 	}
@@ -39,6 +49,7 @@ func NewComboBox(id string) *ComboBox {
 func (c *ComboBox) SetBounds(rect Rect) {
 	c.runOnUI(func() {
 		c.widgetBase.setBounds(c, rect)
+		c.syncNativeBounds()
 		c.invalidateAll()
 	})
 }
@@ -50,6 +61,7 @@ func (c *ComboBox) SetVisible(visible bool) {
 			c.open = false
 		}
 		c.widgetBase.setVisible(c, visible)
+		c.syncNativeVisible()
 		c.invalidateAll()
 	})
 }
@@ -58,6 +70,7 @@ func (c *ComboBox) SetVisible(visible bool) {
 func (c *ComboBox) SetEnabled(enabled bool) {
 	c.runOnUI(func() {
 		c.widgetBase.setEnabled(c, enabled)
+		c.syncNativeEnabled()
 		c.invalidateAll()
 	})
 }
@@ -73,6 +86,8 @@ func (c *ComboBox) SetItems(items []ListItem) {
 		} else if c.selected >= len(c.items) {
 			c.selected = len(c.items) - 1
 		}
+		c.syncNativeItems()
+		c.syncNativeSelection()
 		c.invalidateAll()
 	})
 }
@@ -130,6 +145,9 @@ func (c *ComboBox) SetOnChange(fn func(int, ListItem)) {
 
 // HitTest 判断给定点是否命中当前控件。
 func (c *ComboBox) HitTest(x, y int32) bool {
+	if isNativeMode(c.mode) {
+		return false
+	}
 	if !c.Visible() {
 		return false
 	}
@@ -144,6 +162,9 @@ func (c *ComboBox) HitTest(x, y int32) bool {
 
 // OnEvent 处理输入事件或生命周期事件。
 func (c *ComboBox) OnEvent(evt Event) bool {
+	if isNativeMode(c.mode) {
+		return false
+	}
 	switch evt.Type {
 	case EventMouseMove:
 		if c.open {
@@ -211,7 +232,7 @@ func (c *ComboBox) OnEvent(evt Event) bool {
 
 // Paint 使用给定的绘制上下文完成绘制。
 func (c *ComboBox) Paint(ctx *PaintCtx) {
-	if !c.Visible() || ctx == nil {
+	if isNativeMode(c.mode) || !c.Visible() || ctx == nil {
 		return
 	}
 
@@ -274,7 +295,7 @@ func (c *ComboBox) Paint(ctx *PaintCtx) {
 
 // PaintOverlay 在常规控件树绘制完成后绘制覆盖层内容。
 func (c *ComboBox) PaintOverlay(ctx *PaintCtx) {
-	if !c.Visible() || !c.open || ctx == nil {
+	if isNativeMode(c.mode) || !c.Visible() || !c.open || ctx == nil {
 		return
 	}
 
@@ -321,13 +342,166 @@ func (c *ComboBox) PaintOverlay(ctx *PaintCtx) {
 	}
 }
 
+// setScene 更新组合框关联的场景，并在原生模式下同步子控件生命周期。
+func (c *ComboBox) setScene(scene *Scene) {
+	current := c.scene()
+	if current != scene {
+		c.destroyNativeControl(current)
+	}
+	c.widgetBase.setScene(scene)
+	c.ensureNativeControl(scene)
+}
+
+// Close 释放组合框持有的原生后端资源。
+func (c *ComboBox) Close() error {
+	c.runOnUI(func() {
+		c.destroyNativeControl(c.scene())
+	})
+	return nil
+}
+
+// handleNativeCommand 处理原生组合框发送的命令通知。
+func (c *ComboBox) handleNativeCommand(code uint16) bool {
+	if !isNativeMode(c.mode) {
+		return false
+	}
+	switch code {
+	case nativeComboSetFocus:
+		if scene := c.scene(); scene != nil {
+			scene.Blur()
+		}
+		return true
+	case nativeComboSelectionChanged:
+		index := int(int32(sendNativeMessage(c.native.handle, nativeComboGetCurSel, 0, 0)))
+		if index < 0 || index >= len(c.items) || c.items[index].Disabled {
+			c.syncNativeSelection()
+			return true
+		}
+		if c.selected == index {
+			return true
+		}
+		c.selected = index
+		c.invalidateAll()
+		if c.OnChange != nil {
+			c.OnChange(index, c.items[index])
+		}
+		return true
+	default:
+		return false
+	}
+}
+
+// ensureNativeControl 确保组合框在原生模式下已创建系统子控件。
+func (c *ComboBox) ensureNativeControl(scene *Scene) {
+	if !isNativeMode(c.mode) || scene == nil || scene.app == nil {
+		return
+	}
+	if c.native.valid() {
+		c.syncNativeBounds()
+		c.syncNativeVisible()
+		c.syncNativeEnabled()
+		c.syncNativeItems()
+		c.syncNativeSelection()
+		return
+	}
+	commandID := scene.allocateNativeCommandID()
+	handle, err := createNativeControl(
+		scene,
+		"COMBOBOX",
+		"",
+		nativeWindowChild|nativeWindowVisible|nativeWindowTabStop|nativeWindowVScroll|nativeComboDropDownList,
+		c.Bounds(),
+		commandID,
+	)
+	if err != nil {
+		return
+	}
+	c.native.handle = handle
+	c.native.commandID = commandID
+	scene.registerNativeControl(handle, c)
+	c.syncNativeBounds()
+	c.syncNativeVisible()
+	c.syncNativeEnabled()
+	c.syncNativeItems()
+	c.syncNativeSelection()
+}
+
+// destroyNativeControl 销毁组合框对应的原生系统子控件。
+func (c *ComboBox) destroyNativeControl(scene *Scene) {
+	if !c.native.valid() {
+		c.native.commandID = 0
+		return
+	}
+	if scene != nil {
+		scene.unregisterNativeControl(c.native.handle)
+	}
+	destroyNativeControl(c.native.handle)
+	c.native.handle = 0
+	c.native.commandID = 0
+	c.native.oldWndProc = 0
+}
+
+// syncNativeBounds 同步组合框原生控件边界。
+func (c *ComboBox) syncNativeBounds() {
+	if c.native.valid() {
+		setNativeBounds(c.native.handle, c.Bounds())
+	}
+}
+
+// syncNativeVisible 同步组合框原生控件可见性。
+func (c *ComboBox) syncNativeVisible() {
+	if c.native.valid() {
+		setNativeVisible(c.native.handle, c.Visible())
+	}
+}
+
+// syncNativeEnabled 同步组合框原生控件启用状态。
+func (c *ComboBox) syncNativeEnabled() {
+	if c.native.valid() {
+		setNativeEnabled(c.native.handle, c.Enabled())
+	}
+}
+
+// syncNativeItems 同步组合框原生控件的项目列表。
+func (c *ComboBox) syncNativeItems() {
+	if !c.native.valid() {
+		return
+	}
+	sendNativeMessage(c.native.handle, nativeComboResetContent, 0, 0)
+	for _, item := range c.items {
+		ptr, err := windows.UTF16PtrFromString(item.displayText())
+		if err != nil {
+			continue
+		}
+		sendNativeMessage(c.native.handle, nativeComboAddString, 0, uintptr(unsafe.Pointer(ptr)))
+	}
+}
+
+// syncNativeSelection 同步组合框原生控件的当前选择。
+func (c *ComboBox) syncNativeSelection() {
+	if !c.native.valid() {
+		return
+	}
+	if c.selected < 0 || c.selected >= len(c.items) || c.items[c.selected].Disabled {
+		sendNativeMessage(c.native.handle, nativeComboSetCurSel, ^uintptr(0), 0)
+		return
+	}
+	sendNativeMessage(c.native.handle, nativeComboSetCurSel, uintptr(c.selected), 0)
+}
+
 // acceptsFocus 返回控件是否可接收键盘焦点。
 func (c *ComboBox) acceptsFocus() bool {
+	if isNativeMode(c.mode) {
+		return false
+	}
 	return true
 }
 
 // cursor 返回悬停控件时应使用的光标。
 func (c *ComboBox) cursor() CursorID {
+	if isNativeMode(c.mode) {
+		return core.CursorArrow
+	}
 	if !c.Enabled() {
 		return core.CursorArrow
 	}
@@ -436,6 +610,7 @@ func (c *ComboBox) selectIndex(index int, notify bool) {
 		return
 	}
 	c.selected = index
+	c.syncNativeSelection()
 	c.invalidateAll()
 	if notify && c.OnChange != nil {
 		c.OnChange(index, c.items[index])

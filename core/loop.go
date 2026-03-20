@@ -147,6 +147,11 @@ func appWndProc(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr {
 		}
 		return 0
 
+	case wmCommand:
+		if app.opts.OnCommand != nil && app.opts.OnCommand(app, commandFromMessage(wParam, lParam)) {
+			return 0
+		}
+
 	case wmDPICHanged:
 		info, suggested := dpiChangeFromMessage(wParam, lParam, app.DPI())
 		app.setDPI(info)
@@ -214,6 +219,15 @@ func (a *App) runLoop() int {
 			procTranslateMessage.Call(uintptr(unsafe.Pointer(&message)))
 			procDispatchMessageW.Call(uintptr(unsafe.Pointer(&message)))
 		}
+	}
+}
+
+// commandFromMessage 从 WM_COMMAND 参数中解析原生控件通知。
+func commandFromMessage(wParam, lParam uintptr) CommandEvent {
+	return CommandEvent{
+		ID:     uint16(wParam & 0xFFFF),
+		Code:   uint16((wParam >> 16) & 0xFFFF),
+		Handle: windows.Handle(lParam),
 	}
 }
 

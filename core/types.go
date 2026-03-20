@@ -85,6 +85,16 @@ type KeyEvent struct {
 	Flags uintptr
 }
 
+// CommandEvent 描述原生子控件通过 WM_COMMAND 发送的通知。
+type CommandEvent struct {
+	// ID 表示子控件的命令标识。
+	ID uint16
+	// Code 表示通知码，例如 BN_CLICKED、EN_CHANGE、CBN_SELCHANGE。
+	Code uint16
+	// Handle 表示触发通知的原生子控件句柄。
+	Handle windows.Handle
+}
+
 // Options 定义创建 App 时使用的窗口参数和事件回调。
 type Options struct {
 	// ClassName 指定 Win32 窗口类名。
@@ -134,6 +144,8 @@ type Options struct {
 	OnFocus func(*App, bool)
 	// OnTimer 在窗口定时器触发时调用。
 	OnTimer func(*App, uintptr)
+	// OnCommand 在窗口收到原生子控件命令通知时触发。
+	OnCommand func(*App, CommandEvent) bool
 	// OnDPIChanged 在窗口 DPI 变化时触发。
 	OnDPIChanged func(*App, DPIInfo)
 	// OnDestroy 在窗口销毁前触发。
@@ -271,6 +283,8 @@ const (
 	wmChar = 0x0102
 	// wmTimer 表示定时器消息。
 	wmTimer = 0x0113
+	// wmCommand 表示子控件命令通知消息。
+	wmCommand = 0x0111
 	// wmMouseMove 表示鼠标移动消息。
 	wmMouseMove = 0x0200
 	// wmLButtonDown 表示鼠标左键按下消息。

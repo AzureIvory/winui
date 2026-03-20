@@ -14,29 +14,12 @@ func TestChoiceStyleIndicatorStyleMerges(t *testing.T) {
 	}
 }
 
-// TestNewThemeHardModeUsesSharpDefaults 验证硬核模式会切换到更接近系统原生的默认外观。
-func TestNewThemeHardModeUsesSharpDefaults(t *testing.T) {
-	theme := NewTheme(ThemeOptions{HardMode: true})
-
-	if theme.Button.CornerRadius != 0 {
-		t.Fatalf("expected button corner radius 0, got %d", theme.Button.CornerRadius)
+// TestControlModeNormalization 验证控件后端模式会规范化为已知值。
+func TestControlModeNormalization(t *testing.T) {
+	if got := normalizeControlMode(ModeNative); got != ModeNative {
+		t.Fatalf("expected native mode preserved, got %v", got)
 	}
-	if theme.Progress.CornerRadius != 0 {
-		t.Fatalf("expected progress corner radius 0, got %d", theme.Progress.CornerRadius)
-	}
-	if theme.Progress.ShowPercent {
-		t.Fatalf("expected hard mode progress to hide percent bubble")
-	}
-	if theme.CheckBox.IndicatorStyle != ChoiceIndicatorCheck {
-		t.Fatalf("expected hard mode checkbox to use check style, got %v", theme.CheckBox.IndicatorStyle)
-	}
-	if theme.RadioButton.IndicatorStyle != ChoiceIndicatorDot {
-		t.Fatalf("expected hard mode radio button to keep dot style, got %v", theme.RadioButton.IndicatorStyle)
-	}
-	if theme.ComboBox.CornerRadius != 0 {
-		t.Fatalf("expected combo box corner radius 0, got %d", theme.ComboBox.CornerRadius)
-	}
-	if theme.Edit.CornerRadius != 0 {
-		t.Fatalf("expected edit box corner radius 0, got %d", theme.Edit.CornerRadius)
+	if got := normalizeControlMode(ControlMode(99)); got != ModeCustom {
+		t.Fatalf("expected unknown mode fallback to custom, got %v", got)
 	}
 }

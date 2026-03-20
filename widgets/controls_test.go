@@ -9,7 +9,7 @@ import (
 
 // TestCheckBoxToggle 测试复选框切换。
 func TestCheckBoxToggle(t *testing.T) {
-	check := NewCheckBox("check", "demo")
+	check := NewCheckBox("check", "demo", ModeCustom)
 
 	changed := false
 	check.SetOnChange(func(checked bool) {
@@ -28,8 +28,8 @@ func TestCheckBoxToggle(t *testing.T) {
 // TestRadioButtonGroup 测试单选按钮分组。
 func TestRadioButtonGroup(t *testing.T) {
 	panel := NewPanel("root")
-	left := NewRadioButton("left", "Left")
-	right := NewRadioButton("right", "Right")
+	left := NewRadioButton("left", "Left", ModeCustom)
+	right := NewRadioButton("right", "Right", ModeCustom)
 	left.SetGroup("mode")
 	right.SetGroup("mode")
 
@@ -48,7 +48,7 @@ func TestRadioButtonGroup(t *testing.T) {
 
 // TestComboBoxSelectByClick 测试组合框点击选择。
 func TestComboBoxSelectByClick(t *testing.T) {
-	combo := NewComboBox("combo")
+	combo := NewComboBox("combo", ModeCustom)
 	combo.SetBounds(Rect{X: 0, Y: 0, W: 200, H: 40})
 	combo.SetItems([]ListItem{
 		{Value: "a", Text: "Alpha"},
@@ -72,7 +72,7 @@ func TestComboBoxSelectByClick(t *testing.T) {
 
 // TestEditBoxTyping 测试编辑框输入。
 func TestEditBoxTyping(t *testing.T) {
-	edit := NewEditBox("edit")
+	edit := NewEditBox("edit", ModeCustom)
 	edit.OnEvent(Event{Type: EventFocus})
 	edit.OnEvent(Event{Type: EventChar, Rune: 'A'})
 	edit.OnEvent(Event{Type: EventChar, Rune: 'B'})

@@ -20,6 +20,10 @@ const (
 type Button struct {
 	// widgetBase 提供按钮共享的基础控件能力。
 	widgetBase
+	// mode 表示按钮当前使用的后端模式。
+	mode ControlMode
+	// native 保存按钮在原生后端下的运行时状态。
+	native nativeControlState
 	// Text 保存按钮显示文本。
 	Text string
 	// Icon 保存按钮显示图标。
@@ -37,9 +41,10 @@ type Button struct {
 }
 
 // NewButton 创建一个新的按钮控件。
-func NewButton(id, text string) *Button {
+func NewButton(id, text string, mode ControlMode) *Button {
 	return &Button{
 		widgetBase: newWidgetBase(id, "button"),
+		mode:       normalizeControlMode(mode),
 		Text:       text,
 	}
 }
@@ -48,6 +53,7 @@ func NewButton(id, text string) *Button {
 func (b *Button) SetBounds(rect Rect) {
 	b.runOnUI(func() {
 		b.widgetBase.setBounds(b, rect)
+		b.syncNativeBounds()
 	})
 }
 
@@ -55,6 +61,7 @@ func (b *Button) SetBounds(rect Rect) {
 func (b *Button) SetVisible(visible bool) {
 	b.runOnUI(func() {
 		b.widgetBase.setVisible(b, visible)
+		b.syncNativeVisible()
 	})
 }
 
@@ -62,6 +69,7 @@ func (b *Button) SetVisible(visible bool) {
 func (b *Button) SetEnabled(enabled bool) {
 	b.runOnUI(func() {
 		b.widgetBase.setEnabled(b, enabled)
+		b.syncNativeEnabled()
 	})
 }
 
@@ -72,6 +80,7 @@ func (b *Button) SetText(text string) {
 			return
 		}
 		b.Text = text
+		b.syncNativeText()
 		b.invalidate(b)
 	})
 }
@@ -119,6 +128,14 @@ func (b *Button) SetOnClick(fn func()) {
 	})
 }
 
+// HitTest 判断给定点是否命中当前按钮。
+func (b *Button) HitTest(x, y int32) bool {
+	if isNativeMode(b.mode) {
+		return false
+	}
+	return b.widgetBase.HitTest(x, y)
+}
+
 // cursor 返回悬停按钮时应使用的光标。
 func (b *Button) cursor() CursorID {
 	if !b.Enabled() {
@@ -129,6 +146,9 @@ func (b *Button) cursor() CursorID {
 
 // OnEvent 处理输入事件或生命周期事件。
 func (b *Button) OnEvent(evt Event) bool {
+	if isNativeMode(b.mode) {
+		return false
+	}
 	switch evt.Type {
 	case EventMouseEnter:
 		if !b.Hover {
@@ -165,7 +185,7 @@ func (b *Button) OnEvent(evt Event) bool {
 
 // Paint 使用给定绘制上下文完成按钮绘制。
 func (b *Button) Paint(ctx *PaintCtx) {
-	if !b.Visible() || ctx == nil {
+	if isNativeMode(b.mode) || !b.Visible() || ctx == nil {
 		return
 	}
 
@@ -216,6 +236,121 @@ func (b *Button) Paint(ctx *PaintCtx) {
 		b.drawLeftIconButton(ctx, bounds, style, textColor)
 	default:
 		b.drawTopIconButton(ctx, bounds, style, textColor)
+	}
+}
+
+// setScene 更新按钮关联的场景，并在原生模式下同步子控件生命周期。
+func (b *Button) setScene(scene *Scene) {
+	current := b.scene()
+	if current != scene {
+		b.destroyNativeControl(current)
+	}
+	b.widgetBase.setScene(scene)
+	b.ensureNativeControl(scene)
+}
+
+// Close 释放按钮持有的原生后端资源。
+func (b *Button) Close() error {
+	b.runOnUI(func() {
+		b.destroyNativeControl(b.scene())
+	})
+	return nil
+}
+
+// handleNativeCommand 处理原生按钮发送的命令通知。
+func (b *Button) handleNativeCommand(code uint16) bool {
+	if !isNativeMode(b.mode) {
+		return false
+	}
+	switch code {
+	case nativeButtonSetFocus:
+		if scene := b.scene(); scene != nil {
+			scene.Blur()
+		}
+		return true
+	case nativeButtonClicked:
+		if b.Enabled() && b.OnClick != nil {
+			b.OnClick()
+		}
+		return true
+	default:
+		return false
+	}
+}
+
+// ensureNativeControl 确保按钮在原生模式下已创建对应的系统子控件。
+func (b *Button) ensureNativeControl(scene *Scene) {
+	if !isNativeMode(b.mode) || scene == nil || scene.app == nil {
+		return
+	}
+	if b.native.valid() {
+		b.syncNativeBounds()
+		b.syncNativeVisible()
+		b.syncNativeEnabled()
+		b.syncNativeText()
+		return
+	}
+	commandID := scene.allocateNativeCommandID()
+	handle, err := createNativeControl(
+		scene,
+		"BUTTON",
+		b.Text,
+		nativeWindowChild|nativeWindowVisible|nativeWindowTabStop|nativeButtonPush,
+		b.Bounds(),
+		commandID,
+	)
+	if err != nil {
+		return
+	}
+	b.native.handle = handle
+	b.native.commandID = commandID
+	scene.registerNativeControl(handle, b)
+	b.syncNativeBounds()
+	b.syncNativeVisible()
+	b.syncNativeEnabled()
+	b.syncNativeText()
+}
+
+// destroyNativeControl 销毁按钮对应的原生系统子控件。
+func (b *Button) destroyNativeControl(scene *Scene) {
+	if !b.native.valid() {
+		b.native.commandID = 0
+		return
+	}
+	if scene != nil {
+		scene.unregisterNativeControl(b.native.handle)
+	}
+	destroyNativeControl(b.native.handle)
+	b.native.handle = 0
+	b.native.commandID = 0
+	b.native.oldWndProc = 0
+}
+
+// syncNativeBounds 同步按钮原生控件边界。
+func (b *Button) syncNativeBounds() {
+	if b.native.valid() {
+		setNativeBounds(b.native.handle, b.Bounds())
+	}
+}
+
+// syncNativeVisible 同步按钮原生控件可见性。
+func (b *Button) syncNativeVisible() {
+	if b.native.valid() {
+		setNativeVisible(b.native.handle, b.Visible())
+	}
+}
+
+// syncNativeEnabled 同步按钮原生控件启用状态。
+func (b *Button) syncNativeEnabled() {
+	if b.native.valid() {
+		setNativeEnabled(b.native.handle, b.Enabled())
+	}
+}
+
+// syncNativeText 同步按钮原生控件文本。
+func (b *Button) syncNativeText() {
+	if b.native.valid() {
+		setNativeText(b.native.handle, b.Text)
 	}
 }
 

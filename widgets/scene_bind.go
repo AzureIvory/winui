@@ -63,6 +63,7 @@ func BindScene(opts *core.Options, hooks SceneHooks) *SceneRef {
 	prevChar := opts.OnChar
 	prevFocus := opts.OnFocus
 	prevTimer := opts.OnTimer
+	prevCommand := opts.OnCommand
 	prevDPIChanged := opts.OnDPIChanged
 	prevDestroy := opts.OnDestroy
 
@@ -213,6 +214,18 @@ func BindScene(opts *core.Options, hooks SceneHooks) *SceneRef {
 		if scene != nil && hooks.OnTimer != nil {
 			hooks.OnTimer(app, scene, id)
 		}
+	}
+
+	opts.OnCommand = func(app *core.App, evt core.CommandEvent) bool {
+		scene := ref.Scene()
+		handled := false
+		if scene != nil {
+			handled = scene.HandleNativeCommand(evt)
+		}
+		if prevCommand != nil && prevCommand(app, evt) {
+			handled = true
+		}
+		return handled
 	}
 
 	opts.OnDPIChanged = func(app *core.App, info core.DPIInfo) {
