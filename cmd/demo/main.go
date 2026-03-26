@@ -2,6 +2,8 @@
 
 package main
 
+//go:generate rsrc -manifest main.manifest -o manifest.syso
+
 import (
 	"os"
 	"strings"

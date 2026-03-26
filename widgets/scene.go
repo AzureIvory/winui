@@ -629,7 +629,11 @@ func (s *Scene) pathTo(target Widget) []Widget {
 
 // dispatchMouseMove 在场景中分发鼠标移动事件。
 func (s *Scene) dispatchMouseMove(evt Event) bool {
-	hit := s.hitTest(s.root, evt.Point.X, evt.Point.Y)
+	preferred := s.capture
+	if preferred == nil {
+		preferred = s.hover
+	}
+	hit := s.mouseTargetAt(evt.Point.X, evt.Point.Y, preferred)
 	eventTarget := hit
 	if s.capture != nil {
 		eventTarget = s.capture
@@ -645,11 +649,7 @@ func (s *Scene) dispatchMouseMove(evt Event) bool {
 		}
 	}
 
-	if hit != nil {
-		s.app.SetCursor(cursorFor(hit))
-	} else {
-		s.app.SetCursor(core.CursorArrow)
-	}
+	s.setCursorForTarget(hit)
 
 	if eventTarget != nil {
 		return s.routeEvent(eventTarget, evt)
@@ -660,24 +660,24 @@ func (s *Scene) dispatchMouseMove(evt Event) bool {
 // dispatchMouseLeave 在场景中分发鼠标离开事件。
 func (s *Scene) dispatchMouseLeave(evt Event) bool {
 	if s.hover == nil {
-		s.app.SetCursor(core.CursorArrow)
+		s.setCursorForTarget(nil)
 		return false
 	}
 	target := s.hover
 	s.hover = nil
-	s.app.SetCursor(core.CursorArrow)
+	s.setCursorForTarget(nil)
 	return s.routeEvent(target, Event{Type: EventMouseLeave, Point: evt.Point, Source: target})
 }
 
 // dispatchMouseDown 在场景中分发鼠标按下事件。
 func (s *Scene) dispatchMouseDown(evt Event) bool {
-	target := s.hitTest(s.root, evt.Point.X, evt.Point.Y)
+	target := s.mouseTargetAt(evt.Point.X, evt.Point.Y, s.hover)
 	s.setFocus(target)
 	if target == nil {
 		return false
 	}
 	s.capture = target
-	s.app.CaptureMouse()
+	s.captureMouse()
 	return s.routeEvent(target, evt)
 }
 
@@ -685,9 +685,9 @@ func (s *Scene) dispatchMouseDown(evt Event) bool {
 func (s *Scene) dispatchMouseUp(evt Event) bool {
 	target := s.capture
 	s.capture = nil
-	s.app.ReleaseMouse()
+	s.releaseMouse()
 
-	hit := s.hitTest(s.root, evt.Point.X, evt.Point.Y)
+	hit := s.mouseTargetAt(evt.Point.X, evt.Point.Y, target)
 	if target == nil {
 		target = hit
 	}
@@ -711,7 +711,7 @@ func (s *Scene) dispatchMouseUp(evt Event) bool {
 func (s *Scene) dispatchMouseWheel(evt Event) bool {
 	target := s.capture
 	if target == nil {
-		target = s.hitTest(s.root, evt.Point.X, evt.Point.Y)
+		target = s.mouseTargetAt(evt.Point.X, evt.Point.Y, s.hover)
 	}
 	if target == nil {
 		return false
@@ -736,6 +736,70 @@ func (s *Scene) hitTest(widget Widget, x, y int32) Widget {
 		return widget
 	}
 	return nil
+}
+
+func (s *Scene) hitTestOverlay(widget Widget, x, y int32) Widget {
+	if widget == nil || !widget.Visible() || !widget.Enabled() {
+		return nil
+	}
+	if overlay, ok := widget.(overlayHitWidget); ok && overlay.overlayHitTest(x, y) {
+		return widget
+	}
+	if container, ok := widget.(Container); ok {
+		children := container.Children()
+		for i := len(children) - 1; i >= 0; i-- {
+			if hit := s.hitTestOverlay(children[i], x, y); hit != nil {
+				return hit
+			}
+		}
+	}
+	return nil
+}
+
+func (s *Scene) mouseTargetAt(x, y int32, preferred Widget) Widget {
+	hit := s.hitTestOverlay(s.root, x, y)
+	if hit == nil {
+		hit = s.hitTest(s.root, x, y)
+	}
+	return s.stabilizeMouseTarget(preferred, hit, x, y)
+}
+
+func (s *Scene) stabilizeMouseTarget(preferred, hit Widget, x, y int32) Widget {
+	if preferred == nil || preferred == hit || !widgetMouseHit(preferred, x, y) {
+		return hit
+	}
+	if hit == nil {
+		return preferred
+	}
+	if cursorFor(preferred) != core.CursorArrow && cursorFor(hit) == core.CursorArrow {
+		return preferred
+	}
+	return hit
+}
+
+func (s *Scene) setCursorForTarget(target Widget) {
+	if s == nil || s.app == nil {
+		return
+	}
+	if target == nil {
+		s.app.SetCursor(core.CursorArrow)
+		return
+	}
+	s.app.SetCursor(cursorFor(target))
+}
+
+func (s *Scene) captureMouse() {
+	if s == nil || s.app == nil {
+		return
+	}
+	s.app.CaptureMouse()
+}
+
+func (s *Scene) releaseMouse() {
+	if s == nil || s.app == nil {
+		return
+	}
+	s.app.ReleaseMouse()
 }
 
 // setFocus 更新场景焦点。
@@ -781,6 +845,16 @@ func cursorFor(widget Widget) core.CursorID {
 		return node.cursor()
 	}
 	return core.CursorArrow
+}
+
+func widgetMouseHit(widget Widget, x, y int32) bool {
+	if widget == nil || !widget.Visible() || !widget.Enabled() {
+		return false
+	}
+	if overlay, ok := widget.(overlayHitWidget); ok && overlay.overlayHitTest(x, y) {
+		return true
+	}
+	return widget.HitTest(x, y)
 }
 
 // clampValue 将值限制在给定的闭区间内。

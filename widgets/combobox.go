@@ -160,6 +160,13 @@ func (c *ComboBox) HitTest(x, y int32) bool {
 	return false
 }
 
+func (c *ComboBox) overlayHitTest(x, y int32) bool {
+	if isNativeMode(c.mode) || !c.Visible() || !c.open {
+		return false
+	}
+	return c.popupRect().Contains(x, y)
+}
+
 // OnEvent 处理输入事件或生命周期事件。
 func (c *ComboBox) OnEvent(evt Event) bool {
 	if isNativeMode(c.mode) {

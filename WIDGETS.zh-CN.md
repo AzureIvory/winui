@@ -218,6 +218,8 @@ opts.OnCommand = func(_ *core.App, evt core.CommandEvent) bool {
 }
 ```
 
+如果你希望 `ModeNative` 的控件显示为带 Win10/Win11 visual styles 的系统控件，最终 `main` 可执行程序还需要嵌入 `Microsoft.Windows.Common-Controls` v6 manifest。仅仅切到 `ModeNative`，但宿主进程没有 manifest，控件通常会退回到非常老的经典样式。
+
 ### 2.4 列表项类型 `ListItem`
 
 ```go
@@ -1498,4 +1500,18 @@ reason := app.RenderFallbackReason()
 - `Theme` 和 `SetStyle(...)` 仍然可以保留代码层统一写法，但其中依赖自绘的颜色、圆角、阴影、图标布局、指示器绘制等参数通常不会影响原生控件外观。
 
 如果你需要完全可控的视觉样式，请改用 `widgets.ModeCustom`。
+
+### 9.8 为什么原生控件看起来像 XP/Classic？
+
+这通常不是控件创建失败，而是宿主进程没有启用 visual styles。
+
+排查顺序：
+
+- 先确认控件是不是以 `widgets.ModeNative` 创建的。
+- 再确认最终 `main` 可执行程序是否嵌入了 `Microsoft.Windows.Common-Controls` v6 manifest。
+- 如果你使用 `widgets.BindScene(...)`，`WM_COMMAND` 已经自动接好；如果你手动接线，还要自己转发 `OnCommand`。
+
+对于这个仓库里的 demo，`cmd/demo/main.manifest` 已经提供了对应 manifest，并通过 `manifest.syso` 编进可执行程序。
+
+对于你自己的应用，manifest 必须加在你的 `main` 包生成的 EXE 上；库本身不能替宿主进程自动开启 visual styles。
 

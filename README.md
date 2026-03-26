@@ -90,6 +90,8 @@ go run ./cmd/demo
 
 `Button`、`EditBox`、`CheckBox`、`RadioButton`、`ComboBox` 在构造时支持通过 `mode` 参数切换自绘后端或原生系统 API 控件后端。
 
+如果你要让 `ModeNative` 控件显示为带 Win10/Win11 visual styles 的系统控件，最终 `main` 可执行程序还需要嵌入 `Microsoft.Windows.Common-Controls` v6 manifest；只改库代码不够。
+
 源码中的函数、自定义类型、结构体字段和常量也统一补充了中文注释，便于直接从代码阅读 API 与内部行为。
 
 ## 开发
