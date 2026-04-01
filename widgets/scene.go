@@ -671,7 +671,10 @@ func (s *Scene) dispatchMouseLeave(evt Event) bool {
 
 // dispatchMouseDown 在场景中分发鼠标按下事件。
 func (s *Scene) dispatchMouseDown(evt Event) bool {
-	target := s.mouseTargetAt(evt.Point.X, evt.Point.Y, s.hover)
+	target := s.overlayTargetAt(evt.Point.X, evt.Point.Y)
+	if target == nil {
+		target = s.mouseTargetAt(evt.Point.X, evt.Point.Y, s.hover)
+	}
 	s.setFocus(target)
 	if target == nil {
 		return false
@@ -687,7 +690,10 @@ func (s *Scene) dispatchMouseUp(evt Event) bool {
 	s.capture = nil
 	s.releaseMouse()
 
-	hit := s.mouseTargetAt(evt.Point.X, evt.Point.Y, target)
+	hit := s.overlayTargetAt(evt.Point.X, evt.Point.Y)
+	if hit == nil {
+		hit = s.mouseTargetAt(evt.Point.X, evt.Point.Y, target)
+	}
 	if target == nil {
 		target = hit
 	}
@@ -742,9 +748,6 @@ func (s *Scene) hitTestOverlay(widget Widget, x, y int32) Widget {
 	if widget == nil || !widget.Visible() || !widget.Enabled() {
 		return nil
 	}
-	if overlay, ok := widget.(overlayHitWidget); ok && overlay.overlayHitTest(x, y) {
-		return widget
-	}
 	if container, ok := widget.(Container); ok {
 		children := container.Children()
 		for i := len(children) - 1; i >= 0; i-- {
@@ -753,14 +756,25 @@ func (s *Scene) hitTestOverlay(widget Widget, x, y int32) Widget {
 			}
 		}
 	}
+	if overlay, ok := widget.(overlayHitWidget); ok && overlay.overlayHitTest(x, y) {
+		return widget
+	}
 	return nil
 }
 
+func (s *Scene) overlayTargetAt(x, y int32) Widget {
+	return s.hitTestOverlay(s.root, x, y)
+}
+
+type stableMouseWidget interface {
+	stableMouseHit(x, y int32) bool
+}
+
 func (s *Scene) mouseTargetAt(x, y int32, preferred Widget) Widget {
-	hit := s.hitTestOverlay(s.root, x, y)
-	if hit == nil {
-		hit = s.hitTest(s.root, x, y)
+	if overlay := s.overlayTargetAt(x, y); overlay != nil {
+		return overlay
 	}
+	hit := s.hitTest(s.root, x, y)
 	return s.stabilizeMouseTarget(preferred, hit, x, y)
 }
 
@@ -769,6 +783,9 @@ func (s *Scene) stabilizeMouseTarget(preferred, hit Widget, x, y int32) Widget {
 		return hit
 	}
 	if hit == nil {
+		return preferred
+	}
+	if stable, ok := preferred.(stableMouseWidget); ok && stable.stableMouseHit(x, y) {
 		return preferred
 	}
 	if cursorFor(preferred) != core.CursorArrow && cursorFor(hit) == core.CursorArrow {
@@ -855,6 +872,26 @@ func widgetMouseHit(widget Widget, x, y int32) bool {
 		return true
 	}
 	return widget.HitTest(x, y)
+}
+
+func unionRect(a, b Rect) Rect {
+	switch {
+	case a.Empty():
+		return b
+	case b.Empty():
+		return a
+	}
+
+	left := min32(a.X, b.X)
+	top := min32(a.Y, b.Y)
+	right := max32(a.X+a.W, b.X+b.W)
+	bottom := max32(a.Y+a.H, b.Y+b.H)
+	return Rect{
+		X: left,
+		Y: top,
+		W: right - left,
+		H: bottom - top,
+	}
 }
 
 // clampValue 将值限制在给定的闭区间内。

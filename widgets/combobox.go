@@ -50,45 +50,68 @@ func (c *ComboBox) SetBounds(rect Rect) {
 	c.runOnUI(func() {
 		c.widgetBase.setBounds(c, rect)
 		c.syncNativeBounds()
-		c.invalidateAll()
 	})
 }
 
 // SetVisible 更新组合框的可见状态。
 func (c *ComboBox) SetVisible(visible bool) {
 	c.runOnUI(func() {
-		if !visible {
+		oldRect := widgetDirtyRect(c)
+		changed := c.Visible() != visible
+		if !visible && (c.open || c.hover != -1) {
 			c.open = false
+			c.hover = -1
+			changed = true
+		}
+		if !changed {
+			return
 		}
 		c.widgetBase.setVisible(c, visible)
 		c.syncNativeVisible()
-		c.invalidateAll()
+		c.invalidateStateChange(oldRect)
 	})
 }
 
 // SetEnabled 更新组合框的可用状态。
 func (c *ComboBox) SetEnabled(enabled bool) {
 	c.runOnUI(func() {
+		oldRect := widgetDirtyRect(c)
+		changed := c.Enabled() != enabled
+		if !enabled && (c.open || c.hover != -1) {
+			c.open = false
+			c.hover = -1
+			changed = true
+		}
+		if !changed {
+			return
+		}
 		c.widgetBase.setEnabled(c, enabled)
 		c.syncNativeEnabled()
-		c.invalidateAll()
+		c.invalidateStateChange(oldRect)
 	})
 }
 
 // SetItems 更新组合框的项目集合。
 func (c *ComboBox) SetItems(items []ListItem) {
 	c.runOnUI(func() {
-		c.items = cloneItems(items)
-		if len(c.items) == 0 {
-			c.selected = -1
-			c.hover = -1
-			c.open = false
-		} else if c.selected >= len(c.items) {
-			c.selected = len(c.items) - 1
-		}
+		c.updateState(func() bool {
+			c.items = cloneItems(items)
+			if len(c.items) == 0 {
+				c.selected = -1
+				c.hover = -1
+				c.open = false
+			} else {
+				if c.selected >= len(c.items) {
+					c.selected = len(c.items) - 1
+				}
+				if c.hover >= len(c.items) {
+					c.hover = -1
+				}
+			}
+			return true
+		})
 		c.syncNativeItems()
 		c.syncNativeSelection()
-		c.invalidateAll()
 	})
 }
 
@@ -120,19 +143,23 @@ func (c *ComboBox) SelectedItem() (ListItem, bool) {
 // SetPlaceholder 更新组合框的占位文本。
 func (c *ComboBox) SetPlaceholder(text string) {
 	c.runOnUI(func() {
-		if c.Placeholder == text {
-			return
-		}
-		c.Placeholder = text
-		c.invalidateAll()
+		c.updateState(func() bool {
+			if c.Placeholder == text {
+				return false
+			}
+			c.Placeholder = text
+			return true
+		})
 	})
 }
 
 // SetStyle 更新组合框的样式覆盖。
 func (c *ComboBox) SetStyle(style ComboStyle) {
 	c.runOnUI(func() {
-		c.Style = style
-		c.invalidateAll()
+		c.updateState(func() bool {
+			c.Style = style
+			return true
+		})
 	})
 }
 
@@ -176,17 +203,23 @@ func (c *ComboBox) OnEvent(evt Event) bool {
 	case EventMouseMove:
 		if c.open {
 			index := c.popupIndexAt(evt.Point)
-			if c.hover != index {
+			c.updateState(func() bool {
+				if c.hover == index {
+					return false
+				}
 				c.hover = index
-				c.invalidateAll()
-			}
+				return true
+			})
 			return index >= 0
 		}
 	case EventMouseLeave:
-		if c.hover != -1 {
+		c.updateState(func() bool {
+			if c.hover == -1 {
+				return false
+			}
 			c.hover = -1
-			c.invalidateAll()
-		}
+			return true
+		})
 	case EventMouseDown:
 		if c.Enabled() {
 			return true
@@ -200,35 +233,50 @@ func (c *ComboBox) OnEvent(evt Event) bool {
 			return false
 		}
 		if c.bounds.Contains(evt.Point.X, evt.Point.Y) {
-			c.open = !c.open && len(c.items) > 0
-			if !c.open {
-				c.hover = -1
-			}
-			c.invalidateAll()
+			c.updateState(func() bool {
+				open := !c.open && len(c.items) > 0
+				if c.open == open && (open || c.hover == -1) {
+					return false
+				}
+				c.open = open
+				if !c.open {
+					c.hover = -1
+				}
+				return true
+			})
 			return true
 		}
 		if c.open {
 			index := c.popupIndexAt(evt.Point)
 			if index >= 0 {
 				c.selectIndex(index, true)
-				c.open = false
-				c.hover = -1
-				c.invalidateAll()
+				c.updateState(func() bool {
+					changed := c.open || c.hover != -1
+					c.open = false
+					c.hover = -1
+					return changed
+				})
 				return true
 			}
 		}
 	case EventFocus:
-		if !c.focused {
+		c.updateState(func() bool {
+			if c.focused {
+				return false
+			}
 			c.focused = true
-			c.invalidateAll()
-		}
+			return true
+		})
 	case EventBlur:
-		if c.focused || c.open || c.hover != -1 {
+		c.updateState(func() bool {
+			if !c.focused && !c.open && c.hover == -1 {
+				return false
+			}
 			c.focused = false
 			c.open = false
 			c.hover = -1
-			c.invalidateAll()
-		}
+			return true
+		})
 	case EventKeyDown:
 		if c.handleKey(evt.Key) {
 			return true
@@ -307,10 +355,11 @@ func (c *ComboBox) PaintOverlay(ctx *PaintCtx) {
 	}
 
 	style := c.resolveStyle(ctx)
-	popup := c.popupRect()
-	if popup.Empty() {
+	layout := c.popupLayout()
+	if layout.rect.Empty() || layout.start >= layout.end {
 		return
 	}
+	popup := layout.rect
 
 	radius := ctx.DP(style.CornerRadius)
 	_ = ctx.FillRoundRect(popup, radius, style.PopupBackground)
@@ -320,10 +369,12 @@ func (c *ComboBox) PaintOverlay(ctx *PaintCtx) {
 		itemRadius = 0
 	}
 
-	start, end := c.popupRange()
-	for index := start; index < end; index++ {
+	for index := layout.start; index < layout.end; index++ {
 		item := c.items[index]
-		rowRect := c.popupRowRect(index, ctx, style)
+		rowRect := c.popupRowRectForLayout(index, layout)
+		if rowRect.Empty() {
+			continue
+		}
 		textColor := style.TextColor
 		if item.Disabled {
 			textColor = style.PlaceholderColor
@@ -387,8 +438,10 @@ func (c *ComboBox) handleNativeCommand(code uint16) bool {
 		if c.selected == index {
 			return true
 		}
-		c.selected = index
-		c.invalidateAll()
+		c.updateState(func() bool {
+			c.selected = index
+			return true
+		})
 		if c.OnChange != nil {
 			c.OnChange(index, c.items[index])
 		}
@@ -535,52 +588,88 @@ func (c *ComboBox) handleKey(key core.KeyEvent) bool {
 		if len(c.items) == 0 {
 			return true
 		}
-		c.open = !c.open
-		if !c.open {
-			c.hover = -1
-		}
-		c.invalidateAll()
+		c.updateState(func() bool {
+			c.open = !c.open
+			if !c.open {
+				c.hover = -1
+			}
+			return true
+		})
 		return true
 	case core.KeyEscape:
 		if c.open {
-			c.open = false
-			c.hover = -1
-			c.invalidateAll()
+			c.updateState(func() bool {
+				c.open = false
+				c.hover = -1
+				return true
+			})
 			return true
 		}
 	case core.KeyDown:
 		if len(c.items) == 0 {
 			return true
 		}
-		c.open = true
+		c.updateState(func() bool {
+			if c.open {
+				return false
+			}
+			c.open = true
+			return true
+		})
 		c.selectRelative(1)
-		c.hover = c.selected
-		c.invalidateAll()
+		c.updateState(func() bool {
+			if c.hover == c.selected {
+				return false
+			}
+			c.hover = c.selected
+			return true
+		})
 		return true
 	case core.KeyUp:
 		if len(c.items) == 0 {
 			return true
 		}
-		c.open = true
+		c.updateState(func() bool {
+			if c.open {
+				return false
+			}
+			c.open = true
+			return true
+		})
 		c.selectRelative(-1)
-		c.hover = c.selected
-		c.invalidateAll()
+		c.updateState(func() bool {
+			if c.hover == c.selected {
+				return false
+			}
+			c.hover = c.selected
+			return true
+		})
 		return true
 	case core.KeyHome:
 		if len(c.items) == 0 {
 			return true
 		}
 		c.selectIndex(0, true)
-		c.hover = c.selected
-		c.invalidateAll()
+		c.updateState(func() bool {
+			if c.hover == c.selected {
+				return false
+			}
+			c.hover = c.selected
+			return true
+		})
 		return true
 	case core.KeyEnd:
 		if len(c.items) == 0 {
 			return true
 		}
 		c.selectIndex(len(c.items)-1, true)
-		c.hover = c.selected
-		c.invalidateAll()
+		c.updateState(func() bool {
+			if c.hover == c.selected {
+				return false
+			}
+			c.hover = c.selected
+			return true
+		})
 		return true
 	}
 	return false
@@ -616,9 +705,11 @@ func (c *ComboBox) selectIndex(index int, notify bool) {
 	if c.selected == index {
 		return
 	}
-	c.selected = index
-	c.syncNativeSelection()
-	c.invalidateAll()
+	c.updateState(func() bool {
+		c.selected = index
+		c.syncNativeSelection()
+		return true
+	})
 	if notify && c.OnChange != nil {
 		c.OnChange(index, c.items[index])
 	}
@@ -626,30 +717,200 @@ func (c *ComboBox) selectIndex(index int, notify bool) {
 
 // popupRect 返回组合框弹出层的边界。
 func (c *ComboBox) popupRect() Rect {
-	if !c.open || len(c.items) == 0 {
-		return Rect{}
-	}
-	style := mergeComboStyle(DefaultTheme().ComboBox, c.Style)
-	itemHeight := c.dp(style.ItemHeightDP)
-	padding := c.dp(style.PaddingDP)
-	start, end := c.popupRange()
-	visibleCount := end - start
-	return Rect{
-		X: c.bounds.X,
-		Y: c.bounds.Y + c.bounds.H + c.dp(6),
-		W: c.bounds.W,
-		H: padding*2 + int32(visibleCount)*itemHeight,
-	}
+	return c.popupLayout().rect
 }
 
 // popupRange 返回组合框弹出层的可见项范围。
 func (c *ComboBox) popupRange() (int, int) {
-	if len(c.items) == 0 {
+	layout := c.popupLayout()
+	return layout.start, layout.end
+}
+
+// popupIndexAt 返回弹出层指定位置对应的项索引。
+func (c *ComboBox) popupIndexAt(point core.Point) int {
+	layout := c.popupLayout()
+	if layout.rect.Empty() || !layout.rect.Contains(point.X, point.Y) || layout.start >= layout.end {
+		return -1
+	}
+	if point.Y < layout.rect.Y+layout.padding {
+		return -1
+	}
+	index := int((point.Y - layout.rect.Y - layout.padding) / layout.itemHeight)
+	if index < 0 || layout.start+index >= layout.end {
+		return -1
+	}
+	rowRect := c.popupRowRectForLayout(layout.start+index, layout)
+	if rowRect.Empty() || !rowRect.Contains(point.X, point.Y) {
+		return -1
+	}
+	return layout.start + index
+}
+
+// popupRowRect 返回组合框弹出层某一行的绘制矩形。
+func (c *ComboBox) popupRowRect(index int, ctx *PaintCtx, style ComboStyle) Rect {
+	return c.popupRowRectForLayout(index, c.popupLayout())
+}
+
+// invalidateAll 使整个场景失效，以刷新弹出层或覆盖层状态。
+func (c *ComboBox) invalidateAll() {
+	c.invalidateStateChange(widgetDirtyRect(c))
+}
+
+// dp 按应用当前 DPI 缩放设备无关值。
+func (c *ComboBox) dp(value int32) int32 {
+	if scene := c.scene(); scene != nil && scene.app != nil {
+		return scene.app.DP(value)
+	}
+	return value
+}
+
+// mergeComboStyle 将组合框样式覆盖合并到基础样式上。
+type comboPopupLayout struct {
+	rect       Rect
+	start      int
+	end        int
+	upward     bool
+	itemHeight int32
+	padding    int32
+}
+
+func (c *ComboBox) popupRowRectForLayout(index int, layout comboPopupLayout) Rect {
+	if layout.rect.Empty() || index < layout.start || index >= layout.end {
+		return Rect{}
+	}
+	offset := int32(index - layout.start)
+	y := layout.rect.Y + layout.padding + offset*layout.itemHeight
+	height := min32(layout.itemHeight, max32(0, layout.rect.Y+layout.rect.H-y-layout.padding))
+	return Rect{
+		X: layout.rect.X + layout.padding,
+		Y: y,
+		W: max32(0, layout.rect.W-layout.padding*2),
+		H: height,
+	}
+}
+
+func (c *ComboBox) popupLayout() comboPopupLayout {
+	layout := comboPopupLayout{}
+	if !c.open || len(c.items) == 0 {
+		return layout
+	}
+
+	style := c.popupStyle()
+	layout.itemHeight = max32(1, c.dp(style.ItemHeightDP))
+	layout.padding = max32(0, c.dp(style.PaddingDP))
+
+	maxVisible := int(style.MaxVisibleItems)
+	if maxVisible <= 0 || maxVisible > len(c.items) {
+		maxVisible = len(c.items)
+	}
+	if maxVisible == 0 {
+		return layout
+	}
+
+	fullHeight := layout.padding*2 + int32(maxVisible)*layout.itemHeight
+	gap := max32(0, c.dp(6))
+	viewport := c.popupViewport()
+	if viewport.Empty() {
+		layout.start, layout.end = c.popupRangeForVisibleCount(maxVisible)
+		layout.rect = Rect{
+			X: c.bounds.X,
+			Y: c.bounds.Y + c.bounds.H + gap,
+			W: c.bounds.W,
+			H: fullHeight,
+		}
+		return layout
+	}
+
+	downSpace := max32(0, viewport.Y+viewport.H-(c.bounds.Y+c.bounds.H+gap))
+	upSpace := max32(0, c.bounds.Y-gap-viewport.Y)
+	downCount := c.popupVisibleCountForSpace(downSpace, layout.padding, layout.itemHeight)
+	upCount := c.popupVisibleCountForSpace(upSpace, layout.padding, layout.itemHeight)
+
+	visibleCount := maxVisible
+	availableSpace := downSpace
+
+	switch {
+	case fullHeight <= downSpace:
+	case upSpace > downSpace:
+		layout.upward = true
+		availableSpace = upSpace
+		visibleCount = min(maxVisible, upCount)
+	default:
+		visibleCount = min(maxVisible, downCount)
+	}
+
+	if !layout.upward && visibleCount == 0 && upCount > 0 {
+		layout.upward = true
+		availableSpace = upSpace
+		visibleCount = min(maxVisible, upCount)
+	}
+	if layout.upward && visibleCount == 0 && downCount > 0 {
+		layout.upward = false
+		availableSpace = downSpace
+		visibleCount = min(maxVisible, downCount)
+	}
+	if visibleCount <= 0 {
+		if availableSpace > layout.padding*2 {
+			visibleCount = 1
+		} else {
+			return layout
+		}
+	}
+	if visibleCount <= 0 {
+		return layout
+	}
+
+	layout.start, layout.end = c.popupRangeForVisibleCount(visibleCount)
+	layout.rect = Rect{
+		X: c.bounds.X,
+		W: c.bounds.W,
+		H: layout.padding*2 + int32(visibleCount)*layout.itemHeight,
+	}
+	if layout.rect.H > availableSpace {
+		layout.rect.H = availableSpace
+	}
+	if layout.upward {
+		layout.rect.Y = c.bounds.Y - gap - layout.rect.H
+		if layout.rect.Y < viewport.Y {
+			layout.rect.Y = viewport.Y
+		}
+	} else {
+		layout.rect.Y = c.bounds.Y + c.bounds.H + gap
+		maxY := viewport.Y + viewport.H - layout.rect.H
+		if layout.rect.Y > maxY {
+			layout.rect.Y = maxY
+		}
+	}
+	return layout
+}
+
+func (c *ComboBox) popupStyle() ComboStyle {
+	return c.resolveStyle(&PaintCtx{scene: c.scene()})
+}
+
+func (c *ComboBox) popupViewport() Rect {
+	scene := c.scene()
+	if scene == nil {
+		return Rect{}
+	}
+	if scene.root != nil {
+		rect := scene.root.Bounds()
+		if !rect.Empty() {
+			return rect
+		}
+	}
+	if scene.app != nil {
+		size := scene.app.ClientSize()
+		return Rect{W: size.Width, H: size.Height}
+	}
+	return Rect{}
+}
+
+func (c *ComboBox) popupRangeForVisibleCount(visible int) (int, int) {
+	if len(c.items) == 0 || visible <= 0 {
 		return 0, 0
 	}
-	style := mergeComboStyle(DefaultTheme().ComboBox, c.Style)
-	visible := int(style.MaxVisibleItems)
-	if visible <= 0 || visible > len(c.items) {
+	if visible > len(c.items) {
 		visible = len(c.items)
 	}
 	start := 0
@@ -667,54 +928,38 @@ func (c *ComboBox) popupRange() (int, int) {
 	return start, end
 }
 
-// popupIndexAt 返回弹出层指定位置对应的项索引。
-func (c *ComboBox) popupIndexAt(point core.Point) int {
-	popup := c.popupRect()
-	if !popup.Contains(point.X, point.Y) {
-		return -1
+func (c *ComboBox) popupVisibleCountForSpace(space, padding, itemHeight int32) int {
+	contentHeight := space - padding*2
+	if contentHeight <= 0 || itemHeight <= 0 {
+		return 0
 	}
-	style := mergeComboStyle(DefaultTheme().ComboBox, c.Style)
-	itemHeight := max32(1, c.dp(style.ItemHeightDP))
-	padding := max32(0, c.dp(style.PaddingDP))
-	start, end := c.popupRange()
-	index := int((point.Y - popup.Y - padding) / itemHeight)
-	if point.Y < popup.Y+padding || start+index >= end || index < 0 {
-		return -1
-	}
-	return start + index
+	return int(contentHeight / itemHeight)
 }
 
-// popupRowRect 返回组合框弹出层某一行的绘制矩形。
-func (c *ComboBox) popupRowRect(index int, ctx *PaintCtx, style ComboStyle) Rect {
-	popup := c.popupRect()
-	start, _ := c.popupRange()
-	padding := ctx.DP(style.PaddingDP)
-	itemHeight := ctx.DP(style.ItemHeightDP)
-	offset := int32(index - start)
-	return Rect{
-		X: popup.X + padding,
-		Y: popup.Y + padding + offset*itemHeight,
-		W: max32(0, popup.W-padding*2),
-		H: itemHeight,
+func (c *ComboBox) updateState(fn func() bool) {
+	if fn == nil {
+		return
 	}
+	oldRect := widgetDirtyRect(c)
+	if !fn() {
+		return
+	}
+	c.invalidateStateChange(oldRect)
 }
 
-// invalidateAll 使整个场景失效，以刷新弹出层或覆盖层状态。
-func (c *ComboBox) invalidateAll() {
+func (c *ComboBox) invalidateStateChange(oldRect Rect) {
 	if scene := c.scene(); scene != nil {
-		scene.Invalidate(nil)
+		if !oldRect.Empty() {
+			scene.invalidateRect(oldRect)
+		}
+		scene.Invalidate(c)
 	}
 }
 
-// dp 按应用当前 DPI 缩放设备无关值。
-func (c *ComboBox) dp(value int32) int32 {
-	if scene := c.scene(); scene != nil && scene.app != nil {
-		return scene.app.DP(value)
-	}
-	return value
+func (c *ComboBox) dirtyRect() Rect {
+	return unionRect(c.Bounds(), c.popupRect())
 }
 
-// mergeComboStyle 将组合框样式覆盖合并到基础样式上。
 func mergeComboStyle(base, override ComboStyle) ComboStyle {
 	base.Font = mergeFontSpec(base.Font, override.Font)
 	if override.TextColor != 0 {

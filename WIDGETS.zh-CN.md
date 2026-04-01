@@ -960,6 +960,10 @@ combo := widgets.NewComboBox("city", widgets.ModeCustom)
 - 只支持单选。
 - 禁用项不会被选中。
 - 展开后会绘制覆盖层。
+- `ModeCustom` 下弹层会根据 `Scene` 客户区剩余空间自动选择向下或向上展开。
+- 当上下空间都不足时，`ModeCustom` 下弹层高度会限制在当前可用空间内，不会超出 `Scene` 客户区。
+- `ModeCustom` 下弹层区域的鼠标命中优先级高于其下方的兄弟控件，重叠区域点击不会穿透到底部按钮、列表或其他控件。
+- `ModeCustom` 下组合框会把弹层 overlay 一并纳入脏区，打开、关闭和 hover 更新时会优先做局部刷新。
 - 支持键盘：
   - `Enter` / `Space` 打开或关闭下拉层
   - `Esc` 关闭下拉层
@@ -1019,6 +1023,7 @@ edit := widgets.NewEditBox("keyword", widgets.ModeCustom)
 
 - 只支持单行输入。
 - 只读模式下仍可获得焦点，但不会修改内容。
+- `ModeCustom` 下鼠标停留在编辑框边缘时，会优先保持当前 hover 目标和 `IBeam` 光标稳定，不会因为短暂命中波动频繁切回 `Arrow`。
 - 支持键盘：
   - `Left` / `Right`
   - `Home` / `End`

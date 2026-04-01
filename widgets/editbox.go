@@ -420,6 +420,13 @@ func (e *EditBox) cursor() CursorID {
 	return core.CursorIBeam
 }
 
+func (e *EditBox) stableMouseHit(x, y int32) bool {
+	if isNativeMode(e.mode) || !e.Visible() || !e.Enabled() {
+		return false
+	}
+	return e.Bounds().Contains(x, y)
+}
+
 // resolveStyle 解析编辑框的最终样式。
 func (e *EditBox) resolveStyle(ctx *PaintCtx) EditStyle {
 	style := DefaultTheme().Edit
