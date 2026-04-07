@@ -229,7 +229,7 @@ func (b *Button) Paint(ctx *PaintCtx) {
 
 	switch {
 	case b.Icon == nil:
-		b.drawButtonText(ctx, bounds, style.Font, textColor)
+		b.drawButtonText(ctx, bounds, style, textColor)
 	case b.Text == "":
 		b.drawCenteredIcon(ctx, bounds, style, kind)
 	case kind == BtnLeft:
@@ -361,6 +361,9 @@ func (b *Button) resolveStyle(ctx *PaintCtx) ButtonStyle {
 		style = ctx.scene.theme.Button
 	}
 	style.Font = mergeFontSpec(style.Font, b.Style.Font)
+	if b.Style.TextAlign != 0 {
+		style.TextAlign = b.Style.TextAlign
+	}
 	if b.Style.TextColor != 0 {
 		style.TextColor = b.Style.TextColor
 	}
@@ -404,7 +407,7 @@ func (b *Button) resolveStyle(ctx *PaintCtx) ButtonStyle {
 }
 
 // drawButtonText 绘制按钮文本内容。
-func (b *Button) drawButtonText(ctx *PaintCtx, rect Rect, font FontSpec, color core.Color) {
+func (b *Button) drawButtonText(ctx *PaintCtx, rect Rect, style ButtonStyle, color core.Color) {
 	if b.Text == "" {
 		return
 	}
@@ -415,9 +418,9 @@ func (b *Button) drawButtonText(ctx *PaintCtx, rect Rect, font FontSpec, color c
 		b.Text,
 		rect,
 		TextStyle{
-			Font:   font,
+			Font:   style.Font,
 			Color:  color,
-			Format: core.DTCenter | core.DTVCenter | core.DTSingleLine | core.DTEndEllipsis,
+			Format: alignTextFormat(style.TextAlign, core.DTVCenter|core.DTSingleLine|core.DTEndEllipsis),
 		},
 	)
 }
@@ -443,7 +446,7 @@ func (b *Button) drawCenteredIcon(ctx *PaintCtx, rect Rect, style ButtonStyle, k
 // drawLeftIconButton 绘制左图标右文本布局的按钮。
 func (b *Button) drawLeftIconButton(ctx *PaintCtx, rect Rect, style ButtonStyle, textColor core.Color) {
 	if b.Icon == nil {
-		b.drawButtonText(ctx, rect, style.Font, textColor)
+		b.drawButtonText(ctx, rect, style, textColor)
 		return
 	}
 
@@ -482,7 +485,7 @@ func (b *Button) drawLeftIconButton(ctx *PaintCtx, rect Rect, style ButtonStyle,
 		TextStyle{
 			Font:   style.Font,
 			Color:  textColor,
-			Format: core.DTVCenter | core.DTSingleLine | core.DTEndEllipsis,
+			Format: alignTextFormat(style.TextAlign, core.DTVCenter|core.DTSingleLine|core.DTEndEllipsis),
 		},
 	)
 }
@@ -490,7 +493,7 @@ func (b *Button) drawLeftIconButton(ctx *PaintCtx, rect Rect, style ButtonStyle,
 // drawTopIconButton 绘制上图标下文本布局的按钮。
 func (b *Button) drawTopIconButton(ctx *PaintCtx, rect Rect, style ButtonStyle, textColor core.Color) {
 	if b.Icon == nil {
-		b.drawButtonText(ctx, rect, style.Font, textColor)
+		b.drawButtonText(ctx, rect, style, textColor)
 		return
 	}
 
@@ -539,7 +542,7 @@ func (b *Button) drawTopIconButton(ctx *PaintCtx, rect Rect, style ButtonStyle, 
 		TextStyle{
 			Font:   style.Font,
 			Color:  textColor,
-			Format: core.DTCenter | core.DTVCenter | core.DTSingleLine | core.DTEndEllipsis,
+			Format: alignTextFormat(style.TextAlign, core.DTVCenter|core.DTSingleLine|core.DTEndEllipsis),
 		},
 	)
 }

@@ -129,6 +129,14 @@ func (p *Panel) SetLayout(layout Layout) {
 	p.invalidate(p)
 }
 
+// Layout returns the panel's current layout strategy.
+func (p *Panel) Layout() Layout {
+	if p == nil {
+		return nil
+	}
+	return p.layout
+}
+
 // SetStyle 更新面板背景和边框样式。
 func (p *Panel) SetStyle(style PanelStyle) {
 	p.Style = style

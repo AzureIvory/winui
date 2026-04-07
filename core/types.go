@@ -227,6 +227,8 @@ const (
 const (
 	// DTCenter 让文本在水平方向居中。
 	DTCenter uint32 = 0x00000001
+	// DTRight ????????????
+	DTRight uint32 = 0x00000002
 	// DTVCenter 让文本在垂直方向居中。
 	DTVCenter uint32 = 0x00000004
 	// DTSingleLine 强制文本单行绘制。

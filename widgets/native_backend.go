@@ -37,7 +37,8 @@ var (
 	// procSendMessageW 表示 SendMessageW 过程入口。
 	procSendMessageW = nativeUser32.NewProc("SendMessageW")
 	// procSetFocus 表示 SetFocus 过程入口。
-	procSetFocus = nativeUser32.NewProc("SetFocus")
+	procSetFocus    = nativeUser32.NewProc("SetFocus")
+	procGetKeyState = nativeUser32.NewProc("GetKeyState")
 	// procSetWindowLongPtrW 表示 SetWindowLongPtrW 过程入口。
 	procSetWindowLongPtrW = nativeUser32.NewProc("SetWindowLongPtrW")
 	// procCallWindowProcW 表示 CallWindowProcW 过程入口。
@@ -70,6 +71,7 @@ const (
 	nativeWindowVisible uint32 = 0x10000000
 	// nativeWindowTabStop 表示参与系统 Tab 焦点切换。
 	nativeWindowTabStop uint32 = 0x00010000
+	nativeWindowHScroll uint32 = 0x00100000
 	// nativeWindowVScroll 表示启用垂直滚动条样式。
 	nativeWindowVScroll uint32 = 0x00200000
 	// nativeWindowBorder 表示启用标准边框。
@@ -86,8 +88,14 @@ const (
 )
 
 const (
-	// nativeEditAutoHScroll 表示单行编辑框自动水平滚动。
+	// nativeEditMultiline ??????????
+	nativeEditMultiline uint32 = 0x0004
+	// nativeEditAutoVScroll ?????????
+	nativeEditAutoVScroll uint32 = 0x0040
+	// nativeEditAutoHScroll ??????????????
 	nativeEditAutoHScroll uint32 = 0x0080
+	// nativeEditWantReturn ??????????
+	nativeEditWantReturn uint32 = 0x1000
 )
 
 const (
@@ -124,6 +132,7 @@ const (
 	nativeEditSetReadOnly = 0x00CF
 	// nativeEditSetCueBanner 表示设置编辑框占位提示。
 	nativeEditSetCueBanner = 0x1501
+	nativeEditScrollCaret  = 0x00B7
 )
 
 const (
@@ -173,7 +182,8 @@ const (
 
 const (
 	// nativeLongWndProc 表示窗口过程指针槽位索引。
-	nativeLongWndProc uintptr = ^uintptr(3)
+	nativeLongWndProc       uintptr = ^uintptr(3)
+	nativeVirtualKeyControl uintptr = 0x11
 )
 
 // nativeCommandHandler 表示可处理原生命令通知的内部接口。
@@ -454,6 +464,11 @@ func unsubclassNativeEdit(edit *EditBox) {
 	}
 }
 
+func keyHasCtrlState() bool {
+	state, _, _ := procGetKeyState.Call(nativeVirtualKeyControl)
+	return int16(uint16(state)) < 0
+}
+
 // nativeEditProc 处理原生编辑框子类化后的窗口消息。
 func nativeEditProc(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr {
 	value, ok := nativeEditRegistry.Load(windows.Handle(hwnd))
@@ -465,10 +480,13 @@ func nativeEditProc(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr {
 		return 0
 	}
 	if msg == nativeWindowKeyDown && uint32(wParam) == core.KeyReturn {
-		if edit.OnSubmit != nil {
-			edit.OnSubmit(edit.TextValue())
+		shouldSubmit := !edit.multiline || !edit.acceptReturn || keyHasCtrlState()
+		if shouldSubmit {
+			if edit.OnSubmit != nil {
+				edit.OnSubmit(edit.TextValue())
+			}
+			return 0
 		}
-		return 0
 	}
 	if edit.native.oldWndProc == 0 {
 		return 0

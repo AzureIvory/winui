@@ -5,6 +5,8 @@ package widgets
 import (
 	"fmt"
 	"testing"
+
+	"github.com/AzureIvory/winui/core"
 )
 
 func TestScrollViewScrollRangeAndOffset(t *testing.T) {
@@ -52,5 +54,33 @@ func TestScrollViewMouseWheelScrollsContent(t *testing.T) {
 	_, offsetY := scroll.ScrollOffset()
 	if offsetY <= 0 {
 		t.Fatalf("expected mouse wheel to increase vertical offset, got %d", offsetY)
+	}
+}
+
+func TestScrollViewHitTestClipsViewport(t *testing.T) {
+	scene := newTestScene(Rect{X: 0, Y: 0, W: 240, H: 180})
+
+	scroll := NewScrollView("scroll-hit")
+	scroll.SetBounds(Rect{X: 20, Y: 20, W: 120, H: 80})
+
+	content := NewPanel("content-hit")
+	content.SetLayout(ColumnLayout{})
+
+	spacer := NewLabel("spacer", "Spacer")
+	spacer.SetBounds(Rect{W: 100, H: 100})
+	hidden := NewButton("hidden", "Hidden", ModeCustom)
+	hidden.SetBounds(Rect{W: 100, H: 32})
+	content.Add(spacer)
+	content.Add(hidden)
+
+	scroll.SetContent(content)
+	scene.Root().Add(scroll)
+
+	point := core.Point{X: hidden.Bounds().X + 10, Y: hidden.Bounds().Y + hidden.Bounds().H/2}
+	if scroll.Bounds().Contains(point.X, point.Y) {
+		t.Fatalf("expected test point outside scroll viewport, got bounds=%#v point=%#v", scroll.Bounds(), point)
+	}
+	if raw := scene.hitTest(scene.root, point.X, point.Y); raw == hidden {
+		t.Fatalf("expected clipped child not to win hit test outside viewport")
 	}
 }

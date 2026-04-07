@@ -972,3 +972,7 @@ func alignTextFormat(align Alignment, base uint32) uint32 {
 		return base
 	}
 }
+
+func keyHasCtrl(key core.KeyEvent) bool {
+	return key.Flags&editKeyFlagCtrl != 0 || keyHasCtrlState()
+}

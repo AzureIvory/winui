@@ -37,6 +37,9 @@ var (
 	procBitBlt                = gdi32.NewProc("BitBlt")
 	procGetStockObject        = gdi32.NewProc("GetStockObject")
 	procAlphaBlend            = msimg32.NewProc("AlphaBlend")
+	procSaveDC                = gdi32.NewProc("SaveDC")
+	procRestoreDC             = gdi32.NewProc("RestoreDC")
+	procIntersectClipRect     = gdi32.NewProc("IntersectClipRect")
 )
 
 const (
@@ -580,6 +583,27 @@ func (c *Canvas) Bounds() Rect {
 		return Rect{}
 	}
 	return c.bounds
+}
+
+// PushClipRect limits subsequent drawing to rect until the returned restore function is called.
+func (c *Canvas) PushClipRect(rect Rect) func() {
+	if c == nil || c.hdc == 0 || rect.Empty() {
+		return func() {}
+	}
+	saved, _, _ := procSaveDC.Call(uintptr(c.hdc))
+	if int32(saved) == 0 {
+		return func() {}
+	}
+	procIntersectClipRect.Call(
+		uintptr(c.hdc),
+		uintptr(rect.X),
+		uintptr(rect.Y),
+		uintptr(rect.X+rect.W),
+		uintptr(rect.Y+rect.H),
+	)
+	return func() {
+		procRestoreDC.Call(uintptr(c.hdc), ^uintptr(0))
+	}
 }
 
 // FillRect 在当前画布上填充指定矩形。

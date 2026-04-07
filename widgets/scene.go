@@ -41,6 +41,14 @@ func (p *PaintCtx) Bounds() Rect {
 	return p.canvas.Bounds()
 }
 
+// PushClipRect limits subsequent painting to rect until the returned restore function is called.
+func (p *PaintCtx) PushClipRect(rect Rect) func() {
+	if p == nil || p.canvas == nil {
+		return func() {}
+	}
+	return p.canvas.PushClipRect(rect)
+}
+
 // DP 按应用当前 DPI 缩放设备无关值。
 func (p *PaintCtx) DP(value int32) int32 {
 	if p == nil || p.scene == nil || p.scene.app == nil {
@@ -727,13 +735,33 @@ func (s *Scene) dispatchMouseWheel(evt Event) bool {
 
 // hitTest 返回给定点命中的最上层可见控件。
 func (s *Scene) hitTest(widget Widget, x, y int32) Widget {
+	return s.hitTestClipped(widget, x, y, Rect{}, false)
+}
+
+func (s *Scene) hitTestClipped(widget Widget, x, y int32, clip Rect, clipped bool) Widget {
 	if widget == nil || !widget.Visible() || !widget.Enabled() {
 		return nil
+	}
+	if clipped && !clip.Contains(x, y) {
+		return nil
+	}
+	childClip := clip
+	childClipped := clipped
+	if clipper, ok := widget.(clipBoundsWidget); ok {
+		bounds := clipper.clipBounds()
+		if childClipped {
+			bounds = intersectRect(bounds, childClip)
+		}
+		if bounds.Empty() || !bounds.Contains(x, y) {
+			return nil
+		}
+		childClip = bounds
+		childClipped = true
 	}
 	if container, ok := widget.(Container); ok {
 		children := container.Children()
 		for i := len(children) - 1; i >= 0; i-- {
-			if hit := s.hitTest(children[i], x, y); hit != nil {
+			if hit := s.hitTestClipped(children[i], x, y, childClip, childClipped); hit != nil {
 				return hit
 			}
 		}
@@ -764,6 +792,10 @@ func (s *Scene) hitTestOverlay(widget Widget, x, y int32) Widget {
 
 func (s *Scene) overlayTargetAt(x, y int32) Widget {
 	return s.hitTestOverlay(s.root, x, y)
+}
+
+type clipBoundsWidget interface {
+	clipBounds() Rect
 }
 
 type stableMouseWidget interface {
@@ -919,6 +951,20 @@ func max32(a, b int32) int32 {
 		return a
 	}
 	return b
+}
+
+func intersectRect(a, b Rect) Rect {
+	if a.Empty() || b.Empty() {
+		return Rect{}
+	}
+	left := max32(a.X, b.X)
+	top := max32(a.Y, b.Y)
+	right := min32(a.X+a.W, b.X+b.W)
+	bottom := min32(a.Y+a.H, b.Y+b.H)
+	if right <= left || bottom <= top {
+		return Rect{}
+	}
+	return Rect{X: left, Y: top, W: right - left, H: bottom - top}
 }
 
 // widgetDirtyRect 返回控件声明的脏区或其边界。

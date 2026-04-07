@@ -28,6 +28,8 @@ type TextStyle struct {
 type ButtonStyle struct {
 	// Font 指定按钮文本使用的字体规格。
 	Font FontSpec
+	// TextAlign specifies how button text is aligned within its content area.
+	TextAlign Alignment
 	// TextColor 指定默认状态下的文字颜色。
 	TextColor core.Color
 	// DownText 指定按下状态下的文字颜色。
@@ -192,6 +194,8 @@ type ComboStyle struct {
 type EditStyle struct {
 	// Font 指定编辑框文本使用的字体规格。
 	Font FontSpec
+	// TextAlign specifies how edit text is aligned within the content area.
+	TextAlign Alignment
 	// TextColor 指定默认文本颜色。
 	TextColor core.Color
 	// PlaceholderColor 指定占位文本颜色。
@@ -265,6 +269,7 @@ func DefaultTheme() *Theme {
 				Face:   "Microsoft YaHei UI",
 				SizeDP: 16,
 			},
+			TextAlign:    AlignCenter,
 			TextColor:    core.RGB(15, 23, 42),
 			DownText:     core.RGB(255, 255, 255),
 			DisabledText: core.RGB(148, 163, 184),
@@ -377,6 +382,7 @@ func DefaultTheme() *Theme {
 				Face:   "Microsoft YaHei UI",
 				SizeDP: 15,
 			},
+			TextAlign:        AlignStart,
 			TextColor:        core.RGB(31, 41, 55),
 			PlaceholderColor: core.RGB(156, 163, 175),
 			Background:       core.RGB(255, 255, 255),
