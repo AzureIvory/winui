@@ -1,0 +1,44 @@
+<body id="page">
+  <row id="toolbar">
+    <label id="title">HTML/CSS DSL Demo</label>
+    <input id="keyword" type="search" placeholder="输入关键字后回车或点按钮" onsubmit="applyDemo" />
+    <select id="modeSelect" onchange="applyDemo">
+      <option value="draft" selected>草稿</option>
+      <option value="review">评审</option>
+      <option value="publish">发布</option>
+    </select>
+    <button id="applyBtn" onclick="applyDemo">应用</button>
+  </row>
+
+  <label id="status">状态：等待操作</label>
+
+  <textarea id="notes" placeholder="输入多行备注；Ctrl+Enter 提交" onsubmit="applyDemo">这里是多行 EditBox。
+可以直接输入多段文字。
+滚轮也可以滚动内容。</textarea>
+
+  <checkbox id="advanced" onchange="applyDemo" checked>启用高级选项</checkbox>
+
+  <progress id="progress" value="35"></progress>
+
+  <scroll id="detailScroll">
+    <column id="detailList">
+      <label>基础信息</label>
+      <label>字段 01：应用名称</label>
+      <label>字段 02：环境</label>
+      <label>字段 03：负责人</label>
+      <label>字段 04：最后修改时间</label>
+      <label>字段 05：版本</label>
+      <label>字段 06：开关状态</label>
+      <label>字段 07：校验规则</label>
+      <label>字段 08：部署方式</label>
+      <label>字段 09：发布窗口</label>
+      <label>字段 10：审计备注</label>
+      <label>字段 11：联动配置</label>
+      <label>字段 12：灰度比例</label>
+      <label>字段 13：错误阈值</label>
+      <label>字段 14：回滚策略</label>
+      <label>字段 15：观察项</label>
+      <label>字段 16：完成后点上方“应用”</label>
+    </column>
+  </scroll>
+</body>

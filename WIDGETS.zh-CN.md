@@ -992,7 +992,7 @@ scene.Root().Add(combo)
 
 ### 6.1 `EditBox`
 
-用途：单行文本输入框。
+用途：文本输入框，同时支持单行和多行模式。
 
 构造函数：
 
@@ -1009,7 +1009,7 @@ edit := widgets.NewEditBox("keyword", widgets.ModeCustom)
   - `widgets.ModeCustom` 为自绘输入框。
   - `widgets.ModeNative` 为原生系统编辑框。
 
-常用方法：
+新增/常用方法：
 
 - `SetText(text string)`
 - `TextValue() string`
@@ -1018,30 +1018,226 @@ edit := widgets.NewEditBox("keyword", widgets.ModeCustom)
 - `SetStyle(style EditStyle)`
 - `SetOnChange(fn func(string))`
 - `SetOnSubmit(fn func(string))`
+- `SetMultiline(v bool)`
+- `Multiline() bool`
+- `SetWordWrap(v bool)`
+- `WordWrap() bool`
+- `SetVerticalScroll(v bool)`
+- `VerticalScroll() bool`
+- `SetHorizontalScroll(v bool)`
+- `HorizontalScroll() bool`
+- `SetAcceptReturn(v bool)`
+- `AcceptReturn() bool`
+- `ScrollToCaret()`
+- `LineCount() int`
 
 行为说明：
 
-- 只支持单行输入。
-- 只读模式下仍可获得焦点，但不会修改内容。
-- `ModeCustom` 下鼠标停留在编辑框边缘时，会优先保持当前 hover 目标和 `IBeam` 光标稳定，不会因为短暂命中波动频繁切回 `Arrow`。
-- 支持键盘：
-  - `Left` / `Right`
-  - `Home` / `End`
-  - `Backspace`
-  - `Delete`
-  - `Enter` 触发 `OnSubmit`
-- 原生模式下使用系统编辑框，主题外观字段不会参与实际绘制。
+- 默认仍然是单行模式，原有调用方式不需要修改。
+- 单行模式下：
+  - `Enter` 继续触发 `OnSubmit`。
+  - 传入的换行文本会自动规整为空格，保持单行语义。
+- 多行模式下：
+  - `Enter` 默认插入换行。
+  - `Ctrl+Enter` 触发 `OnSubmit`。
+  - `SetAcceptReturn(false)` 后，`Enter` 会改为提交而不是插入换行。
+  - `Up` / `Down` / `Home` / `End` 会按多行光标语义移动。
+  - 鼠标点击会定位光标，滚轮会滚动内容。
+- `Placeholder` 仅在文本为空时显示。
+- `ReadOnly`、`OnChange`、`OnSubmit`、`SetText`、`TextValue` 在单行/多行模式下都保持可用。
+- `ModeNative` 下会按配置组合 Win32 `EDIT` 多行样式；`ModeCustom` 下也支持多行编辑、换行、滚动与光标可见性控制。
+- 原生模式下仍然使用系统编辑框，主题颜色/边框样式不会替代系统外观。
 
-示例：
+单行示例：
 
 ```go
 edit := widgets.NewEditBox("keyword", widgets.ModeCustom)
 edit.SetBounds(core.Rect{X: 20, Y: 380, W: 240, H: 36})
 edit.SetPlaceholder("输入关键字")
-edit.SetOnChange(func(text string) {
+edit.SetOnSubmit(func(text string) {
     app.SetTitle(text)
 })
 scene.Root().Add(edit)
+```
+
+多行示例（textarea 风格）：
+
+```go
+notes := widgets.NewEditBox("notes", widgets.ModeCustom)
+notes.SetBounds(core.Rect{X: 20, Y: 430, W: 320, H: 120})
+notes.SetMultiline(true)
+notes.SetWordWrap(true)
+notes.SetVerticalScroll(true)
+notes.SetPlaceholder("输入多行备注，Ctrl+Enter 提交")
+notes.SetOnSubmit(func(text string) {
+    app.SetTitle("已提交备注")
+})
+scene.Root().Add(notes)
+```
+
+### 6.2 `ScrollView`
+
+用途：带裁剪视口的滚动容器，适合承载长表单、长列表或任意单个内容节点。
+
+构造函数：
+
+```go
+scroll := widgets.NewScrollView("detail-scroll")
+```
+
+常用方法：
+
+- `SetContent(w Widget)`
+- `Content() Widget`
+- `SetScrollOffset(x, y int32)`
+- `ScrollOffset() (int32, int32)`
+- `ScrollBy(dx, dy int32)`
+- `ScrollTo(x, y int32)`
+- `SetWheelStep(step int32)`
+- `SetVerticalScroll(enabled bool)`
+- `VerticalScroll() bool`
+- `SetHorizontalScroll(enabled bool)`
+- `HorizontalScroll() bool`
+- `SetStyle(style PanelStyle)`
+
+行为说明：
+
+- 采用 viewport + content 模型。
+- 默认启用垂直滚动，水平滚动默认关闭。
+- 会对子内容绘制区域进行裁剪（clip）。
+- 内容尺寸变化后会自动重新计算可滚动范围。
+- 鼠标滚轮可直接滚动；获得焦点后支持 `Home` / `End` / `PageUp` / `PageDown`。
+- 如果 `scroll` 直接内容不止一个子节点，建议放入一个 `Panel` 作为内容，再在内部使用 `RowLayout` / `ColumnLayout` / `GridLayout` / `FormLayout`。
+
+示例：
+
+```go
+form := widgets.NewPanel("form")
+form.SetLayout(widgets.ColumnLayout{Gap: 8, Padding: widgets.UniformInsets(12)})
+for i := 0; i < 20; i++ {
+    item := widgets.NewLabel(fmt.Sprintf("row-%d", i), fmt.Sprintf("字段 %d", i+1))
+    item.SetBounds(core.Rect{W: 240, H: 24})
+    form.Add(item)
+}
+
+scroll := widgets.NewScrollView("form-scroll")
+scroll.SetBounds(core.Rect{X: 20, Y: 20, W: 320, H: 240})
+scroll.SetContent(form)
+scene.Root().Add(scroll)
+```
+
+### 6.3 HTML/CSS 风格 DSL（`widgets/markup`）
+
+用途：把受控子集的 `.ui.html` / `.ui.css` 描述文件解析为 `widgets.Widget` 树，并继续使用现有 `widgets/layout/theme/style` 体系进行布局和渲染。
+
+入口 API：
+
+```go
+root, err := markup.LoadHTMLFile("cmd/demo_html/demo.ui.html", markup.LoadOptions{
+    Actions: map[string]func(){
+        "saveForm": func() {
+            app.SetTitle("save")
+        },
+    },
+    AssetsDir:   "cmd/demo_html",
+    DefaultMode: widgets.ModeCustom,
+})
+```
+
+```go
+root, err := markup.LoadHTMLString(htmlText, cssText, markup.LoadOptions{
+    Actions:     actions,
+    AssetsDir:   assetsDir,
+    DefaultMode: widgets.ModeCustom,
+})
+```
+
+支持的标签：
+
+- 容器：`body`、`div`、`section`、`panel`、`row`、`column`、`form`、`scroll`
+- 文本/按钮：`label`、`span`、`button`
+- 输入：`input`、`textarea`、`checkbox`、`radio`、`select`、`option`
+- 媒体/进度：`img`、`progress`
+
+映射规则：
+
+- `body/div/section/panel` -> `widgets.Panel`，默认 `ColumnLayout`
+- `row` -> `widgets.Panel + widgets.RowLayout`
+- `column` -> `widgets.Panel + widgets.ColumnLayout`
+- `form` -> `widgets.Panel + widgets.FormLayout`
+- `scroll` -> `widgets.ScrollView`
+- `label/span` -> `widgets.Label`
+- `button` -> `widgets.Button`
+- `input[type=text|password|search]` -> `widgets.EditBox`（单行）
+- `textarea` -> `widgets.EditBox`（多行）
+- `checkbox` -> `widgets.CheckBox`
+- `radio` -> `widgets.RadioButton`
+- `select` -> `widgets.ComboBox`
+- `img` -> `widgets.Image`
+- `progress` -> `widgets.ProgressBar`
+
+支持的 CSS 选择器：
+
+- 标签选择器：`button`
+- 类选择器：`.primary`
+- ID 选择器：`#submitBtn`
+- 后代选择器：`.toolbar button`
+- 直接子选择器：`.form > label`
+
+样式优先级：
+
+- `inline style` > `#id` > `.class` > `tag` > 默认值
+
+支持的 CSS 属性：
+
+- 通用：`width`、`height`、`min-width`、`min-height`、`max-width`、`max-height`
+- 可见/可用：`display`、`visible`、`enabled`
+- 间距：`padding`、`padding-top`、`padding-right`、`padding-bottom`、`padding-left`、`gap`、`row-gap`、`column-gap`
+- 颜色/边框/文本：`background`、`color`、`border-color`、`border-width`、`border-radius`、`font-family`、`font-size`、`font-weight`、`text-align`
+- 布局：`layout-columns`、`flex-grow`、`align-self`、`column-span`、`row-span`
+- 输入：`readonly`、`multiline`、`word-wrap`、`placeholder-color`
+- 滚动：`overflow`、`overflow-x`、`overflow-y`
+- 图片：`object-fit`
+
+补充说明：
+
+- `scroll` 如果出现多个直接子节点，会自动包一层 `column Panel` 作为内容容器。
+- `overflow-y: auto/scroll` 会把容器包装为 `ScrollView`。
+- `textarea` 直接复用多行 `EditBox`，不会引入新的渲染后端。
+- `onclick` / `onchange` / `onsubmit` 只能写动作名字符串，例如 `onclick="saveForm"`，再由 `LoadOptions.Actions` 绑定。
+- `img[src]` 会从 `AssetsDir`（或 HTML 文件所在目录）读取资源。
+
+当前不支持的特性：
+
+- 不支持浏览器 DOM / JavaScript / WebView / Chromium / XAML。
+- 不支持 `table`、`ul/li`、`a`、`video`、`canvas`、`svg`、`script`。
+- 不支持伪类、伪元素、属性选择器、媒体查询、动画、`calc()`、CSS 变量。
+- `input[type=password]` 当前仍复用普通 `EditBox`，不会做密码遮罩。
+- `#AARRGGBB` 颜色中的 Alpha 通道当前会被忽略，`opacity` 暂未参与实际绘制。
+- `object-fit: cover` 目前按最接近的拉伸语义处理，不裁切图像。
+
+textarea + scroll 示例：
+
+```html
+<body class="page">
+  <row class="toolbar">
+    <button onclick="saveForm">保存</button>
+  </row>
+  <textarea id="notes" placeholder="输入多行备注"></textarea>
+  <scroll style="height: 180px;">
+    <column>
+      <label>第 1 行</label>
+      <label>第 2 行</label>
+      <label>第 3 行</label>
+    </column>
+  </scroll>
+</body>
+```
+
+```css
+.page { display: column; gap: 12px; padding: 16px; }
+.toolbar { display: row; gap: 8px; }
+#notes { height: 120px; word-wrap: true; }
 ```
 
 ## 7. 图像类组件

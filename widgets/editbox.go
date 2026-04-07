@@ -2,9 +2,18 @@
 
 package widgets
 
-import "github.com/AzureIvory/winui/core"
+import (
+	"strings"
 
-// EditBox 表示单行可编辑文本控件。
+	"github.com/AzureIvory/winui/core"
+)
+
+const (
+	// editKeyFlagCtrl 为测试和跨层路由保留的 Control 修饰位。
+	editKeyFlagCtrl uintptr = 1 << 63
+)
+
+// EditBox 表示支持单行和多行模式的文本输入控件。
 type EditBox struct {
 	// widgetBase 提供编辑框共享的基础控件能力。
 	widgetBase
@@ -30,13 +39,32 @@ type EditBox struct {
 	OnChange func(string)
 	// OnSubmit 保存提交回调。
 	OnSubmit func(string)
+
+	// multiline 记录当前是否启用多行模式。
+	multiline bool
+	// wordWrap 记录当前是否显式启用自动换行。
+	wordWrap bool
+	// verticalScroll 记录当前是否允许垂直滚轮滚动。
+	verticalScroll bool
+	// horizontalScroll 记录当前是否允许水平滚动。
+	horizontalScroll bool
+	// acceptReturn 记录多行模式下回车是否插入换行。
+	acceptReturn bool
+	// scrollX 保存当前水平滚动偏移。
+	scrollX int32
+	// scrollY 保存当前垂直滚动偏移。
+	scrollY int32
 }
 
 // NewEditBox 创建一个新的编辑框。
 func NewEditBox(id string, mode ControlMode) *EditBox {
 	return &EditBox{
-		widgetBase: newWidgetBase(id, "edit"),
-		mode:       normalizeControlMode(mode),
+		widgetBase:       newWidgetBase(id, "edit"),
+		mode:             normalizeControlMode(mode),
+		wordWrap:         true,
+		verticalScroll:   true,
+		horizontalScroll: false,
+		acceptReturn:     true,
 	}
 }
 
@@ -44,7 +72,9 @@ func NewEditBox(id string, mode ControlMode) *EditBox {
 func (e *EditBox) SetBounds(rect Rect) {
 	e.runOnUI(func() {
 		e.widgetBase.setBounds(e, rect)
+		e.clampScroll()
 		e.syncNativeBounds()
+		e.invalidate(e)
 	})
 }
 
@@ -67,12 +97,16 @@ func (e *EditBox) SetEnabled(enabled bool) {
 // SetText 更新编辑框的显示文本。
 func (e *EditBox) SetText(text string) {
 	e.runOnUI(func() {
-		if e.Text == text {
+		normalized := e.normalizeText(text)
+		if e.Text == normalized {
 			return
 		}
-		e.Text = text
-		e.caret = len([]rune(text))
+		e.Text = normalized
+		e.caret = len([]rune(normalized))
+		e.scrollX = 0
+		e.scrollY = 0
 		e.syncNativeText()
+		e.ScrollToCaret()
 		e.invalidate(e)
 	})
 }
@@ -80,7 +114,7 @@ func (e *EditBox) SetText(text string) {
 // TextValue 返回编辑框当前保存的文本。
 func (e *EditBox) TextValue() string {
 	if e.native.valid() {
-		e.Text = getNativeText(e.native.handle)
+		e.Text = e.normalizeText(getNativeText(e.native.handle))
 		e.caret = len([]rune(e.Text))
 	}
 	return e.Text
@@ -108,6 +142,121 @@ func (e *EditBox) SetReadOnly(readOnly bool) {
 		e.syncNativeReadOnly()
 		e.invalidate(e)
 	})
+}
+
+// SetMultiline 更新编辑框的多行模式。
+func (e *EditBox) SetMultiline(v bool) {
+	e.runOnUI(func() {
+		if e.multiline == v {
+			return
+		}
+		e.multiline = v
+		e.Text = e.normalizeText(e.Text)
+		e.caret = clampInt(e.caret, 0, len([]rune(e.Text)))
+		e.scrollX = 0
+		e.scrollY = 0
+		e.recreateNativeControl()
+		e.invalidate(e)
+	})
+}
+
+// Multiline 返回编辑框是否启用多行模式。
+func (e *EditBox) Multiline() bool {
+	return e.multiline
+}
+
+// SetWordWrap 更新编辑框的自动换行偏好。
+func (e *EditBox) SetWordWrap(v bool) {
+	e.runOnUI(func() {
+		if e.wordWrap == v {
+			return
+		}
+		e.wordWrap = v
+		e.scrollX = 0
+		e.clampScroll()
+		e.recreateNativeControl()
+		e.invalidate(e)
+	})
+}
+
+// WordWrap 返回编辑框是否启用自动换行偏好。
+func (e *EditBox) WordWrap() bool {
+	return e.wordWrap
+}
+
+// SetVerticalScroll 更新编辑框的垂直滚动支持状态。
+func (e *EditBox) SetVerticalScroll(v bool) {
+	e.runOnUI(func() {
+		if e.verticalScroll == v {
+			return
+		}
+		e.verticalScroll = v
+		e.recreateNativeControl()
+		e.invalidate(e)
+	})
+}
+
+// VerticalScroll 返回编辑框是否启用垂直滚动支持。
+func (e *EditBox) VerticalScroll() bool {
+	return e.verticalScroll
+}
+
+// SetHorizontalScroll 更新编辑框的水平滚动支持状态。
+func (e *EditBox) SetHorizontalScroll(v bool) {
+	e.runOnUI(func() {
+		if e.horizontalScroll == v {
+			return
+		}
+		e.horizontalScroll = v
+		if !v {
+			e.scrollX = 0
+		}
+		e.clampScroll()
+		e.recreateNativeControl()
+		e.invalidate(e)
+	})
+}
+
+// HorizontalScroll 返回编辑框是否启用水平滚动支持。
+func (e *EditBox) HorizontalScroll() bool {
+	return e.horizontalScroll
+}
+
+// SetAcceptReturn 更新多行模式下回车是否插入换行。
+func (e *EditBox) SetAcceptReturn(v bool) {
+	e.runOnUI(func() {
+		if e.acceptReturn == v {
+			return
+		}
+		e.acceptReturn = v
+		e.recreateNativeControl()
+		e.invalidate(e)
+	})
+}
+
+// AcceptReturn 返回多行模式下回车是否插入换行。
+func (e *EditBox) AcceptReturn() bool {
+	return e.acceptReturn
+}
+
+// ScrollToCaret 将当前光标滚动到可见区域内。
+func (e *EditBox) ScrollToCaret() {
+	e.runOnUI(func() {
+		if e.native.valid() {
+			sendNativeMessage(e.native.handle, nativeEditScrollCaret, 0, 0)
+			return
+		}
+		e.ensureCaretVisible()
+	})
+}
+
+// LineCount 返回当前逻辑行数。
+func (e *EditBox) LineCount() int {
+	text := e.TextValue()
+	if text == "" {
+		return 1
+	}
+	return strings.Count(text, "\n") + 1
 }
 
 // SetStyle 更新编辑框的样式覆盖。
@@ -156,16 +305,22 @@ func (e *EditBox) OnEvent(evt Event) bool {
 			e.Hover = false
 			e.invalidate(e)
 		}
+	case EventMouseDown:
+		if e.Enabled() {
+			e.caret = e.caretAtPoint(evt.Point)
+			e.ensureCaretVisible()
+			e.invalidate(e)
+			return true
+		}
 	case EventClick:
 		if e.Enabled() {
-			e.caret = len([]rune(e.Text))
-			e.invalidate(e)
 			return true
 		}
 	case EventFocus:
 		if !e.Focused {
 			e.Focused = true
-			e.caret = len([]rune(e.Text))
+			e.caret = clampInt(e.caret, 0, len([]rune(e.Text)))
+			e.ensureCaretVisible()
 			e.invalidate(e)
 		}
 	case EventBlur:
@@ -173,6 +328,8 @@ func (e *EditBox) OnEvent(evt Event) bool {
 			e.Focused = false
 			e.invalidate(e)
 		}
+	case EventMouseWheel:
+		return e.handleWheel(evt)
 	case EventKeyDown:
 		return e.handleKey(evt.Key)
 	case EventChar:
@@ -212,48 +369,71 @@ func (e *EditBox) Paint(ctx *PaintCtx) {
 
 	textRect := Rect{
 		X: bounds.X + padding,
-		Y: bounds.Y,
+		Y: bounds.Y + padding,
 		W: max32(0, bounds.W-padding*2),
-		H: bounds.H,
+		H: max32(0, bounds.H-padding*2),
 	}
+	if textRect.Empty() {
+		return
+	}
+
+	restore := ctx.PushClipRect(textRect)
+	defer restore()
 
 	displayText := e.Text
 	if displayText == "" {
 		displayText = e.Placeholder
 		textColor = style.PlaceholderColor
 	}
-	_ = ctx.DrawText(displayText, textRect, TextStyle{
-		Font:   style.Font,
-		Color:  textColor,
-		Format: core.DTVCenter | core.DTSingleLine | core.DTEndEllipsis,
-	})
+
+	if !e.multiline {
+		textRect.Y = bounds.Y
+		textRect.H = bounds.H
+		drawRect := textRect
+		drawRect.X -= e.scrollX
+		_ = ctx.DrawText(displayText, drawRect, TextStyle{
+			Font:   style.Font,
+			Color:  textColor,
+			Format: alignTextFormat(style.TextAlign, core.DTVCenter|core.DTSingleLine|core.DTEndEllipsis),
+		})
+	} else {
+		layout := e.textLayout(style, textRect.W)
+		lineHeight := layout.lineHeight
+		baseY := textRect.Y - e.scrollY
+		for idx, line := range layout.lines {
+			lineY := baseY + int32(idx)*lineHeight
+			lineRect := Rect{X: textRect.X - e.scrollX, Y: lineY, W: max32(layout.maxLineWidth, textRect.W), H: lineHeight}
+			if lineRect.Y+lineRect.H < textRect.Y || lineRect.Y > textRect.Y+textRect.H {
+				continue
+			}
+			_ = ctx.DrawText(line.text, lineRect, TextStyle{
+				Font:   style.Font,
+				Color:  textColor,
+				Format: alignTextFormat(style.TextAlign, 0),
+			})
+		}
+		if displayText == e.Placeholder {
+			_ = ctx.DrawText(displayText, Rect{X: textRect.X, Y: textRect.Y, W: textRect.W, H: lineHeight}, TextStyle{
+				Font:   style.Font,
+				Color:  textColor,
+				Format: alignTextFormat(style.TextAlign, 0),
+			})
+		}
+	}
 
 	if !e.Focused {
 		return
 	}
 
-	prefix := []rune(e.Text)
-	if e.caret < 0 {
-		e.caret = 0
+	caretRect := e.caretRect(style, textRect)
+	if caretRect.Empty() {
+		return
 	}
-	if e.caret > len(prefix) {
-		e.caret = len(prefix)
+	visibleCaret := intersectRect(caretRect, textRect)
+	if visibleCaret.Empty() {
+		return
 	}
-
-	prefixText := string(prefix[:e.caret])
-	size, _ := ctx.MeasureText(prefixText, style.Font)
-	caretX := textRect.X + size.Width
-	maxX := bounds.X + bounds.W - padding
-	if caretX > maxX {
-		caretX = maxX
-	}
-	caretRect := Rect{
-		X: caretX,
-		Y: bounds.Y + ctx.DP(8),
-		W: max32(1, ctx.DP(2)),
-		H: max32(1, bounds.H-ctx.DP(16)),
-	}
-	_ = ctx.FillRect(caretRect, style.CaretColor)
+	_ = ctx.FillRect(visibleCaret, style.CaretColor)
 }
 
 // setScene 更新编辑框关联的场景，并在原生模式下同步子控件生命周期。
@@ -288,7 +468,7 @@ func (e *EditBox) handleNativeCommand(code uint16) bool {
 	case nativeEditChanged:
 		text := e.Text
 		if e.native.valid() {
-			text = getNativeText(e.native.handle)
+			text = e.normalizeText(getNativeText(e.native.handle))
 		}
 		if e.Text == text {
 			return true
@@ -323,8 +503,8 @@ func (e *EditBox) ensureNativeControl(scene *Scene) {
 	handle, err := createNativeControl(
 		scene,
 		"EDIT",
-		e.Text,
-		nativeWindowChild|nativeWindowVisible|nativeWindowTabStop|nativeWindowBorder|nativeEditAutoHScroll,
+		e.nativeTextValue(),
+		e.nativeEditStyle(),
 		e.Bounds(),
 		commandID,
 	)
@@ -383,7 +563,7 @@ func (e *EditBox) syncNativeEnabled() {
 // syncNativeText 同步编辑框原生控件文本。
 func (e *EditBox) syncNativeText() {
 	if e.native.valid() {
-		setNativeText(e.native.handle, e.Text)
+		setNativeText(e.native.handle, e.nativeTextValue())
 	}
 }
 
@@ -447,24 +627,62 @@ func (e *EditBox) handleKey(key core.KeyEvent) bool {
 	case core.KeyLeft:
 		if e.caret > 0 {
 			e.caret--
+			e.ensureCaretVisible()
 			e.invalidate(e)
 		}
 		return true
 	case core.KeyRight:
 		if e.caret < len(runes) {
 			e.caret++
+			e.ensureCaretVisible()
 			e.invalidate(e)
 		}
 		return true
+	case core.KeyUp:
+		if e.multiline {
+			if caret, changed := e.moveCaretVertical(-1); changed {
+				e.caret = caret
+				e.ensureCaretVisible()
+				e.invalidate(e)
+			}
+			return true
+		}
+	case core.KeyDown:
+		if e.multiline {
+			if caret, changed := e.moveCaretVertical(1); changed {
+				e.caret = caret
+				e.ensureCaretVisible()
+				e.invalidate(e)
+			}
+			return true
+		}
 	case core.KeyHome:
+		if e.multiline {
+			if caret, changed := e.lineEdgeCaret(false); changed {
+				e.caret = caret
+				e.ensureCaretVisible()
+				e.invalidate(e)
+			}
+			return true
+		}
 		if e.caret != 0 {
 			e.caret = 0
+			e.ensureCaretVisible()
 			e.invalidate(e)
 		}
 		return true
 	case core.KeyEnd:
+		if e.multiline {
+			if caret, changed := e.lineEdgeCaret(true); changed {
+				e.caret = caret
+				e.ensureCaretVisible()
+				e.invalidate(e)
+			}
+			return true
+		}
 		if e.caret != len(runes) {
 			e.caret = len(runes)
+			e.ensureCaretVisible()
 			e.invalidate(e)
 		}
 		return true
@@ -475,6 +693,7 @@ func (e *EditBox) handleKey(key core.KeyEvent) bool {
 		e.Text = string(append(runes[:e.caret-1], runes[e.caret:]...))
 		e.caret--
 		e.notifyChanged()
+		e.ensureCaretVisible()
 		return true
 	case core.KeyDelete:
 		if e.ReadOnly || e.caret >= len(runes) || len(runes) == 0 {
@@ -482,11 +701,22 @@ func (e *EditBox) handleKey(key core.KeyEvent) bool {
 		}
 		e.Text = string(append(runes[:e.caret], runes[e.caret+1:]...))
 		e.notifyChanged()
+		e.ensureCaretVisible()
 		return true
 	case core.KeyReturn:
-		if e.OnSubmit != nil {
-			e.OnSubmit(e.Text)
+		if e.multiline {
+			if keyHasCtrl(key) {
+				e.submit()
+				return true
+			}
+			if e.acceptReturn && !e.ReadOnly {
+				e.insertRune('\n')
+				return true
+			}
+			e.submit()
+			return true
 		}
+		e.submit()
 		return true
 	}
 	return false
@@ -497,26 +727,21 @@ func (e *EditBox) handleChar(ch rune) bool {
 	if !e.Enabled() || e.ReadOnly {
 		return false
 	}
-	if ch < 32 || ch == '\r' || ch == '\n' || ch == '\t' {
+	if ch == '\r' || ch == '\n' {
 		return false
 	}
-
-	runes := []rune(e.Text)
-	if e.caret < 0 {
-		e.caret = 0
+	if ch < 32 && ch != '\t' {
+		return false
 	}
-	if e.caret > len(runes) {
-		e.caret = len(runes)
-	}
-	runes = append(runes[:e.caret], append([]rune{ch}, runes[e.caret:]...)...)
-	e.Text = string(runes)
-	e.caret++
-	e.notifyChanged()
+	e.insertRune(ch)
 	return true
 }
 
 // notifyChanged 使控件失效并触发变更回调。
 func (e *EditBox) notifyChanged() {
+	e.Text = e.normalizeText(e.Text)
+	e.syncNativeText()
+	e.clampScroll()
 	e.invalidate(e)
 	if e.OnChange != nil {
 		e.OnChange(e.Text)
@@ -526,6 +751,9 @@ func (e *EditBox) notifyChanged() {
 // mergeEditStyle 将编辑框样式覆盖合并到基础样式上。
 func mergeEditStyle(base, override EditStyle) EditStyle {
 	base.Font = mergeFontSpec(base.Font, override.Font)
+	if override.TextAlign != 0 {
+		base.TextAlign = override.TextAlign
+	}
 	if override.TextColor != 0 {
 		base.TextColor = override.TextColor
 	}
@@ -560,4 +788,187 @@ func mergeEditStyle(base, override EditStyle) EditStyle {
 		base.CornerRadius = override.CornerRadius
 	}
 	return base
+}
+
+func (e *EditBox) normalizeText(text string) string {
+	text = strings.ReplaceAll(text, "\r\n", "\n")
+	text = strings.ReplaceAll(text, "\r", "\n")
+	if !e.multiline {
+		text = strings.ReplaceAll(text, "\n", " ")
+	}
+	return text
+}
+
+func (e *EditBox) nativeTextValue() string {
+	if !e.multiline {
+		return e.Text
+	}
+	return strings.ReplaceAll(e.Text, "\n", "\r\n")
+}
+
+func (e *EditBox) recreateNativeControl() {
+	if !e.native.valid() {
+		return
+	}
+	scene := e.scene()
+	e.destroyNativeControl(scene)
+	e.ensureNativeControl(scene)
+}
+
+func (e *EditBox) nativeEditStyle() uint32 {
+	style := nativeWindowChild | nativeWindowVisible | nativeWindowTabStop | nativeWindowBorder
+	if !e.multiline {
+		style |= nativeEditAutoHScroll
+		return style
+	}
+	style |= nativeEditMultiline | nativeEditAutoVScroll
+	if e.acceptReturn {
+		style |= nativeEditWantReturn
+	}
+	if e.verticalScroll {
+		style |= nativeWindowVScroll
+	}
+	if e.horizontalScroll || !e.effectiveWordWrap() {
+		style |= nativeWindowHScroll | nativeEditAutoHScroll
+	}
+	return style
+}
+
+func (e *EditBox) submit() {
+	if e.OnSubmit != nil {
+		e.OnSubmit(e.Text)
+	}
+}
+
+func (e *EditBox) insertRune(ch rune) {
+	runes := []rune(e.Text)
+	e.caret = clampInt(e.caret, 0, len(runes))
+	runes = append(runes[:e.caret], append([]rune{ch}, runes[e.caret:]...)...)
+	e.Text = string(runes)
+	e.caret++
+	e.notifyChanged()
+	e.ensureCaretVisible()
+}
+
+func (e *EditBox) handleWheel(evt Event) bool {
+	if !e.multiline || !e.verticalScroll {
+		return false
+	}
+	style := e.resolveStyle(&PaintCtx{scene: e.scene()})
+	textRect := e.contentRect(style)
+	layout := e.textLayout(style, textRect.W)
+	maxY := max32(0, layout.contentHeight-textRect.H)
+	if maxY <= 0 {
+		return false
+	}
+	step := layout.lineHeight
+	if step <= 0 {
+		step = 20
+	}
+	delta := -evt.Delta * step / 120
+	if delta == 0 {
+		if evt.Delta > 0 {
+			delta = -step
+		} else if evt.Delta < 0 {
+			delta = step
+		}
+	}
+	old := e.scrollY
+	e.scrollY = clampValue(e.scrollY+delta, 0, maxY)
+	if old != e.scrollY {
+		e.invalidate(e)
+		return true
+	}
+	return false
+}
+
+func (e *EditBox) ensureCaretVisible() {
+	if !e.multiline && !e.horizontalScroll {
+		e.scrollX = 0
+		return
+	}
+	style := e.resolveStyle(&PaintCtx{scene: e.scene()})
+	textRect := e.contentRect(style)
+	if textRect.Empty() {
+		return
+	}
+	layout := e.textLayout(style, textRect.W)
+	caretRect := e.caretRect(style, textRect)
+	if e.multiline {
+		maxY := max32(0, layout.contentHeight-textRect.H)
+		if caretRect.Y < textRect.Y {
+			e.scrollY = clampValue(e.scrollY-(textRect.Y-caretRect.Y), 0, maxY)
+		} else if caretRect.Y+caretRect.H > textRect.Y+textRect.H {
+			e.scrollY = clampValue(e.scrollY+(caretRect.Y+caretRect.H-(textRect.Y+textRect.H)), 0, maxY)
+		}
+	} else {
+		e.scrollY = 0
+	}
+	if e.horizontalScroll {
+		maxX := max32(0, layout.maxLineWidth-textRect.W)
+		if caretRect.X < textRect.X {
+			e.scrollX = clampValue(e.scrollX-(textRect.X-caretRect.X), 0, maxX)
+		} else if caretRect.X+caretRect.W > textRect.X+textRect.W {
+			e.scrollX = clampValue(e.scrollX+(caretRect.X+caretRect.W-(textRect.X+textRect.W)), 0, maxX)
+		}
+	} else {
+		e.scrollX = 0
+	}
+}
+
+func (e *EditBox) clampScroll() {
+	style := e.resolveStyle(&PaintCtx{scene: e.scene()})
+	textRect := e.contentRect(style)
+	if textRect.Empty() {
+		e.scrollX = 0
+		e.scrollY = 0
+		return
+	}
+	layout := e.textLayout(style, textRect.W)
+	if !e.horizontalScroll {
+		e.scrollX = 0
+	} else {
+		e.scrollX = clampValue(e.scrollX, 0, max32(0, layout.maxLineWidth-textRect.W))
+	}
+	if !e.multiline {
+		e.scrollY = 0
+	} else {
+		e.scrollY = clampValue(e.scrollY, 0, max32(0, layout.contentHeight-textRect.H))
+	}
+}
+
+func (e *EditBox) contentRect(style EditStyle) Rect {
+	padding := style.PaddingDP
+	if scene := e.scene(); scene != nil && scene.app != nil {
+		padding = scene.app.DP(padding)
+	}
+	bounds := e.Bounds()
+	return Rect{
+		X: bounds.X + padding,
+		Y: bounds.Y + padding,
+		W: max32(0, bounds.W-padding*2),
+		H: max32(0, bounds.H-padding*2),
+	}
+}
+
+func clampInt(value, minValue, maxValue int) int {
+	if value < minValue {
+		return minValue
+	}
+	if value > maxValue {
+		return maxValue
+	}
+	return value
+}
+
+func alignTextFormat(align Alignment, base uint32) uint32 {
+	base &^= core.DTCenter | core.DTRight
+	switch normalizeAlignment(align, AlignStart) {
+	case AlignCenter:
+		return base | core.DTCenter
+	case AlignEnd:
+		return base | core.DTRight
+	default:
+		return base
+	}
 }
