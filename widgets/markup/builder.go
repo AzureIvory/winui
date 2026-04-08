@@ -516,6 +516,7 @@ func (b *uiBuilder) buildProgress(n *node) (widgets.Widget, error) {
 		return nil, err
 	}
 	progress := widgets.NewProgressBar(b.nodeID(n))
+	progress.SetStyle(b.progressStyle(n))
 	if value, ok, err := parseIntegerValue(n.attr("value")); err != nil {
 		return nil, newParseError("builder", n.Pos, n.inlineContext(), err.Error())
 	} else if ok {
@@ -951,6 +952,7 @@ func (b *uiBuilder) applyPreferredSize(widget widgets.Widget, n *node, defaultSi
 		return nil
 	}
 	widget.SetBounds(widgets.Rect{W: width, H: height})
+	widgets.SetPreferredSize(widget, core.Size{Width: width, Height: height})
 	return nil
 }
 
@@ -1146,14 +1148,64 @@ func (b *uiBuilder) buttonStyle(n *node) widgets.ButtonStyle {
 	if color, ok, _ := parseColorValue(n.Styles["color"]); ok {
 		style.TextColor = color
 	}
+	if downText, ok, _ := parseColorValue(n.Styles["down-text-color"]); ok {
+		style.DownText = downText
+	}
+	if disabledText, ok, _ := parseColorValue(n.Styles["disabled-text-color"]); ok {
+		style.DisabledText = disabledText
+	}
 	if bg, ok, _ := parseColorValue(n.Styles["background"]); ok {
 		style.Background = bg
+	}
+	if hover, ok, _ := parseColorValue(n.Styles["hover-background"]); ok {
+		style.Hover = hover
+	}
+	if pressed, ok, _ := parseColorValue(n.Styles["pressed-background"]); ok {
+		style.Pressed = pressed
+	}
+	if disabled, ok, _ := parseColorValue(n.Styles["disabled-background"]); ok {
+		style.Disabled = disabled
 	}
 	if border, ok, _ := parseColorValue(n.Styles["border-color"]); ok {
 		style.Border = border
 	}
 	if radius, ok, _ := parseLengthValue(n.Styles["border-radius"]); ok {
 		style.CornerRadius = radius
+	}
+	if iconSize, ok, _ := parseLengthValue(n.Styles["icon-size"]); ok {
+		style.IconSizeDP = iconSize
+	}
+	if inset, ok, _ := parseLengthValue(n.Styles["text-inset"]); ok {
+		style.TextInsetDP = inset
+	}
+	if gap, ok, _ := parseLengthValue(n.Styles["gap"]); ok {
+		style.GapDP = gap
+	}
+	if padding, ok, _ := parseLengthValue(n.Styles["padding"]); ok {
+		style.PadDP = padding
+	}
+	return style
+}
+
+func (b *uiBuilder) progressStyle(n *node) widgets.ProgressStyle {
+	style := widgets.ProgressStyle{Font: b.fontSpec(n)}
+	if color, ok, _ := parseColorValue(n.Styles["color"]); ok {
+		style.TextColor = color
+	}
+	if track, ok, _ := parseColorValue(n.Styles["track-color"]); ok {
+		style.TrackColor = track
+	}
+	if fill, ok, _ := parseColorValue(n.Styles["fill-color"]); ok {
+		style.FillColor = fill
+	}
+	if bubble, ok, _ := parseColorValue(n.Styles["bubble-color"]); ok {
+		style.BubbleColor = bubble
+	}
+	if radius, ok, _ := parseLengthValue(n.Styles["border-radius"]); ok {
+		style.CornerRadius = radius
+	}
+	if showPercent, ok, _ := parseBoolValue(n.Styles["show-percent"]); ok {
+		style.ShowPercent = showPercent
 	}
 	return style
 }
@@ -1163,14 +1215,47 @@ func (b *uiBuilder) choiceStyle(n *node) widgets.ChoiceStyle {
 	if color, ok, _ := parseColorValue(n.Styles["color"]); ok {
 		style.TextColor = color
 	}
+	if disabledText, ok, _ := parseColorValue(n.Styles["disabled-text-color"]); ok {
+		style.DisabledText = disabledText
+	}
 	if bg, ok, _ := parseColorValue(n.Styles["background"]); ok {
 		style.Background = bg
 	}
 	if border, ok, _ := parseColorValue(n.Styles["border-color"]); ok {
 		style.BorderColor = border
 	}
+	if hoverBorder, ok, _ := parseColorValue(n.Styles["hover-border-color"]); ok {
+		style.HoverBorder = hoverBorder
+	}
+	if focusBorder, ok, _ := parseColorValue(n.Styles["focus-border-color"]); ok {
+		style.FocusBorder = focusBorder
+	}
+	if indicator, ok, _ := parseColorValue(n.Styles["indicator-color"]); ok {
+		style.IndicatorColor = indicator
+	}
+	if checkColor, ok, _ := parseColorValue(n.Styles["check-color"]); ok {
+		style.CheckColor = checkColor
+	}
+	if indicatorStyle, ok, _ := parseChoiceIndicatorStyle(n.Styles["indicator-style"]); ok {
+		style.IndicatorStyle = indicatorStyle
+	}
+	if hoverBg, ok, _ := parseColorValue(n.Styles["hover-background"]); ok {
+		style.HoverBackground = hoverBg
+	}
+	if disabledBg, ok, _ := parseColorValue(n.Styles["disabled-background"]); ok {
+		style.DisabledBg = disabledBg
+	}
+	if disabledBorder, ok, _ := parseColorValue(n.Styles["disabled-border-color"]); ok {
+		style.DisabledBorder = disabledBorder
+	}
 	if radius, ok, _ := parseLengthValue(n.Styles["border-radius"]); ok {
 		style.CornerRadius = radius
+	}
+	if indicatorSize, ok, _ := parseLengthValue(n.Styles["indicator-size"]); ok {
+		style.IndicatorSizeDP = indicatorSize
+	}
+	if indicatorGap, ok, _ := parseLengthValue(n.Styles["indicator-gap"]); ok {
+		style.IndicatorGapDP = indicatorGap
 	}
 	return style
 }
@@ -1189,11 +1274,38 @@ func (b *uiBuilder) comboStyle(n *node) widgets.ComboStyle {
 	if border, ok, _ := parseColorValue(n.Styles["border-color"]); ok {
 		style.BorderColor = border
 	}
+	if hoverBorder, ok, _ := parseColorValue(n.Styles["hover-border-color"]); ok {
+		style.HoverBorder = hoverBorder
+	}
+	if focusBorder, ok, _ := parseColorValue(n.Styles["focus-border-color"]); ok {
+		style.FocusBorder = focusBorder
+	}
+	if arrow, ok, _ := parseColorValue(n.Styles["arrow-color"]); ok {
+		style.ArrowColor = arrow
+	}
+	if popupBg, ok, _ := parseColorValue(n.Styles["popup-background"]); ok {
+		style.PopupBackground = popupBg
+	}
+	if itemHover, ok, _ := parseColorValue(n.Styles["item-hover-color"]); ok {
+		style.ItemHoverColor = itemHover
+	}
+	if itemSelected, ok, _ := parseColorValue(n.Styles["item-selected-color"]); ok {
+		style.ItemSelectedColor = itemSelected
+	}
+	if itemText, ok, _ := parseColorValue(n.Styles["item-text-color"]); ok {
+		style.ItemTextColor = itemText
+	}
 	if radius, ok, _ := parseLengthValue(n.Styles["border-radius"]); ok {
 		style.CornerRadius = radius
 	}
 	if padding, ok, _ := parseLengthValue(n.Styles["padding"]); ok {
 		style.PaddingDP = padding
+	}
+	if itemHeight, ok, _ := parseLengthValue(n.Styles["item-height"]); ok {
+		style.ItemHeightDP = itemHeight
+	}
+	if maxVisibleItems, ok, _ := parseIntegerValue(n.Styles["max-visible-items"]); ok {
+		style.MaxVisibleItems = int32(maxVisibleItems)
 	}
 	return style
 }
@@ -1203,11 +1315,20 @@ func (b *uiBuilder) listStyle(n *node) widgets.ListStyle {
 	if color, ok, _ := parseColorValue(n.Styles["color"]); ok {
 		style.TextColor = color
 	}
+	if disabledText, ok, _ := parseColorValue(n.Styles["disabled-text-color"]); ok {
+		style.DisabledText = disabledText
+	}
 	if bg, ok, _ := parseColorValue(n.Styles["background"]); ok {
 		style.Background = bg
 	}
 	if border, ok, _ := parseColorValue(n.Styles["border-color"]); ok {
 		style.BorderColor = border
+	}
+	if hoverBorder, ok, _ := parseColorValue(n.Styles["hover-border-color"]); ok {
+		style.HoverBorder = hoverBorder
+	}
+	if focusBorder, ok, _ := parseColorValue(n.Styles["focus-border-color"]); ok {
+		style.FocusBorder = focusBorder
 	}
 	if hover, ok, _ := parseColorValue(n.Styles["item-hover-color"]); ok {
 		style.ItemHoverColor = hover
@@ -1243,6 +1364,21 @@ func (b *uiBuilder) editStyle(n *node) widgets.EditStyle {
 	}
 	if border, ok, _ := parseColorValue(n.Styles["border-color"]); ok {
 		style.BorderColor = border
+	}
+	if hoverBorder, ok, _ := parseColorValue(n.Styles["hover-border-color"]); ok {
+		style.HoverBorder = hoverBorder
+	}
+	if focusBorder, ok, _ := parseColorValue(n.Styles["focus-border-color"]); ok {
+		style.FocusBorder = focusBorder
+	}
+	if disabledText, ok, _ := parseColorValue(n.Styles["disabled-text-color"]); ok {
+		style.DisabledText = disabledText
+	}
+	if disabledBg, ok, _ := parseColorValue(n.Styles["disabled-background"]); ok {
+		style.DisabledBg = disabledBg
+	}
+	if caret, ok, _ := parseColorValue(n.Styles["caret-color"]); ok {
+		style.CaretColor = caret
 	}
 	if radius, ok, _ := parseLengthValue(n.Styles["border-radius"]); ok {
 		style.CornerRadius = radius
@@ -1320,48 +1456,54 @@ func (b *uiBuilder) applyLayoutData(widget widgets.Widget, n *node, parentLayout
 		return nil
 	}
 	if parentLayout == "absolute" {
-		if raw := strings.TrimSpace(n.Styles["right"]); raw != "" {
-			return newParseError("builder", n.Pos, n.inlineContext(), "absolute layout does not support right yet; use left + width")
-		}
-		if raw := strings.TrimSpace(n.Styles["bottom"]); raw != "" {
-			return newParseError("builder", n.Pos, n.inlineContext(), "absolute layout does not support bottom yet; use top + height")
-		}
-		rect := widget.Bounds()
+		var data widgets.AbsoluteLayoutData
 		if left, ok, err := parseLengthValue(n.Styles["left"]); err != nil {
 			return newParseError("builder", n.Pos, n.inlineContext(), err.Error())
 		} else if ok {
-			rect.X = left
+			data.Left = left
+			data.HasLeft = true
 		} else if x, ok, err := parseLengthValue(n.Styles["x"]); err != nil {
 			return newParseError("builder", n.Pos, n.inlineContext(), err.Error())
 		} else if ok {
-			rect.X = x
+			data.Left = x
+			data.HasLeft = true
 		}
 		if top, ok, err := parseLengthValue(n.Styles["top"]); err != nil {
 			return newParseError("builder", n.Pos, n.inlineContext(), err.Error())
 		} else if ok {
-			rect.Y = top
+			data.Top = top
+			data.HasTop = true
 		} else if y, ok, err := parseLengthValue(n.Styles["y"]); err != nil {
 			return newParseError("builder", n.Pos, n.inlineContext(), err.Error())
 		} else if ok {
-			rect.Y = y
+			data.Top = y
+			data.HasTop = true
+		}
+		if right, ok, err := parseLengthValue(n.Styles["right"]); err != nil {
+			return newParseError("builder", n.Pos, n.inlineContext(), err.Error())
+		} else if ok {
+			data.Right = right
+			data.HasRight = true
+		}
+		if bottom, ok, err := parseLengthValue(n.Styles["bottom"]); err != nil {
+			return newParseError("builder", n.Pos, n.inlineContext(), err.Error())
+		} else if ok {
+			data.Bottom = bottom
+			data.HasBottom = true
 		}
 		if width, ok, err := parseLengthValue(n.Styles["width"]); err != nil {
 			return newParseError("builder", n.Pos, n.inlineContext(), err.Error())
 		} else if ok {
-			rect.W = width
+			data.Width = width
+			data.HasWidth = true
 		}
 		if height, ok, err := parseLengthValue(n.Styles["height"]); err != nil {
 			return newParseError("builder", n.Pos, n.inlineContext(), err.Error())
 		} else if ok {
-			rect.H = height
+			data.Height = height
+			data.HasHeight = true
 		}
-		if rect.W < 0 {
-			rect.W = 0
-		}
-		if rect.H < 0 {
-			rect.H = 0
-		}
-		widget.SetBounds(rect)
+		widget.SetLayoutData(data)
 		return nil
 	}
 	grow, _, _ := parseIntegerValue(n.Styles["flex-grow"])

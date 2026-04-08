@@ -67,6 +67,10 @@ func measurePanelNatural(panel *Panel) core.Size {
 }
 
 func measureFlexNatural(children []Widget, axis Axis, gap int32, padding Insets, itemSize int32) core.Size {
+	metricWidget := layoutMetricWidget(children)
+	gap = widgetDP(metricWidget, gap)
+	padding = scaleInsetsForWidget(metricWidget, padding)
+	itemSize = widgetDP(metricWidget, itemSize)
 	main := int32(0)
 	cross := int32(0)
 	count := 0
@@ -110,6 +114,16 @@ func measureGridNatural(children []Widget, layout GridLayout) core.Size {
 	if columns <= 0 {
 		columns = 1
 	}
+	metricWidget := layoutMetricWidget(children)
+	padding := scaleInsetsForWidget(metricWidget, layout.Padding)
+	columnGap := widgetDP(metricWidget, layout.ColumnGap)
+	if columnGap == 0 {
+		columnGap = widgetDP(metricWidget, layout.Gap)
+	}
+	rowGap := widgetDP(metricWidget, layout.RowGap)
+	if rowGap == 0 {
+		rowGap = widgetDP(metricWidget, layout.Gap)
+	}
 	colWidths := make([]int32, columns)
 	rowHeights := make([]int32, 0)
 	for index, child := range children {
@@ -129,35 +143,31 @@ func measureGridNatural(children []Widget, layout GridLayout) core.Size {
 			rowHeights[row] = size.Height
 		}
 	}
-	width := layout.Padding.horizontal()
+	width := padding.horizontal()
 	for _, colWidth := range colWidths {
 		width += colWidth
 	}
-	height := layout.Padding.vertical()
+	height := padding.vertical()
 	for _, rowHeight := range rowHeights {
 		height += rowHeight
 	}
 	if len(colWidths) > 1 {
-		gap := layout.ColumnGap
-		if gap == 0 {
-			gap = layout.Gap
-		}
-		width += gap * int32(len(colWidths)-1)
+		width += columnGap * int32(len(colWidths)-1)
 	}
 	if len(rowHeights) > 1 {
-		gap := layout.RowGap
-		if gap == 0 {
-			gap = layout.Gap
-		}
-		height += gap * int32(len(rowHeights)-1)
+		height += rowGap * int32(len(rowHeights)-1)
 	}
 	return core.Size{Width: width, Height: height}
 }
 
 func measureFormNatural(children []Widget, layout FormLayout) core.Size {
-	labelWidth := layout.LabelWidth
+	metricWidget := layoutMetricWidget(children)
+	padding := scaleInsetsForWidget(metricWidget, layout.Padding)
+	labelWidth := widgetDP(metricWidget, layout.LabelWidth)
+	rowGap := widgetDP(metricWidget, layout.RowGap)
+	columnGap := widgetDP(metricWidget, layout.ColumnGap)
 	fieldWidth := int32(0)
-	height := layout.Padding.vertical()
+	height := padding.vertical()
 	rows := 0
 	for index, child := range children {
 		if child == nil {
@@ -180,11 +190,11 @@ func measureFormNatural(children []Widget, layout FormLayout) core.Size {
 		}
 	}
 	if rows > 1 {
-		height += layout.RowGap * int32(rows-1)
+		height += rowGap * int32(rows-1)
 	}
-	width := layout.Padding.horizontal() + labelWidth + fieldWidth
+	width := padding.horizontal() + labelWidth + fieldWidth
 	if labelWidth > 0 && fieldWidth > 0 {
-		width += layout.ColumnGap
+		width += columnGap
 	}
 	return core.Size{Width: width, Height: height}
 }
@@ -196,18 +206,34 @@ func measureAbsoluteNatural(children []Widget) core.Size {
 		if child == nil {
 			continue
 		}
-		bounds := child.Bounds()
 		size := preferredSizeOf(child)
+		bounds := child.Bounds()
+		x := bounds.X
+		y := bounds.Y
 		w := bounds.W
 		h := bounds.H
+		if data, ok := absoluteDataOf(child.LayoutData()); ok {
+			if data.HasLeft {
+				x = widgetDP(child, data.Left)
+			}
+			if data.HasTop {
+				y = widgetDP(child, data.Top)
+			}
+			if data.HasWidth {
+				w = widgetDP(child, data.Width)
+			}
+			if data.HasHeight {
+				h = widgetDP(child, data.Height)
+			}
+		}
 		if w <= 0 {
 			w = size.Width
 		}
 		if h <= 0 {
 			h = size.Height
 		}
-		right := bounds.X + w
-		bottom := bounds.Y + h
+		right := x + w
+		bottom := y + h
 		if right > width {
 			width = right
 		}

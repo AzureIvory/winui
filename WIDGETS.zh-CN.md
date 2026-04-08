@@ -91,11 +91,11 @@ scroll.SetVerticalScroll(true)
 scroll.SetHorizontalScroll(false)
 ```
 
-Known limitation:
+Current behavior:
 
-- clipping affects painting
-- scene hit testing still does not consistently apply ancestor clip regions
-- scrolled-off children may still receive pointer input outside the visible viewport
+- viewport clipping affects both painting and scene hit testing
+- scrolled-off children do not receive pointer input outside the visible viewport
+- if you change hit testing, keep overlay routing and ancestor clip propagation consistent
 
 ## 6. Markup
 
@@ -154,7 +154,59 @@ Example:
 - `animated-img`
 - `progress`
 
-### 6.3 Action Routing
+### 6.3 Length and DPI
+
+Markup length values such as `20` and `20px` are treated as logical DP units.
+
+- the loader stores logical preferred sizes for markup-created widgets
+- layout converts those values with the active scene DPI
+- `Scene.ReloadResources()` now re-applies layout, so markup UIs reflow after DPI changes
+
+### 6.4 Absolute Layout
+
+`display:absolute` is a constraint-based layout, not full CSS positioning.
+
+Supported absolute properties:
+
+- `left`
+- `top`
+- `right`
+- `bottom`
+- `width`
+- `height`
+- aliases `x` and `y`
+
+Common combinations:
+
+- `left + top + width + height`
+- `left + right + height`
+- `top + bottom + width`
+- `left + right + top + bottom`
+
+### 6.5 Style Mapping
+
+Markup style fields map into the existing widget theme structs instead of using a separate render layer.
+
+High-coverage mappings exist for:
+
+- `button`
+- `progress`
+- `checkbox`
+- `radio`
+- `select`
+- `listbox`
+- `input`
+- `textarea`
+- `panel`
+
+Examples of mapped fields include:
+
+- text and placeholder colors
+- hover, focus, pressed, and disabled colors
+- border and corner radius
+- item height, padding, gap, indicator size, and max visible items
+
+### 6.6 Action Routing
 
 `LoadOptions` supports:
 
@@ -181,11 +233,11 @@ Run both demos when you touch interaction or rendering:
 
 ```powershell
 go run ./cmd/demo
-go run ./widgets/cmd/demo_html
+go run ./cmd/demo_html
 ```
 
 - `cmd/demo`: core controls, layout, theme, rendering
-- `widgets/cmd/demo_html`: markup, document metadata, assets, actions
+- `cmd/demo_html`: markup, document metadata, assets, actions, DPI-aware layout, style mapping
 
 ## 8. Validation
 

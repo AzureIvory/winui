@@ -180,6 +180,23 @@ func parseFontWeightValue(value string) (int32, bool, error) {
 	}
 }
 
+func parseChoiceIndicatorStyle(value string) (widgets.ChoiceIndicatorStyle, bool, error) {
+	text := strings.TrimSpace(strings.ToLower(value))
+	if text == "" {
+		return widgets.ChoiceIndicatorAuto, false, nil
+	}
+	switch text {
+	case "auto":
+		return widgets.ChoiceIndicatorAuto, true, nil
+	case "dot":
+		return widgets.ChoiceIndicatorDot, true, nil
+	case "check":
+		return widgets.ChoiceIndicatorCheck, true, nil
+	default:
+		return widgets.ChoiceIndicatorAuto, false, fmt.Errorf("invalid indicator-style value %q", value)
+	}
+}
+
 func parseTextFormat(align widgets.Alignment, multiline bool) uint32 {
 	format := uint32(0)
 	switch align {

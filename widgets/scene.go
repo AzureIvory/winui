@@ -312,6 +312,9 @@ func (s *Scene) SetTheme(theme *Theme) {
 func (s *Scene) ReloadResources() {
 	s.runOnUI(func() {
 		s.resetFonts()
+		if s.root != nil {
+			s.root.applyLayout()
+		}
 		s.Invalidate(nil)
 	})
 }

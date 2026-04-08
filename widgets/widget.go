@@ -103,6 +103,8 @@ type widgetBase struct {
 	bounds Rect
 	// preferred 表示控件在布局前声明的首选尺寸。
 	preferred core.Size
+	// preferredLogical 标记首选尺寸是否仍以未缩放的逻辑单位保存。
+	preferredLogical bool
 	// visible 表示控件是否可见。
 	visible bool
 	// enabled 表示控件是否可用。
@@ -140,6 +142,10 @@ func (b *widgetBase) Bounds() Rect {
 // preferredSize 返回控件在布局前声明的首选尺寸。
 func (b *widgetBase) preferredSize() core.Size {
 	return b.preferred
+}
+
+func (b *widgetBase) preferredSizeInfo() (core.Size, bool) {
+	return b.preferred, b.preferredLogical
 }
 
 // Visible 返回控件是否可见。
@@ -207,6 +213,7 @@ func (b *widgetBase) setBounds(owner Widget, rect Rect) {
 	}
 	if layoutPassDepth.Load() == 0 {
 		b.preferred = core.Size{Width: rect.W, Height: rect.H}
+		b.preferredLogical = false
 	}
 	var oldRect Rect
 	if b.sceneRef != nil && owner != nil {
@@ -218,6 +225,40 @@ func (b *widgetBase) setBounds(owner Widget, rect Rect) {
 			b.sceneRef.invalidateRect(oldRect)
 		}
 		b.sceneRef.Invalidate(owner)
+	}
+}
+
+// SetPreferredSize records a widget's preferred logical size for layout and DPI scaling.
+func SetPreferredSize(widget Widget, size core.Size) {
+	if widget == nil {
+		return
+	}
+	holder, ok := widget.(interface{ setPreferredSize(core.Size) })
+	if !ok {
+		return
+	}
+	holder.setPreferredSize(size)
+}
+
+func (b *widgetBase) setPreferredSize(size core.Size) {
+	if size.Width < 0 {
+		size.Width = 0
+	}
+	if size.Height < 0 {
+		size.Height = 0
+	}
+	if b.preferred == size && b.preferredLogical {
+		return
+	}
+	b.preferred = size
+	b.preferredLogical = true
+	if panel, ok := b.parentRef.(*Panel); ok {
+		panel.applyLayout()
+		panel.invalidate(panel)
+		return
+	}
+	if b.sceneRef != nil {
+		b.sceneRef.Invalidate(nil)
 	}
 }
 

@@ -9,7 +9,7 @@ Windows-only Go UI toolkit on top of Win32. No WebView, no XAML, no app logic.
 - `core`: low-level Win32 window, paint, DPI, input, timer, icon, font
 - `widgets`: scene tree, theme, layout, controls, markup
 - `cmd/demo`: manual regression demo
-- `widgets/cmd/demo_html`: markup demo
+- `cmd/demo_html`: markup demo
 
 ## Hard Rules
 
@@ -25,6 +25,8 @@ Windows-only Go UI toolkit on top of Win32. No WebView, no XAML, no app logic.
 - Changes must work with `cgo` on and off
 - UI state changes should follow existing UI-thread patterns: `app.Post(...)` or `runOnUI(...)`
 - State mutations usually need invalidation
+- Markup-created preferred sizes are stored as logical DP values and scaled during layout
+- `Scene.ReloadResources()` re-applies layout, so DPI changes can move and resize markup-created widgets
 
 ## Interaction Facts
 
@@ -39,6 +41,8 @@ Windows-only Go UI toolkit on top of Win32. No WebView, no XAML, no app logic.
 - Legacy API: `LoadHTMLFile`, `LoadHTMLString`
 - `<window><body>...</body></window>` is supported
 - `WindowMeta` can set title, icon, min width, min height
+- Markup absolute layout supports `left`, `top`, `right`, `bottom`, `width`, `height`, plus `x` / `y`
+- Markup style mapping should target existing widget style structs for button, progress, choice, combo, list, edit, and panel controls
 
 ## Validation
 
@@ -46,7 +50,7 @@ Windows-only Go UI toolkit on top of Win32. No WebView, no XAML, no app logic.
 go test ./...
 go vet ./...
 go run ./cmd/demo
-go run ./widgets/cmd/demo_html
+go run ./cmd/demo_html
 ```
 
 `go test` is currently a build check. The repo does not keep `*_test.go` files.
@@ -60,4 +64,4 @@ go run ./widgets/cmd/demo_html
 
 ## Current Open Risk
 
-- `ScrollView` clip bounds are not yet part of scene hit testing. Changes around pointer routing should account for ancestor clip propagation.
+- Markup absolute positioning is constraint-based for the supported fields above; it is still not a full CSS box model.

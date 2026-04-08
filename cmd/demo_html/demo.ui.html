@@ -7,19 +7,26 @@
            onchange="pwdChanged" onsubmit="pwdSubmit" />
 
     <button id="saveBtn" icon="assets/save.ico" icon-position="left"
-            style="left:260px; top:56px; width:140px; height:40px;"
+            style="left:260px; top:56px; width:140px; height:40px; color:#0f172a; down-text-color:#ffffff; background:#f5f9ff; hover-background:#e0f2fe; pressed-background:#2563eb; border-color:#9dbfe8; border-radius:10px; padding:12px; gap:8px;"
             onclick="save">
       保存
     </button>
 
     <button id="legacyBtn"
-            style="left:410px; top:56px; width:140px; height:40px;"
+            style="left:410px; top:56px; width:140px; height:40px; background:#ffffff; hover-background:#eef6ff; pressed-background:#1d4ed8; disabled-background:#e2e8f0; border-color:#b9c9dd; border-radius:10px;"
             onclick="legacyOnly">
       旧 Actions
     </button>
 
+    <select id="citySelect" placeholder="选择城市"
+            style="left:560px; top:60px; width:220px; height:36px; color:#1f2937; placeholder-color:#94a3b8; background:#ffffff; border-color:#cbd5e1; hover-border-color:#60a5fa; focus-border-color:#2563eb; arrow-color:#2563eb; popup-background:#ffffff; item-hover-color:#eff6ff; item-selected-color:#2563eb; item-text-color:#ffffff; padding:10px; border-radius:10px; item-height:34px; max-visible-items:5;">
+      <option value="bj">北京</option>
+      <option value="sh" selected>上海</option>
+      <option value="sz">深圳</option>
+    </select>
+
     <listbox id="cityList"
-             style="left:20px; top:110px; width:220px; height:160px;"
+             style="left:20px; top:110px; width:220px; height:160px; color:#1f2937; disabled-text-color:#94a3b8; background:#ffffff; border-color:#cbd5e1; hover-border-color:#60a5fa; focus-border-color:#2563eb; item-hover-color:#eff6ff; item-selected-color:#2563eb; item-text-color:#ffffff; padding:8px; border-radius:10px; item-height:34px;"
              onchange="cityChanged"
              onactivate="cityOpen">
       <option value="bj">北京</option>
@@ -27,9 +34,22 @@
       <option value="sz">深圳</option>
     </listbox>
 
-    <animated-img id="spinner" src="assets/spinner.gif" autoplay="true"
-                  style="left:260px; top:120px; width:48px; height:48px;" />
+    <progress id="uploadProgress" value="72"
+              style="left:260px; top:120px; width:280px; height:24px; color:#ffffff; track-color:#dbeafe; fill-color:#2563eb; bubble-color:#1d4ed8; border-radius:12px; show-percent:true;" />
 
-    <label id="status" style="left:20px; top:290px; width:760px; height:70px; background:#ffffff; border-color:#b9c9dd; border-width:1px; padding:8px;">等待操作</label>
+    <checkbox id="newsCheck"
+              style="left:260px; top:168px; width:240px; height:28px; color:#1f2937; disabled-text-color:#94a3b8; background:#ffffff; border-color:#cbd5e1; hover-border-color:#38bdf8; focus-border-color:#0ea5e9; indicator-color:#0ea5e9; check-color:#ffffff; indicator-style:check; hover-background:#f0f9ff; disabled-background:#f3f4f6; disabled-border-color:#d1d5db; border-radius:6px; indicator-size:18px; indicator-gap:10px;"
+              checked>订阅产品更新</checkbox>
+
+    <textarea id="notes" placeholder="多行备注"
+              style="left:260px; top:210px; width:300px; height:120px; color:#1f2937; placeholder-color:#94a3b8; background:#ffffff; border-color:#cbd5e1; hover-border-color:#60a5fa; focus-border-color:#2563eb; disabled-text-color:#94a3b8; disabled-background:#f3f4f6; caret-color:#2563eb; padding:10px; border-radius:10px;">支持 right / bottom 约束和 DPI 缩放。</textarea>
+
+    <animated-img id="spinner" src="assets/spinner.gif" autoplay="true"
+                  style="left:580px; top:120px; width:48px; height:48px;" />
+
+    <panel id="statusBox"
+           style="display:absolute; left:20px; right:20px; bottom:20px; height:70px; background:#ffffff; border-color:#b9c9dd; border-width:1px; border-radius:12px;">
+      <label id="status" style="left:12px; top:10px; right:12px; bottom:10px; height:50px; text-align:left;">等待操作</label>
+    </panel>
   </body>
 </window>

@@ -14,7 +14,7 @@
 - `core/`: Win32 primitives, window lifecycle, paint, DPI, input, timer
 - `widgets/`: scene tree, event routing, theme, layout, controls, markup
 - `cmd/demo/`: manual regression entry point
-- `widgets/cmd/demo_html/`: manual markup regression entry point
+- `cmd/demo_html/`: manual markup regression entry point
 
 ## Rules
 
@@ -24,6 +24,8 @@
 - Reuse existing `Scene`, `widgetBase`, layout, and style-merge patterns
 - Follow existing UI-thread patterns such as `runOnUI(...)` and `app.Post(...)`
 - Trigger invalidation after state changes when needed
+- Treat markup lengths as logical DP units, not raw device pixels
+- Keep markup style fields aligned with existing widget style structs instead of inventing parallel style paths
 
 ## Rendering
 
@@ -40,14 +42,15 @@ The repository does not keep `*_test.go` files now, so validation is mainly buil
 go test ./...
 go vet ./...
 go run ./cmd/demo
-go run ./widgets/cmd/demo_html
+go run ./cmd/demo_html
 ```
 
 Recommended:
 
 - Use both demos after layout, painting, hit-testing, or input-routing changes
 - Think about both `cgo` enabled and disabled paths for rendering changes
-- After markup changes, verify that `widgets/cmd/demo_html/demo.ui.html` still loads
+- After markup changes, verify that `cmd/demo_html/demo.ui.html` still loads
+- If you touch DPI-sensitive layout code, verify a DPI change still reflows markup-created UIs
 
 ## Documentation Sync
 

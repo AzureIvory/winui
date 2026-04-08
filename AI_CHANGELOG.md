@@ -7,7 +7,7 @@ Only keep behavior here that changes how an agent should reason about edits or v
 ### Markup input normalization
 
 - `widgets/markup/parser.go` strips a UTF-8 BOM before XML parsing
-- `widgets/cmd/demo_html/demo.ui.html` may be saved with BOM and should still load
+- `cmd/demo_html/demo.ui.html` may be saved with BOM and should still load
 
 ### Markup document API
 
@@ -24,7 +24,14 @@ Only keep behavior here that changes how an agent should reason about edits or v
 - ComboBox popup routing depends on overlay-first dispatch in `Scene`
 - Popup geometry logic must stay consistent across layout, paint, and hit testing
 
-### Open interaction issue
+### Markup layout and DPI
 
-- `ScrollView` clip bounds are exposed, but scene hit testing still does not enforce ancestor clip regions
-- Scrolled-off children may still receive pointer input outside the visible viewport
+- Markup length values are logical DP units, not raw device pixels
+- `widgets.SetPreferredSize(...)` preserves logical preferred sizes for layout-time scaling
+- `Scene.ReloadResources()` now re-applies layout so markup UIs reflow after DPI changes
+- Markup absolute layout supports `left`, `top`, `right`, `bottom`, `width`, `height`, plus `x` / `y`
+
+### Scroll clip routing
+
+- `Scene.hitTest()` now propagates clip bounds from ancestors such as `ScrollView`
+- Scrolled-off children should not receive pointer input outside the visible viewport

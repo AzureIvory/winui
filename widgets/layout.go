@@ -13,8 +13,68 @@ type Layout interface {
 // AbsoluteLayout 表示绝对布局，不主动调整子控件边界。
 type AbsoluteLayout struct{}
 
-// Apply 保持子控件当前边界不变。
-func (AbsoluteLayout) Apply(Rect, []Widget) {}
+// AbsoluteLayoutData describes optional absolute positioning constraints.
+type AbsoluteLayoutData struct {
+	Left      int32
+	Top       int32
+	Right     int32
+	Bottom    int32
+	Width     int32
+	Height    int32
+	HasLeft   bool
+	HasTop    bool
+	HasRight  bool
+	HasBottom bool
+	HasWidth  bool
+	HasHeight bool
+}
+
+// Apply resolves absolute constraints against the parent rect.
+func (AbsoluteLayout) Apply(parent Rect, children []Widget) {
+	for _, child := range children {
+		if child == nil {
+			continue
+		}
+		data, ok := absoluteDataOf(child.LayoutData())
+		if !ok {
+			continue
+		}
+		size := preferredSizeOf(child)
+		width := size.Width
+		height := size.Height
+		if data.HasWidth {
+			width = widgetDP(child, data.Width)
+		} else if data.HasLeft && data.HasRight {
+			width = parent.W - widgetDP(child, data.Left) - widgetDP(child, data.Right)
+		}
+		if data.HasHeight {
+			height = widgetDP(child, data.Height)
+		} else if data.HasTop && data.HasBottom {
+			height = parent.H - widgetDP(child, data.Top) - widgetDP(child, data.Bottom)
+		}
+		if width < 0 {
+			width = 0
+		}
+		if height < 0 {
+			height = 0
+		}
+
+		rect := child.Bounds()
+		rect.W = width
+		rect.H = height
+		if data.HasLeft {
+			rect.X = parent.X + widgetDP(child, data.Left)
+		} else if data.HasRight {
+			rect.X = parent.X + parent.W - widgetDP(child, data.Right) - rect.W
+		}
+		if data.HasTop {
+			rect.Y = parent.Y + widgetDP(child, data.Top)
+		} else if data.HasBottom {
+			rect.Y = parent.Y + parent.H - widgetDP(child, data.Bottom) - rect.H
+		}
+		child.SetBounds(rect)
+	}
+}
 
 // Axis 表示线性布局的主轴方向。
 type Axis int
@@ -223,18 +283,20 @@ func (l GridLayout) Apply(parent Rect, children []Widget) {
 		columns = 1
 	}
 
-	content := l.Padding.inset(parent)
+	metricWidget := layoutMetricWidget(children)
+	padding := scaleInsetsForWidget(metricWidget, l.Padding)
+	content := padding.inset(parent)
 	if content.Empty() {
 		return
 	}
 
-	columnGap := l.ColumnGap
+	columnGap := widgetDP(metricWidget, l.ColumnGap)
 	if columnGap == 0 {
-		columnGap = l.Gap
+		columnGap = widgetDP(metricWidget, l.Gap)
 	}
-	rowGap := l.RowGap
+	rowGap := widgetDP(metricWidget, l.RowGap)
 	if rowGap == 0 {
-		rowGap = l.Gap
+		rowGap = widgetDP(metricWidget, l.Gap)
 	}
 
 	items := make([]gridItem, 0, len(children))
@@ -338,12 +400,14 @@ func (l GridLayout) Apply(parent Rect, children []Widget) {
 
 // Apply 按表单布局规则排布子控件。
 func (l FormLayout) Apply(parent Rect, children []Widget) {
-	content := l.Padding.inset(parent)
+	metricWidget := layoutMetricWidget(children)
+	padding := scaleInsetsForWidget(metricWidget, l.Padding)
+	content := padding.inset(parent)
 	if content.Empty() {
 		return
 	}
 
-	labelWidth := l.LabelWidth
+	labelWidth := widgetDP(metricWidget, l.LabelWidth)
 	if labelWidth <= 0 {
 		for index := 0; index < len(children); index += 2 {
 			if children[index] == nil {
@@ -359,8 +423,8 @@ func (l FormLayout) Apply(parent Rect, children []Widget) {
 		labelWidth = content.W
 	}
 
-	rowGap := l.RowGap
-	columnGap := l.ColumnGap
+	rowGap := widgetDP(metricWidget, l.RowGap)
+	columnGap := widgetDP(metricWidget, l.ColumnGap)
 	defaultAlign := normalizeAlignment(l.CrossAlign, AlignCenter)
 
 	y := content.Y
@@ -490,6 +554,10 @@ type preferredSizer interface {
 
 // applyFlexLayout 根据统一逻辑执行行布局或列布局。
 func applyFlexLayout(parent Rect, children []Widget, opts flexOptions) {
+	metricWidget := layoutMetricWidget(children)
+	opts.padding = scaleInsetsForWidget(metricWidget, opts.padding)
+	opts.gap = widgetDP(metricWidget, opts.gap)
+	opts.itemSize = widgetDP(metricWidget, opts.itemSize)
 	content := opts.padding.inset(parent)
 	if content.Empty() {
 		return
@@ -583,6 +651,15 @@ func applyFlexLayout(parent Rect, children []Widget, opts flexOptions) {
 func preferredSizeOf(widget Widget) core.Size {
 	if widget == nil {
 		return core.Size{}
+	}
+	if info, ok := widget.(interface {
+		preferredSizeInfo() (core.Size, bool)
+	}); ok {
+		size, logical := info.preferredSizeInfo()
+		if logical {
+			return scaleSizeForWidget(widget, size)
+		}
+		return size
 	}
 	if sized, ok := widget.(preferredSizer); ok {
 		return sized.preferredSize()
@@ -808,6 +885,58 @@ func formFieldRect(cell Rect, prefW, prefH int32, data FormLayoutData, fallbackA
 		Y: alignedOffset(cell.Y, cell.H, min32(cell.H, max32(0, prefH)), align),
 		W: width,
 		H: heightForAlign(cell.H, prefH, align),
+	}
+}
+
+func absoluteDataOf(data any) (AbsoluteLayoutData, bool) {
+	switch typed := data.(type) {
+	case AbsoluteLayoutData:
+		return typed, true
+	case *AbsoluteLayoutData:
+		if typed != nil {
+			return *typed, true
+		}
+	}
+	return AbsoluteLayoutData{}, false
+}
+
+func layoutMetricWidget(children []Widget) Widget {
+	for _, child := range children {
+		if child != nil {
+			return child
+		}
+	}
+	return nil
+}
+
+func widgetDP(widget Widget, value int32) int32 {
+	if value == 0 {
+		return 0
+	}
+	node := asWidgetNode(widget)
+	if node == nil {
+		return value
+	}
+	scene := node.scene()
+	if scene == nil || scene.app == nil {
+		return value
+	}
+	return scene.app.DP(value)
+}
+
+func scaleInsetsForWidget(widget Widget, value Insets) Insets {
+	return Insets{
+		Top:    widgetDP(widget, value.Top),
+		Right:  widgetDP(widget, value.Right),
+		Bottom: widgetDP(widget, value.Bottom),
+		Left:   widgetDP(widget, value.Left),
+	}
+}
+
+func scaleSizeForWidget(widget Widget, value core.Size) core.Size {
+	return core.Size{
+		Width:  widgetDP(widget, value.Width),
+		Height: widgetDP(widget, value.Height),
 	}
 }
 

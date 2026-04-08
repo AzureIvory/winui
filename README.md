@@ -11,15 +11,19 @@ It targets small native desktop tools that need direct control over window lifec
 - `RenderModeAuto`: prefer Direct2D, fall back to GDI
 - Retained widget scene tree with themes and layouts
 - Reusable built-in controls
+- HTML/CSS-style markup loader with window metadata support
+- Markup lengths are logical DP values and reflow on DPI changes
+- Absolute markup layout supports `left` / `top` / `right` / `bottom` / `width` / `height`
+- Markup style mapping covers button, progress, choice, combo, list, edit, and panel styles
 - Native demo app in `cmd/demo`
-- Markup demo app in `widgets/cmd/demo_html`
+- Markup demo app in `cmd/demo_html`
 
 ## Packages
 
 - `core/`: window lifecycle, paint, DPI, input, timer, icon, font
 - `widgets/`: scene tree, event routing, layout, theme, controls, markup
 - `cmd/demo/`: manual regression demo
-- `widgets/cmd/demo_html/`: markup and document-loading demo
+- `cmd/demo_html/`: markup and document-loading demo
 - `scripts/`: maintenance scripts
 
 ## Built-in Controls
@@ -98,7 +102,7 @@ go run ./cmd/demo
 Markup demo:
 
 ```powershell
-go run ./widgets/cmd/demo_html
+go run ./cmd/demo_html
 ```
 
 ## Validation
@@ -109,7 +113,7 @@ The repository no longer keeps `*_test.go` files. `go test` is currently a build
 go test ./...
 go vet ./...
 go run ./cmd/demo
-go run ./widgets/cmd/demo_html
+go run ./cmd/demo_html
 ```
 
 ## Docs
