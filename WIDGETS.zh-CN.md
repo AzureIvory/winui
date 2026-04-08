@@ -33,6 +33,7 @@ Common controls with mode support:
 - `CheckBox`
 - `RadioButton`
 - `ComboBox`
+- `FilePicker`
 
 If you need themed native controls, the final executable still needs a `Microsoft.Windows.Common-Controls` v6 manifest.
 
@@ -69,6 +70,7 @@ Use cases:
 - `RadioButton`
 - `ComboBox`
 - `EditBox`
+- `FilePicker`
 - `Image`
 - `AnimatedImage`
 - `ListBox`
@@ -107,6 +109,14 @@ Document APIs:
 - `markup.LoadDocumentString(...)`
 - `markup.LoadIntoScene(...)`
 - `markup.LoadFileIntoScene(...)`
+
+Native file dialog APIs:
+
+- `dialogs.ShowFileDialog(...)`
+- `dialogs.OpenFile(...)`
+- `dialogs.OpenFiles(...)`
+- `dialogs.SaveFile(...)`
+- `dialogs.PickFolder(...)`
 
 Legacy APIs:
 
@@ -153,6 +163,8 @@ Example:
 - `img`
 - `animated-img`
 - `progress`
+
+`input type="file"` maps to `widgets.FilePicker`.
 
 ### 6.3 Length and DPI
 
@@ -206,7 +218,29 @@ Examples of mapped fields include:
 - border and corner radius
 - item height, padding, gap, indicator size, and max visible items
 
-### 6.6 Action Routing
+### 6.6 File Dialog Input
+
+Supported attributes on `input type="file"`:
+
+- `dialog="open|save|folder"`
+- `multiple`
+- `accept`
+- `filters`
+- `button-text`
+- `dialog-title`
+- `dialog-button-text`
+- `default-extension`
+- `value-separator`
+- `initial-path`
+
+Notes:
+
+- `multiple` is only valid with `dialog="open"`
+- `accept` is for simple extension or wildcard filters such as `.txt,.md` or `*.png`
+- `filters` uses `Name=pattern` pairs separated by commas, for example `Text Files=*.txt,All Files=*.*`
+- file actions report full path lists through `ActionContext.Paths`
+
+### 6.7 Action Routing
 
 `LoadOptions` supports:
 
@@ -224,6 +258,7 @@ Priority:
 - widget instance
 - widget ID
 - current value
+- selected paths for file inputs
 - checked state
 - index and list item
 
@@ -237,7 +272,7 @@ go run ./cmd/demo_html
 ```
 
 - `cmd/demo`: core controls, layout, theme, rendering
-- `cmd/demo_html`: markup, document metadata, assets, actions, DPI-aware layout, style mapping
+- `cmd/demo_html`: markup, document metadata, assets, actions, DPI-aware layout, style mapping, and native file dialog flows
 
 ## 8. Validation
 

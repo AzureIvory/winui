@@ -14,7 +14,7 @@ import (
 
 // ActionContext 描述 HTML 动作触发时可用的上下文信息。
 type ActionContext struct {
-	// Name 是动作名，对应 HTML 中的 onclick/onchange/onsubmit/onactivate。
+	// Name 是动作名，对应 HTML 中的 onclick、onchange、onsubmit、onactivate。
 	Name string
 	// Widget 是触发动作的控件实例。
 	Widget widgets.Widget
@@ -22,6 +22,8 @@ type ActionContext struct {
 	ID string
 	// Value 是触发时可读取到的当前值。
 	Value string
+	// Paths 保存 file input 等控件返回的完整路径列表。
+	Paths []string
 	// Checked 是 checkbox/radio 的勾选状态。
 	Checked bool
 	// Index 是 select/listbox 的当前索引，未命中时为 -1。
@@ -34,7 +36,7 @@ type ActionContext struct {
 type WindowMeta struct {
 	// Title 是窗口标题。
 	Title string
-	// Icon 是窗口图标对象（当前只支持本地 .ico）。
+	// Icon 是窗口图标对象，当前仅支持本地 .ico。
 	Icon *core.Icon
 	// IconPath 是 icon 属性的原始路径。
 	IconPath string
@@ -73,7 +75,7 @@ func (d *Document) ApplyWindowMeta(opts *core.Options) {
 	}
 }
 
-// Attach 将文档挂载到 Scene：先应用 Theme（如有），再把 Root 添加到 scene.Root()。
+// Attach 将文档挂载到 Scene。
 func (d *Document) Attach(scene *widgets.Scene) error {
 	if scene == nil {
 		return errors.New("scene is nil")
@@ -135,7 +137,7 @@ func LoadDocumentString(htmlText string, cssText string, opts LoadOptions) (*Doc
 	return doc, nil
 }
 
-// LoadIntoScene 直接把 HTML/CSS 构建结果挂载到 Scene，并返回文档对象。
+// LoadIntoScene 直接把 HTML/CSS 构建结果挂载到 Scene。
 func LoadIntoScene(scene *widgets.Scene, htmlText string, cssText string, opts LoadOptions) (*Document, error) {
 	doc, err := LoadDocumentString(htmlText, cssText, opts)
 	if err != nil {
@@ -147,7 +149,7 @@ func LoadIntoScene(scene *widgets.Scene, htmlText string, cssText string, opts L
 	return doc, nil
 }
 
-// LoadFileIntoScene 直接把 .ui.html 文件构建结果挂载到 Scene，并返回文档对象。
+// LoadFileIntoScene 直接把 .ui.html 文件构建结果挂载到 Scene。
 func LoadFileIntoScene(scene *widgets.Scene, path string, opts LoadOptions) (*Document, error) {
 	doc, err := LoadDocumentFile(path, opts)
 	if err != nil {

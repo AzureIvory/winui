@@ -33,20 +33,32 @@ func main() {
 
 	var app *core.App
 	actionHandlers := map[string]func(markup.ActionContext){
-		"pwdChanged": func(ctx markup.ActionContext) { showActionStatus(app, "密码变化", ctx) },
-		"pwdSubmit":  func(ctx markup.ActionContext) { showActionStatus(app, "密码提交", ctx) },
-		"save":       func(ctx markup.ActionContext) { showActionStatus(app, "保存点击", ctx) },
+		"pwdChanged": func(ctx markup.ActionContext) { showActionStatus(app, "Password changed", ctx) },
+		"pwdSubmit":  func(ctx markup.ActionContext) { showActionStatus(app, "Password submitted", ctx) },
+		"save":       func(ctx markup.ActionContext) { showActionStatus(app, "Save button clicked", ctx) },
 		"cityChanged": func(ctx markup.ActionContext) {
-			showActionStatus(app, "城市变化", ctx)
+			showActionStatus(app, "City changed", ctx)
 		},
 		"cityOpen": func(ctx markup.ActionContext) {
-			showActionStatus(app, "城市激活", ctx)
+			showActionStatus(app, "City activated", ctx)
+		},
+		"openPicked": func(ctx markup.ActionContext) {
+			showActionStatus(app, "Open dialog selected", ctx)
+		},
+		"savePicked": func(ctx markup.ActionContext) {
+			showActionStatus(app, "Save dialog selected", ctx)
+		},
+		"folderPicked": func(ctx markup.ActionContext) {
+			showActionStatus(app, "Folder dialog selected", ctx)
+		},
+		"multiPicked": func(ctx markup.ActionContext) {
+			showActionStatus(app, "Multi-file dialog selected", ctx)
 		},
 	}
 	legacyActions := map[string]func(){
 		"legacyOnly": func() {
 			if statusLabel != nil {
-				statusLabel.SetText("legacyOnly: 使用旧版 Actions map[string]func() 回调")
+				statusLabel.SetText("legacyOnly: using the older Actions map[string]func() callback")
 			}
 			if app != nil {
 				app.SetTitle("Markup Demo - legacyOnly")
@@ -70,8 +82,8 @@ func main() {
 	opts := core.Options{
 		ClassName:      "WinUIMarkupDemo",
 		Title:          "winui markup demo",
-		Width:          900,
-		Height:         640,
+		Width:          980,
+		Height:         720,
 		Style:          core.DefaultWindowStyle,
 		ExStyle:        core.DefaultWindowExStyle,
 		Cursor:         core.CursorArrow,
@@ -89,10 +101,11 @@ func main() {
 			}
 			demoRoot = demoDoc.Root
 			if demoRoot != nil {
-				demoRoot.SetBounds(widgets.Rect{W: app.ClientSize().Width, H: app.ClientSize().Height})
+				size := app.ClientSize()
+				demoRoot.SetBounds(widgets.Rect{W: size.Width, H: size.Height})
 			}
 			statusLabel, _ = findWidgetByID(demoRoot, "status").(*widgets.Label)
-			showActionStatus(app, "初始化完成", markup.ActionContext{Name: "init", ID: "page", Index: -1})
+			showActionStatus(app, "Ready", markup.ActionContext{Name: "init", ID: "page", Index: -1})
 			return nil
 		},
 		OnResize: func(_ *core.App, _ *widgets.Scene, size core.Size) {
@@ -132,7 +145,21 @@ func showActionStatus(app *core.App, title string, ctx markup.ActionContext) {
 	if valueText == "" {
 		valueText = "-"
 	}
-	text := fmt.Sprintf("%s: action=%s id=%s value=%s checked=%v index=%d item=%s", title, ctx.Name, fallbackText(ctx.ID, "-"), valueText, ctx.Checked, ctx.Index, itemText)
+	pathsText := "-"
+	if len(ctx.Paths) > 0 {
+		pathsText = strings.Join(ctx.Paths, " | ")
+	}
+	text := fmt.Sprintf(
+		"%s\naction=%s id=%s value=%s checked=%v index=%d item=%s\npaths=%s",
+		title,
+		ctx.Name,
+		fallbackText(ctx.ID, "-"),
+		valueText,
+		ctx.Checked,
+		ctx.Index,
+		itemText,
+		pathsText,
+	)
 	if statusLabel != nil {
 		statusLabel.SetText(text)
 	}

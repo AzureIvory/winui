@@ -381,9 +381,12 @@ func (b *uiBuilder) buildInput(n *node) (widgets.Widget, error) {
 		inputType = "text"
 	}
 	switch inputType {
-	case "text", "password", "search":
+	case "text", "password", "search", "file":
 	default:
 		return nil, newParseError("builder", n.Pos, n.inlineContext(), "unsupported input type %q", inputType)
+	}
+	if inputType == "file" {
+		return b.buildFileInput(n)
 	}
 	edit := widgets.NewEditBox(b.nodeID(n), b.mode())
 	edit.SetMultiline(false)

@@ -12,6 +12,7 @@
 ## Package Boundaries
 
 - `core/`: Win32 primitives, window lifecycle, paint, DPI, input, timer
+- `dialogs/`: native file dialog API on top of Win32 COM
 - `widgets/`: scene tree, event routing, theme, layout, controls, markup
 - `cmd/demo/`: manual regression entry point
 - `cmd/demo_html/`: manual markup regression entry point
@@ -22,6 +23,7 @@
 - Do not move widget semantics into `core`
 - Do not move app logic into `widgets`
 - Reuse existing `Scene`, `widgetBase`, layout, and style-merge patterns
+- Keep native open/save/folder dialog details in `dialogs/` rather than scattering COM calls through widgets or demos
 - Follow existing UI-thread patterns such as `runOnUI(...)` and `app.Post(...)`
 - Trigger invalidation after state changes when needed
 - Treat markup lengths as logical DP units, not raw device pixels
@@ -51,6 +53,7 @@ Recommended:
 - Think about both `cgo` enabled and disabled paths for rendering changes
 - After markup changes, verify that `cmd/demo_html/demo.ui.html` still loads
 - If you touch DPI-sensitive layout code, verify a DPI change still reflows markup-created UIs
+- If you touch `dialogs/` or `input type="file"`, manually verify open, save, folder, and multi-select flows in `cmd/demo_html`
 
 ## Documentation Sync
 

@@ -7,6 +7,7 @@ Windows-only Go UI toolkit on top of Win32. No WebView, no XAML, no app logic.
 ## Packages
 
 - `core`: low-level Win32 window, paint, DPI, input, timer, icon, font
+- `dialogs`: native open/save/folder dialogs on top of Win32 COM
 - `widgets`: scene tree, theme, layout, controls, markup
 - `cmd/demo`: manual regression demo
 - `cmd/demo_html`: markup demo
@@ -25,6 +26,7 @@ Windows-only Go UI toolkit on top of Win32. No WebView, no XAML, no app logic.
 - Changes must work with `cgo` on and off
 - UI state changes should follow existing UI-thread patterns: `app.Post(...)` or `runOnUI(...)`
 - State mutations usually need invalidation
+- `dialogs` should stay as the single owner of Win32 file dialog COM interop
 - Markup-created preferred sizes are stored as logical DP values and scaled during layout
 - `Scene.ReloadResources()` re-applies layout, so DPI changes can move and resize markup-created widgets
 
@@ -41,6 +43,9 @@ Windows-only Go UI toolkit on top of Win32. No WebView, no XAML, no app logic.
 - Legacy API: `LoadHTMLFile`, `LoadHTMLString`
 - `<window><body>...</body></window>` is supported
 - `WindowMeta` can set title, icon, min width, min height
+- `input type="file"` maps to `widgets.FilePicker`
+- File input actions surface full selections through `markup.ActionContext.Paths`
+- File input supports `dialog="open|save|folder"`, `multiple`, `accept`, `filters`, `button-text`, `dialog-title`, and `default-extension`
 - Markup absolute layout supports `left`, `top`, `right`, `bottom`, `width`, `height`, plus `x` / `y`
 - Markup style mapping should target existing widget style structs for button, progress, choice, combo, list, edit, and panel controls
 

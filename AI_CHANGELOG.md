@@ -31,6 +31,13 @@ Only keep behavior here that changes how an agent should reason about edits or v
 - `Scene.ReloadResources()` now re-applies layout so markup UIs reflow after DPI changes
 - Markup absolute layout supports `left`, `top`, `right`, `bottom`, `width`, `height`, plus `x` / `y`
 
+### Native file dialogs
+
+- `dialogs` is the native open/save/folder dialog package; keep COM interop there
+- `widgets.FilePicker` wraps a readonly field plus browse button and uses `dialogs.ShowFileDialog(...)`
+- Markup `input type="file"` supports `dialog="open|save|folder"`, `multiple`, `accept`, `filters`, `button-text`, `dialog-title`, `dialog-button-text`, `default-extension`, `value-separator`, and `initial-path`
+- File input selections surface in `markup.ActionContext.Paths`
+
 ### Scroll clip routing
 
 - `Scene.hitTest()` now propagates clip bounds from ancestors such as `ScrollView`
