@@ -12,60 +12,123 @@ import (
 	"github.com/AzureIvory/winui/widgets"
 )
 
-// LoadOptions 描述从 HTML/CSS DSL 构建控件树时使用的可选参数。
+// LoadOptions 描述�?HTML/CSS DSL 构建控件树时使用的可选参数�?
 type LoadOptions struct {
-	// Actions 用于把 onclick/onchange/onsubmit 中的动作名绑定到 Go 回调。
+	// Actions ���ڰ� onclick/onchange/onsubmit �ȶ������󶨵��޲λص���
 	Actions map[string]func()
-	// AssetsDir 指定相对资源文件（例如 img[src]）的查找目录。
+	// ActionHandlers ���ڰ󶨴������ĵĶ����ص�������ʱ������ Actions��
+	ActionHandlers map[string]func(ActionContext)
+	// AssetsDir ָ�������Դ�ļ������� img[src]���Ĳ���Ŀ¼��
 	AssetsDir string
-	// DefaultMode 指定 input/textarea/button/select/checkbox/radio 等控件默认使用的后端模式。
+	// DefaultMode ָ��������ؼ�Ĭ��ʹ�õĺ��ģʽ��
 	DefaultMode widgets.ControlMode
-	// Theme 保留给调用方与 Scene 主题集成使用。
+	// Theme ���ĵ����ص� Scene ʱ��Ӧ�õ����⡣
 	Theme *widgets.Theme
 }
 
-// LoadHTMLFile 从 .ui.html 文件加载控件树，并自动尝试读取同名 .ui.css 文件。
+// LoadHTMLFile �?.ui.html 文件加载控件树，并自动尝试读取同�?.ui.css 文件�?
 func LoadHTMLFile(path string, opts LoadOptions) (widgets.Widget, error) {
-	htmlBytes, err := os.ReadFile(path)
+	doc, err := LoadDocumentFile(path, opts)
 	if err != nil {
 		return nil, err
 	}
-	cssPath := strings.TrimSuffix(path, filepath.Ext(path)) + ".css"
-	cssBytes, err := os.ReadFile(cssPath)
-	if err != nil && !os.IsNotExist(err) {
-		return nil, err
-	}
-	if opts.AssetsDir == "" {
-		opts.AssetsDir = filepath.Dir(path)
-	}
-	return LoadHTMLString(string(htmlBytes), string(cssBytes), opts)
+	return doc.Root, nil
 }
 
-// LoadHTMLString 从 HTML 文本和 CSS 文本构建控件树。
+// LoadHTMLString �?HTML 文本�?CSS 文本构建控件树�?
 func LoadHTMLString(htmlText string, cssText string, opts LoadOptions) (widgets.Widget, error) {
-	root, err := parseHTMLDocument(htmlText)
+	doc, err := LoadDocumentString(htmlText, cssText, opts)
 	if err != nil {
 		return nil, err
 	}
-	rules, err := parseCSS(cssText)
-	if err != nil {
-		return nil, err
-	}
-	if err := applyCSS(root, rules); err != nil {
-		return nil, err
-	}
-	builder := &uiBuilder{opts: opts}
-	widget, err := builder.buildNode(root)
-	if err != nil {
-		return nil, err
-	}
-	_ = opts.Theme
-	return widget, nil
+	return doc.Root, nil
 }
 
 type uiBuilder struct {
 	opts       LoadOptions
 	autoIDSeed int
+}
+
+func (b *uiBuilder) buildDocument(root *node) (*Document, error) {
+	if root == nil || root.Kind != nodeElement {
+		return nil, newParseError("builder", position{}, "document", "invalid root element")
+	}
+	doc := &Document{}
+	uiRoot := root
+	if root.Tag == "window" {
+		body, meta, err := b.extractWindowRoot(root)
+		if err != nil {
+			return nil, err
+		}
+		doc.Meta = meta
+		uiRoot = body
+	}
+	widget, err := b.buildNode(uiRoot)
+	if err != nil {
+		return nil, err
+	}
+	doc.Root = widget
+	return doc, nil
+}
+
+func (b *uiBuilder) extractWindowRoot(window *node) (*node, WindowMeta, error) {
+	meta, err := b.parseWindowMeta(window)
+	if err != nil {
+		return nil, meta, err
+	}
+	var body *node
+	for _, child := range window.Children {
+		if child == nil {
+			continue
+		}
+		switch child.Kind {
+		case nodeText:
+			if strings.TrimSpace(child.Text) != "" {
+				return nil, meta, newParseError("builder", child.Pos, window.inlineContext(), "text is not allowed directly inside <window>")
+			}
+		case nodeElement:
+			if child.Tag != "body" {
+				return nil, meta, newParseError("builder", child.Pos, child.inlineContext(), "<window> only accepts one <body> child")
+			}
+			if body != nil {
+				return nil, meta, newParseError("builder", child.Pos, window.inlineContext(), "<window> only accepts one <body> child")
+			}
+			body = child
+		}
+	}
+	if body == nil {
+		return nil, meta, newParseError("builder", window.Pos, window.inlineContext(), "<window> requires one <body> child")
+	}
+	return body, meta, nil
+}
+
+func (b *uiBuilder) parseWindowMeta(window *node) (WindowMeta, error) {
+	meta := WindowMeta{}
+	meta.Title = strings.TrimSpace(window.attr("title"))
+	iconPath := strings.TrimSpace(window.attr("icon"))
+	if iconPath != "" {
+		icon, err := b.loadICO(iconPath, window.Pos, window.inlineContext(), "window icon")
+		if err != nil {
+			return meta, err
+		}
+		meta.IconPath = iconPath
+		meta.Icon = icon
+	}
+	if value := strings.TrimSpace(window.attr("min-width")); value != "" {
+		length, ok, err := parseLengthValue(value)
+		if err != nil || !ok {
+			return meta, newParseError("builder", window.Pos, window.inlineContext(), "invalid min-width %q", value)
+		}
+		meta.MinWidth = max32(0, length)
+	}
+	if value := strings.TrimSpace(window.attr("min-height")); value != "" {
+		length, ok, err := parseLengthValue(value)
+		if err != nil || !ok {
+			return meta, newParseError("builder", window.Pos, window.inlineContext(), "invalid min-height %q", value)
+		}
+		meta.MinHeight = max32(0, length)
+	}
+	return meta, nil
 }
 
 func (b *uiBuilder) buildNode(n *node) (widgets.Widget, error) {
@@ -85,6 +148,8 @@ func (b *uiBuilder) buildNode(n *node) (widgets.Widget, error) {
 		return b.buildTextArea(n)
 	case "img":
 		return b.buildImage(n)
+	case "animated-img":
+		return b.buildAnimatedImage(n)
 	case "progress":
 		return b.buildProgress(n)
 	case "checkbox":
@@ -93,8 +158,10 @@ func (b *uiBuilder) buildNode(n *node) (widgets.Widget, error) {
 		return b.buildRadio(n)
 	case "select":
 		return b.buildSelect(n)
+	case "listbox":
+		return b.buildListBox(n)
 	case "option":
-		return nil, newParseError("builder", n.Pos, n.inlineContext(), "option can only appear inside select")
+		return nil, newParseError("builder", n.Pos, n.inlineContext(), "option can only appear inside select/listbox")
 	default:
 		return nil, newParseError("builder", n.Pos, n.inlineContext(), "unsupported tag <%s>", n.Tag)
 	}
@@ -118,24 +185,12 @@ func (b *uiBuilder) buildContainer(n *node) (widgets.Widget, error) {
 		if err := b.applyCommonWidgetState(scroll, n); err != nil {
 			return nil, err
 		}
-		action, err := b.lookupAction(n, "onclick")
-		if err != nil {
-			return nil, err
-		}
 		content, err := b.buildScrollContent(n, id, layoutKind, layout)
 		if err != nil {
 			return nil, err
 		}
-		if action != nil {
-			switch typed := content.(type) {
-			case *widgets.Panel:
-				typed.SetOnClick(action)
-			case *widgets.Button:
-				typed.SetOnClick(action)
-			case nil:
-			default:
-				return nil, newParseError("builder", n.Pos, n.inlineContext(), "onclick is not supported by scroll content %T", content)
-			}
+		if err := b.bindOnClickIfAny(content, n); err != nil {
+			return nil, err
 		}
 		scroll.SetContent(content)
 		defaultSize := core.Size{Width: 320, Height: 180}
@@ -233,17 +288,21 @@ func (b *uiBuilder) addContainerChildren(panel *widgets.Panel, n *node, parentLa
 			if err != nil {
 				return err
 			}
-			b.applyLayoutData(widget, labelNode, parentLayout)
+			if err := b.applyLayoutData(widget, labelNode, parentLayout); err != nil {
+				return err
+			}
 			panel.Add(widget)
 		case nodeElement:
 			if child.Tag == "option" {
-				return newParseError("builder", child.Pos, child.inlineContext(), "option can only appear inside select")
+				return newParseError("builder", child.Pos, child.inlineContext(), "option can only appear inside select/listbox")
 			}
 			widget, err := b.buildNode(child)
 			if err != nil {
 				return err
 			}
-			b.applyLayoutData(widget, child, parentLayout)
+			if err := b.applyLayoutData(widget, child, parentLayout); err != nil {
+				return err
+			}
 			panel.Add(widget)
 		}
 	}
@@ -275,10 +334,33 @@ func (b *uiBuilder) buildButton(n *node) (widgets.Widget, error) {
 	if err := b.applyCommonWidgetState(button, n); err != nil {
 		return nil, err
 	}
-	if action, err := b.lookupAction(n, "onclick"); err != nil {
+	if iconPath := strings.TrimSpace(n.attr("icon")); iconPath != "" {
+		icon, err := b.loadICO(iconPath, n.Pos, n.inlineContext(), "button icon")
+		if err != nil {
+			return nil, err
+		}
+		button.SetIcon(icon)
+	}
+	if position := strings.ToLower(strings.TrimSpace(n.attr("icon-position"))); position != "" {
+		switch position {
+		case "auto":
+			button.SetKind(widgets.BtnAuto)
+		case "left":
+			button.SetKind(widgets.BtnLeft)
+		case "top":
+			button.SetKind(widgets.BtnTop)
+		default:
+			return nil, newParseError("builder", n.Pos, n.inlineContext(), "invalid icon-position %q", position)
+		}
+	}
+	if actionName, err := b.actionName(n, "onclick"); err != nil {
 		return nil, err
-	} else if action != nil {
-		button.SetOnClick(action)
+	} else if actionName != "" {
+		button.SetOnClick(func() {
+			ctx := b.baseActionContext(actionName, button)
+			ctx.Value = button.Text
+			b.dispatchAction(actionName, ctx)
+		})
 	}
 	defaultSize := measureTextBox(button.Text, b.buttonStyle(n).Font, 28, 36)
 	if defaultSize.Width < 80 {
@@ -305,6 +387,9 @@ func (b *uiBuilder) buildInput(n *node) (widgets.Widget, error) {
 	}
 	edit := widgets.NewEditBox(b.nodeID(n), b.mode())
 	edit.SetMultiline(false)
+	if inputType == "password" {
+		edit.SetPassword(true)
+	}
 	edit.SetStyle(b.editStyle(n))
 	edit.SetPlaceholder(n.attr("placeholder"))
 	edit.SetReadOnly(b.boolAttrOrStyle(n, "readonly", "readonly"))
@@ -312,15 +397,23 @@ func (b *uiBuilder) buildInput(n *node) (widgets.Widget, error) {
 	if err := b.applyCommonWidgetState(edit, n); err != nil {
 		return nil, err
 	}
-	if action, err := b.lookupAction(n, "onchange"); err != nil {
+	if actionName, err := b.actionName(n, "onchange"); err != nil {
 		return nil, err
-	} else if action != nil {
-		edit.SetOnChange(func(string) { action() })
+	} else if actionName != "" {
+		edit.SetOnChange(func(string) {
+			ctx := b.baseActionContext(actionName, edit)
+			ctx.Value = edit.TextValue()
+			b.dispatchAction(actionName, ctx)
+		})
 	}
-	if action, err := b.lookupAction(n, "onsubmit"); err != nil {
+	if actionName, err := b.actionName(n, "onsubmit"); err != nil {
 		return nil, err
-	} else if action != nil {
-		edit.SetOnSubmit(func(string) { action() })
+	} else if actionName != "" {
+		edit.SetOnSubmit(func(string) {
+			ctx := b.baseActionContext(actionName, edit)
+			ctx.Value = edit.TextValue()
+			b.dispatchAction(actionName, ctx)
+		})
 	}
 	defaultSize := core.Size{Width: 220, Height: 36}
 	if err := b.applyPreferredSize(edit, n, defaultSize); err != nil {
@@ -358,15 +451,23 @@ func (b *uiBuilder) buildTextArea(n *node) (widgets.Widget, error) {
 	if err := b.applyCommonWidgetState(edit, n); err != nil {
 		return nil, err
 	}
-	if action, err := b.lookupAction(n, "onchange"); err != nil {
+	if actionName, err := b.actionName(n, "onchange"); err != nil {
 		return nil, err
-	} else if action != nil {
-		edit.SetOnChange(func(string) { action() })
+	} else if actionName != "" {
+		edit.SetOnChange(func(string) {
+			ctx := b.baseActionContext(actionName, edit)
+			ctx.Value = edit.TextValue()
+			b.dispatchAction(actionName, ctx)
+		})
 	}
-	if action, err := b.lookupAction(n, "onsubmit"); err != nil {
+	if actionName, err := b.actionName(n, "onsubmit"); err != nil {
 		return nil, err
-	} else if action != nil {
-		edit.SetOnSubmit(func(string) { action() })
+	} else if actionName != "" {
+		edit.SetOnSubmit(func(string) {
+			ctx := b.baseActionContext(actionName, edit)
+			ctx.Value = edit.TextValue()
+			b.dispatchAction(actionName, ctx)
+		})
 	}
 	defaultSize := core.Size{Width: 320, Height: 96}
 	if err := b.applyPreferredSize(edit, n, defaultSize); err != nil {
@@ -391,10 +492,7 @@ func (b *uiBuilder) buildImage(n *node) (widgets.Widget, error) {
 		}
 	}
 	if src := strings.TrimSpace(n.attr("src")); src != "" {
-		path := src
-		if !filepath.IsAbs(path) && b.opts.AssetsDir != "" {
-			path = filepath.Join(b.opts.AssetsDir, path)
-		}
+		path := b.resolveAssetPath(src)
 		data, err := os.ReadFile(path)
 		if err != nil {
 			return nil, newParseError("builder", n.Pos, n.inlineContext(), "load image %q failed: %v", src, err)
@@ -443,10 +541,15 @@ func (b *uiBuilder) buildCheckBox(n *node) (widgets.Widget, error) {
 	if err := b.applyCommonWidgetState(check, n); err != nil {
 		return nil, err
 	}
-	if action, err := b.lookupAction(n, "onchange"); err != nil {
+	if actionName, err := b.actionName(n, "onchange"); err != nil {
 		return nil, err
-	} else if action != nil {
-		check.SetOnChange(func(bool) { action() })
+	} else if actionName != "" {
+		check.SetOnChange(func(checked bool) {
+			ctx := b.baseActionContext(actionName, check)
+			ctx.Checked = checked
+			ctx.Value = check.Text
+			b.dispatchAction(actionName, ctx)
+		})
 	}
 	defaultSize := measureTextBox(check.Text, widgets.FontSpec{Face: "Microsoft YaHei UI", SizeDP: 16}, 28, 28)
 	if defaultSize.Width < 120 {
@@ -471,10 +574,15 @@ func (b *uiBuilder) buildRadio(n *node) (widgets.Widget, error) {
 	if err := b.applyCommonWidgetState(radio, n); err != nil {
 		return nil, err
 	}
-	if action, err := b.lookupAction(n, "onchange"); err != nil {
+	if actionName, err := b.actionName(n, "onchange"); err != nil {
 		return nil, err
-	} else if action != nil {
-		radio.SetOnChange(func(bool) { action() })
+	} else if actionName != "" {
+		radio.SetOnChange(func(checked bool) {
+			ctx := b.baseActionContext(actionName, radio)
+			ctx.Checked = checked
+			ctx.Value = radio.Text
+			b.dispatchAction(actionName, ctx)
+		})
 	}
 	defaultSize := measureTextBox(radio.Text, widgets.FontSpec{Face: "Microsoft YaHei UI", SizeDP: 16}, 28, 28)
 	if defaultSize.Width < 120 {
@@ -525,16 +633,136 @@ func (b *uiBuilder) buildSelect(n *node) (widgets.Widget, error) {
 	if err := b.applyCommonWidgetState(combo, n); err != nil {
 		return nil, err
 	}
-	if action, err := b.lookupAction(n, "onchange"); err != nil {
+	if actionName, err := b.actionName(n, "onchange"); err != nil {
 		return nil, err
-	} else if action != nil {
-		combo.SetOnChange(func(int, widgets.ListItem) { action() })
+	} else if actionName != "" {
+		combo.SetOnChange(func(index int, item widgets.ListItem) {
+			ctx := b.baseActionContext(actionName, combo)
+			ctx.Index = index
+			ctx.Item = item
+			ctx.Value = item.Value
+			b.dispatchAction(actionName, ctx)
+		})
 	}
 	defaultSize := core.Size{Width: 220, Height: 36}
 	if err := b.applyPreferredSize(combo, n, defaultSize); err != nil {
 		return nil, err
 	}
 	return combo, nil
+}
+
+func (b *uiBuilder) buildListBox(n *node) (widgets.Widget, error) {
+	list := widgets.NewListBox(b.nodeID(n))
+	list.SetStyle(b.listStyle(n))
+	items := make([]widgets.ListItem, 0)
+	selected := -1
+	selectedValue := strings.TrimSpace(n.attr("value"))
+	for _, child := range n.Children {
+		if child.Kind == nodeText {
+			if strings.TrimSpace(child.Text) == "" {
+				continue
+			}
+			return nil, newParseError("builder", child.Pos, n.inlineContext(), "text is not allowed directly inside listbox")
+		}
+		if child.Tag != "option" {
+			return nil, newParseError("builder", child.Pos, child.inlineContext(), "listbox only accepts option children")
+		}
+		itemText := normalizeInlineText(child.textContent())
+		itemValue := child.attr("value")
+		if itemValue == "" {
+			itemValue = itemText
+		}
+		items = append(items, widgets.ListItem{Value: itemValue, Text: itemText})
+		if selected == -1 {
+			if selectedValue != "" && itemValue == selectedValue {
+				selected = len(items) - 1
+			}
+			if selectedValue == "" && child.hasAttr("selected") {
+				selected = len(items) - 1
+			}
+		}
+	}
+	list.SetItems(items)
+	if selected >= 0 {
+		list.SetSelected(selected)
+	}
+	if err := b.applyCommonWidgetState(list, n); err != nil {
+		return nil, err
+	}
+	if actionName, err := b.actionName(n, "onchange"); err != nil {
+		return nil, err
+	} else if actionName != "" {
+		list.SetOnChange(func(index int, item widgets.ListItem) {
+			ctx := b.baseActionContext(actionName, list)
+			ctx.Index = index
+			ctx.Item = item
+			ctx.Value = item.Value
+			b.dispatchAction(actionName, ctx)
+		})
+	}
+	if actionName, err := b.actionName(n, "onactivate"); err != nil {
+		return nil, err
+	} else if actionName != "" {
+		list.SetOnActivate(func(index int, item widgets.ListItem) {
+			ctx := b.baseActionContext(actionName, list)
+			ctx.Index = index
+			ctx.Item = item
+			ctx.Value = item.Value
+			b.dispatchAction(actionName, ctx)
+		})
+	}
+	defaultSize := core.Size{Width: 220, Height: 160}
+	if err := b.applyPreferredSize(list, n, defaultSize); err != nil {
+		return nil, err
+	}
+	return list, nil
+}
+
+func (b *uiBuilder) buildAnimatedImage(n *node) (widgets.Widget, error) {
+	if err := b.ensureNoElementChildren(n); err != nil {
+		return nil, err
+	}
+	animated := widgets.NewAnimatedImage(b.nodeID(n))
+	if fit, ok, err := parseObjectFitValue(n.Styles["object-fit"]); err != nil {
+		return nil, newParseError("builder", n.Pos, n.inlineContext(), err.Error())
+	} else if ok {
+		switch fit {
+		case "contain":
+			animated.SetScaleMode(widgets.ImageScaleContain)
+		case "fill", "cover":
+			animated.SetScaleMode(widgets.ImageScaleStretch)
+		}
+	}
+	autoplay := true
+	if raw := strings.TrimSpace(n.attr("autoplay")); raw != "" {
+		parsed, ok, err := parseBoolValue(raw)
+		if err != nil || !ok {
+			return nil, newParseError("builder", n.Pos, n.inlineContext(), "invalid autoplay value %q", raw)
+		}
+		autoplay = parsed
+	}
+	if src := strings.TrimSpace(n.attr("src")); src != "" {
+		if strings.ToLower(filepath.Ext(src)) != ".gif" {
+			return nil, newParseError("builder", n.Pos, n.inlineContext(), "animated-img src %q must be a local .gif file", src)
+		}
+		path := b.resolveAssetPath(src)
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return nil, newParseError("builder", n.Pos, n.inlineContext(), "load image %q failed: %v", src, err)
+		}
+		if err := animated.LoadGIF(data); err != nil {
+			return nil, newParseError("builder", n.Pos, n.inlineContext(), "decode gif %q failed: %v", src, err)
+		}
+	}
+	animated.SetPlaying(autoplay)
+	if err := b.applyCommonWidgetState(animated, n); err != nil {
+		return nil, err
+	}
+	defaultSize := core.Size{Width: 64, Height: 64}
+	if err := b.applyPreferredSize(animated, n, defaultSize); err != nil {
+		return nil, err
+	}
+	return animated, nil
 }
 
 func (b *uiBuilder) mode() widgets.ControlMode {
@@ -562,29 +790,92 @@ func (b *uiBuilder) ensureNoElementChildren(n *node) error {
 	return nil
 }
 
-func (b *uiBuilder) lookupAction(n *node, attr string) (func(), error) {
+func (b *uiBuilder) actionName(n *node, attr string) (string, error) {
 	name := strings.TrimSpace(n.attr(attr))
 	if name == "" {
-		return nil, nil
+		return "", nil
 	}
-	action := b.opts.Actions[name]
-	if action == nil {
-		return nil, newParseError("builder", n.Pos, n.inlineContext(), "action %q referenced by %s was not provided", name, attr)
+	if b.opts.ActionHandlers[name] != nil || b.opts.Actions[name] != nil {
+		return name, nil
 	}
-	return action, nil
+	return "", newParseError("builder", n.Pos, n.inlineContext(), "action %q referenced by %s was not provided", name, attr)
+}
+
+func (b *uiBuilder) dispatchAction(name string, ctx ActionContext) {
+	if name == "" {
+		return
+	}
+	if ctx.Name == "" {
+		ctx.Name = name
+	}
+	if ctx.Index == 0 && ctx.Item.Value == "" && ctx.Item.Text == "" {
+		ctx.Index = -1
+	}
+	if ctx.Widget != nil && ctx.ID == "" {
+		ctx.ID = ctx.Widget.ID()
+	}
+	if handler := b.opts.ActionHandlers[name]; handler != nil {
+		handler(ctx)
+		return
+	}
+	if action := b.opts.Actions[name]; action != nil {
+		action()
+	}
+}
+
+func (b *uiBuilder) baseActionContext(name string, widget widgets.Widget) ActionContext {
+	ctx := ActionContext{Name: name, Widget: widget, Index: -1}
+	if widget != nil {
+		ctx.ID = widget.ID()
+	}
+	return ctx
+}
+
+func (b *uiBuilder) resolveAssetPath(path string) string {
+	resolved := strings.TrimSpace(path)
+	if resolved == "" {
+		return ""
+	}
+	if filepath.IsAbs(resolved) || b.opts.AssetsDir == "" {
+		return resolved
+	}
+	return filepath.Join(b.opts.AssetsDir, resolved)
+}
+
+func (b *uiBuilder) loadICO(src string, pos position, context string, usage string) (*core.Icon, error) {
+	if strings.ToLower(filepath.Ext(src)) != ".ico" {
+		return nil, newParseError("builder", pos, context, "%s %q must be a local .ico file", usage, src)
+	}
+	path := b.resolveAssetPath(src)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, newParseError("builder", pos, context, "load icon %q failed: %v", src, err)
+	}
+	icon, err := core.LoadIconFromICO(data, 32)
+	if err != nil {
+		return nil, newParseError("builder", pos, context, "decode icon %q failed: %v", src, err)
+	}
+	return icon, nil
 }
 
 func (b *uiBuilder) bindOnClickIfAny(widget widgets.Widget, n *node) error {
-	action, err := b.lookupAction(n, "onclick")
-	if err != nil || action == nil {
+	actionName, err := b.actionName(n, "onclick")
+	if err != nil || actionName == "" {
 		return err
 	}
 	switch typed := widget.(type) {
 	case *widgets.Panel:
-		typed.SetOnClick(action)
+		typed.SetOnClick(func() {
+			ctx := b.baseActionContext(actionName, typed)
+			b.dispatchAction(actionName, ctx)
+		})
 		return nil
 	case *widgets.Button:
-		typed.SetOnClick(action)
+		typed.SetOnClick(func() {
+			ctx := b.baseActionContext(actionName, typed)
+			ctx.Value = typed.Text
+			b.dispatchAction(actionName, ctx)
+		})
 		return nil
 	default:
 		return newParseError("builder", n.Pos, n.inlineContext(), "onclick is not supported by <%s>", n.Tag)
@@ -907,6 +1198,38 @@ func (b *uiBuilder) comboStyle(n *node) widgets.ComboStyle {
 	return style
 }
 
+func (b *uiBuilder) listStyle(n *node) widgets.ListStyle {
+	style := widgets.ListStyle{Font: b.fontSpec(n)}
+	if color, ok, _ := parseColorValue(n.Styles["color"]); ok {
+		style.TextColor = color
+	}
+	if bg, ok, _ := parseColorValue(n.Styles["background"]); ok {
+		style.Background = bg
+	}
+	if border, ok, _ := parseColorValue(n.Styles["border-color"]); ok {
+		style.BorderColor = border
+	}
+	if hover, ok, _ := parseColorValue(n.Styles["item-hover-color"]); ok {
+		style.ItemHoverColor = hover
+	}
+	if selected, ok, _ := parseColorValue(n.Styles["item-selected-color"]); ok {
+		style.ItemSelectedColor = selected
+	}
+	if selectedText, ok, _ := parseColorValue(n.Styles["item-text-color"]); ok {
+		style.ItemTextColor = selectedText
+	}
+	if radius, ok, _ := parseLengthValue(n.Styles["border-radius"]); ok {
+		style.CornerRadius = radius
+	}
+	if padding, ok, _ := parseLengthValue(n.Styles["padding"]); ok {
+		style.PaddingDP = padding
+	}
+	if itemHeight, ok, _ := parseLengthValue(n.Styles["item-height"]); ok {
+		style.ItemHeightDP = itemHeight
+	}
+	return style
+}
+
 func (b *uiBuilder) editStyle(n *node) widgets.EditStyle {
 	style := widgets.EditStyle{TextAlign: b.alignmentStyle(n), Font: b.fontSpec(n)}
 	if color, ok, _ := parseColorValue(n.Styles["color"]); ok {
@@ -992,9 +1315,54 @@ func (b *uiBuilder) boolStyleDefault(n *node, key string, fallback bool) bool {
 	return fallback
 }
 
-func (b *uiBuilder) applyLayoutData(widget widgets.Widget, n *node, parentLayout string) {
+func (b *uiBuilder) applyLayoutData(widget widgets.Widget, n *node, parentLayout string) error {
 	if widget == nil || n == nil {
-		return
+		return nil
+	}
+	if parentLayout == "absolute" {
+		if raw := strings.TrimSpace(n.Styles["right"]); raw != "" {
+			return newParseError("builder", n.Pos, n.inlineContext(), "absolute layout does not support right yet; use left + width")
+		}
+		if raw := strings.TrimSpace(n.Styles["bottom"]); raw != "" {
+			return newParseError("builder", n.Pos, n.inlineContext(), "absolute layout does not support bottom yet; use top + height")
+		}
+		rect := widget.Bounds()
+		if left, ok, err := parseLengthValue(n.Styles["left"]); err != nil {
+			return newParseError("builder", n.Pos, n.inlineContext(), err.Error())
+		} else if ok {
+			rect.X = left
+		} else if x, ok, err := parseLengthValue(n.Styles["x"]); err != nil {
+			return newParseError("builder", n.Pos, n.inlineContext(), err.Error())
+		} else if ok {
+			rect.X = x
+		}
+		if top, ok, err := parseLengthValue(n.Styles["top"]); err != nil {
+			return newParseError("builder", n.Pos, n.inlineContext(), err.Error())
+		} else if ok {
+			rect.Y = top
+		} else if y, ok, err := parseLengthValue(n.Styles["y"]); err != nil {
+			return newParseError("builder", n.Pos, n.inlineContext(), err.Error())
+		} else if ok {
+			rect.Y = y
+		}
+		if width, ok, err := parseLengthValue(n.Styles["width"]); err != nil {
+			return newParseError("builder", n.Pos, n.inlineContext(), err.Error())
+		} else if ok {
+			rect.W = width
+		}
+		if height, ok, err := parseLengthValue(n.Styles["height"]); err != nil {
+			return newParseError("builder", n.Pos, n.inlineContext(), err.Error())
+		} else if ok {
+			rect.H = height
+		}
+		if rect.W < 0 {
+			rect.W = 0
+		}
+		if rect.H < 0 {
+			rect.H = 0
+		}
+		widget.SetBounds(rect)
+		return nil
 	}
 	grow, _, _ := parseIntegerValue(n.Styles["flex-grow"])
 	align, _, _ := parseAlignmentValue(n.Styles["align-self"])
@@ -1019,9 +1387,10 @@ func (b *uiBuilder) applyLayoutData(widget widgets.Widget, n *node, parentLayout
 		}
 		data = grid
 	default:
-		return
+		return nil
 	}
 	widget.SetLayoutData(data)
+	return nil
 }
 
 func (b *uiBuilder) nonWhitespaceTextChildren(n *node) []*node {

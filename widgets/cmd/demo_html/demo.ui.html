@@ -1,44 +1,35 @@
-<body id="page">
-  <row id="toolbar">
-    <label id="title">HTML/CSS DSL Demo</label>
-    <input id="keyword" type="search" placeholder="输入关键字后回车或点按钮" onsubmit="applyDemo" />
-    <select id="modeSelect" onchange="applyDemo">
-      <option value="draft" selected>草稿</option>
-      <option value="review">评审</option>
-      <option value="publish">发布</option>
-    </select>
-    <button id="applyBtn" onclick="applyDemo">应用</button>
-  </row>
+﻿<window title="Markup Demo" icon="assets/app.ico" min-width="900" min-height="640">
+  <body id="page" style="display:absolute; background:#f2f6fb;">
+    <label id="title" style="left:20px; top:20px; width:300px; height:28px; font-size:18px;">Markup HTML -> WinUI Demo</label>
 
-  <label id="status">状态：等待操作</label>
+    <input id="pwd" type="password" placeholder="请输入密码"
+           style="left:20px; top:60px; width:220px; height:36px;"
+           onchange="pwdChanged" onsubmit="pwdSubmit" />
 
-  <textarea id="notes" placeholder="输入多行备注；Ctrl+Enter 提交" onsubmit="applyDemo">这里是多行 EditBox。
-可以直接输入多段文字。
-滚轮也可以滚动内容。</textarea>
+    <button id="saveBtn" icon="assets/save.ico" icon-position="left"
+            style="left:260px; top:56px; width:140px; height:40px;"
+            onclick="save">
+      保存
+    </button>
 
-  <checkbox id="advanced" onchange="applyDemo" checked>启用高级选项</checkbox>
+    <button id="legacyBtn"
+            style="left:410px; top:56px; width:140px; height:40px;"
+            onclick="legacyOnly">
+      旧 Actions
+    </button>
 
-  <progress id="progress" value="35"></progress>
+    <listbox id="cityList"
+             style="left:20px; top:110px; width:220px; height:160px;"
+             onchange="cityChanged"
+             onactivate="cityOpen">
+      <option value="bj">北京</option>
+      <option value="sh" selected>上海</option>
+      <option value="sz">深圳</option>
+    </listbox>
 
-  <scroll id="detailScroll">
-    <column id="detailList">
-      <label>基础信息</label>
-      <label>字段 01：应用名称</label>
-      <label>字段 02：环境</label>
-      <label>字段 03：负责人</label>
-      <label>字段 04：最后修改时间</label>
-      <label>字段 05：版本</label>
-      <label>字段 06：开关状态</label>
-      <label>字段 07：校验规则</label>
-      <label>字段 08：部署方式</label>
-      <label>字段 09：发布窗口</label>
-      <label>字段 10：审计备注</label>
-      <label>字段 11：联动配置</label>
-      <label>字段 12：灰度比例</label>
-      <label>字段 13：错误阈值</label>
-      <label>字段 14：回滚策略</label>
-      <label>字段 15：观察项</label>
-      <label>字段 16：完成后点上方“应用”</label>
-    </column>
-  </scroll>
-</body>
+    <animated-img id="spinner" src="assets/spinner.gif" autoplay="true"
+                  style="left:260px; top:120px; width:48px; height:48px;" />
+
+    <label id="status" style="left:20px; top:290px; width:760px; height:70px; background:#ffffff; border-color:#b9c9dd; border-width:1px; padding:8px;">等待操作</label>
+  </body>
+</window>

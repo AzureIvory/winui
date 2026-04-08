@@ -33,6 +33,15 @@ type Point struct {
 	Y int32
 }
 
+// minMaxInfo 对应 Win32 的 MINMAXINFO 结构。
+type minMaxInfo struct {
+	PtReserved     point
+	PtMaxSize      point
+	PtMaxPosition  point
+	PtMinTrackSize point
+	PtMaxTrackSize point
+}
+
 // Size 表示宽高尺寸。
 type Size struct {
 	// Width 表示宽度。
@@ -105,6 +114,10 @@ type Options struct {
 	Width int32
 	// Height 指定初始客户区高度。
 	Height int32
+	// MinWidth 指定客户区最小宽度，0 表示不限制。
+	MinWidth int32
+	// MinHeight 指定客户区最小高度，0 表示不限制。
+	MinHeight int32
 	// Style 指定窗口样式标志。
 	Style uint32
 	// ExStyle 指定窗口扩展样式标志。
@@ -269,6 +282,8 @@ const (
 	wmDestroy = 0x0002
 	// wmSize 表示客户区尺寸变化消息。
 	wmSize = 0x0005
+	// wmGetMinMaxInfo 表示窗口查询最小/最大跟踪尺寸消息。
+	wmGetMinMaxInfo = 0x0024
 	// wmSetFocus 表示窗口获得焦点消息。
 	wmSetFocus = 0x0007
 	// wmKillFocus 表示窗口失去焦点消息。

@@ -48,6 +48,7 @@ var (
 	procSetWindowPos          = user32.NewProc("SetWindowPos")
 	procGetModuleHandleW      = kernel32.NewProc("GetModuleHandleW")
 	procGetCurrentThreadID    = kernel32.NewProc("GetCurrentThreadId")
+	procRtlMoveMemory         = kernel32.NewProc("RtlMoveMemory")
 )
 
 var (
@@ -120,6 +121,12 @@ func NewApp(opts Options) (*App, error) {
 	}
 	if opts.Height <= 0 {
 		opts.Height = 400
+	}
+	if opts.MinWidth > 0 && opts.Width < opts.MinWidth {
+		opts.Width = opts.MinWidth
+	}
+	if opts.MinHeight > 0 && opts.Height < opts.MinHeight {
+		opts.Height = opts.MinHeight
 	}
 	if opts.Style == 0 {
 		opts.Style = DefaultWindowStyle
@@ -539,6 +546,45 @@ func (a *App) updateClientSize(size Size) {
 	a.sizeMu.Lock()
 	a.clientSize = size
 	a.sizeMu.Unlock()
+}
+
+// minTrackSize 返回窗口最小可拖拽外框尺寸。
+func (a *App) minTrackSize() Size {
+	if a == nil {
+		return Size{}
+	}
+	minW := a.opts.MinWidth
+	minH := a.opts.MinHeight
+	if minW <= 0 && minH <= 0 {
+		return Size{}
+	}
+	if minW < 0 {
+		minW = 0
+	}
+	if minH < 0 {
+		minH = 0
+	}
+
+	clientW := a.DP(minW)
+	clientH := a.DP(minH)
+	frame := winRect{Right: clientW, Bottom: clientH}
+	if r1, _, _ := procAdjustWindowRectEx.Call(
+		uintptr(unsafe.Pointer(&frame)),
+		uintptr(a.opts.Style),
+		0,
+		uintptr(a.opts.ExStyle),
+	); r1 == 0 {
+		return Size{Width: clientW, Height: clientH}
+	}
+	width := frame.Right - frame.Left
+	height := frame.Bottom - frame.Top
+	if width < 0 {
+		width = 0
+	}
+	if height < 0 {
+		height = 0
+	}
+	return Size{Width: width, Height: height}
 }
 
 // currentThreadID 返回调用线程的标识。

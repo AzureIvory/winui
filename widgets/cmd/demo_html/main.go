@@ -3,7 +3,11 @@
 package main
 
 import (
+	"encoding/binary"
 	"fmt"
+	"image"
+	"image/color"
+	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -14,35 +18,96 @@ import (
 )
 
 var (
-	demoPage    widgets.Widget
+	demoDoc     *markup.Document
+	demoRoot    widgets.Widget
 	statusLabel *widgets.Label
-	keywordEdit *widgets.EditBox
-	notesEdit   *widgets.EditBox
-	advancedBox *widgets.CheckBox
-	progressBar *widgets.ProgressBar
-	modeCombo   *widgets.ComboBox
 )
 
 func main() {
+	_, currentFile, _, _ := runtime.Caller(0)
+	baseDir := filepath.Dir(currentFile)
+	assetsDir := filepath.Join(baseDir, "assets")
+	if err := ensureDemoAssets(assetsDir); err != nil {
+		panic(err)
+	}
+
+	var app *core.App
+	actionHandlers := map[string]func(markup.ActionContext){
+		"pwdChanged": func(ctx markup.ActionContext) { showActionStatus(app, "密码变化", ctx) },
+		"pwdSubmit":  func(ctx markup.ActionContext) { showActionStatus(app, "密码提交", ctx) },
+		"save":       func(ctx markup.ActionContext) { showActionStatus(app, "保存点击", ctx) },
+		"cityChanged": func(ctx markup.ActionContext) {
+			showActionStatus(app, "城市变化", ctx)
+		},
+		"cityOpen": func(ctx markup.ActionContext) {
+			showActionStatus(app, "城市激活", ctx)
+		},
+	}
+	legacyActions := map[string]func(){
+		"legacyOnly": func() {
+			if statusLabel != nil {
+				statusLabel.SetText("legacyOnly: 使用旧版 Actions map[string]func() 回调")
+			}
+			if app != nil {
+				app.SetTitle("Markup Demo - legacyOnly")
+			}
+		},
+	}
+
+	theme := demoTheme()
+	doc, err := markup.LoadDocumentFile(filepath.Join(baseDir, "demo.ui.html"), markup.LoadOptions{
+		ActionHandlers: actionHandlers,
+		Actions:        legacyActions,
+		AssetsDir:      baseDir,
+		DefaultMode:    widgets.ModeCustom,
+		Theme:          theme,
+	})
+	if err != nil {
+		panic(err)
+	}
+	demoDoc = doc
+
 	opts := core.Options{
 		ClassName:      "WinUIMarkupDemo",
 		Title:          "winui markup demo",
 		Width:          900,
-		Height:         680,
+		Height:         640,
 		Style:          core.DefaultWindowStyle,
 		ExStyle:        core.DefaultWindowExStyle,
 		Cursor:         core.CursorArrow,
-		Background:     core.RGB(246, 248, 251),
+		Background:     core.RGB(242, 246, 251),
 		DoubleBuffered: true,
 		RenderMode:     core.RenderModeAuto,
 	}
+	doc.ApplyWindowMeta(&opts)
+
 	widgets.BindScene(&opts, widgets.SceneHooks{
-		OnCreate:  buildDemo,
-		OnResize:  resizeDemo,
-		OnDestroy: destroyDemo,
+		OnCreate: func(createdApp *core.App, scene *widgets.Scene) error {
+			app = createdApp
+			if err := demoDoc.Attach(scene); err != nil {
+				return err
+			}
+			demoRoot = demoDoc.Root
+			if demoRoot != nil {
+				demoRoot.SetBounds(widgets.Rect{W: app.ClientSize().Width, H: app.ClientSize().Height})
+			}
+			statusLabel, _ = findWidgetByID(demoRoot, "status").(*widgets.Label)
+			showActionStatus(app, "初始化完成", markup.ActionContext{Name: "init", ID: "page", Index: -1})
+			return nil
+		},
+		OnResize: func(_ *core.App, _ *widgets.Scene, size core.Size) {
+			if demoRoot != nil {
+				demoRoot.SetBounds(widgets.Rect{W: size.Width, H: size.Height})
+			}
+		},
+		OnDestroy: func(_ *core.App, _ *widgets.Scene) {
+			demoRoot = nil
+			statusLabel = nil
+			demoDoc = nil
+		},
 	})
 
-	app, err := core.NewApp(opts)
+	app, err = core.NewApp(opts)
 	if err != nil {
 		panic(err)
 	}
@@ -52,102 +117,137 @@ func main() {
 	app.Run()
 }
 
-func buildDemo(app *core.App, scene *widgets.Scene) error {
-	_, currentFile, _, _ := runtime.Caller(0)
-	baseDir := filepath.Dir(currentFile)
-	actions := map[string]func(){
-		"applyDemo": func() {
-			applyDemoState(app)
-		},
+func showActionStatus(app *core.App, title string, ctx markup.ActionContext) {
+	if ctx.Index == 0 && ctx.Item.Value == "" && ctx.Item.Text == "" {
+		ctx.Index = -1
 	}
+	itemText := strings.TrimSpace(ctx.Item.Text)
+	if itemText == "" {
+		itemText = strings.TrimSpace(ctx.Item.Value)
+	}
+	if itemText == "" {
+		itemText = "-"
+	}
+	valueText := strings.TrimSpace(ctx.Value)
+	if valueText == "" {
+		valueText = "-"
+	}
+	text := fmt.Sprintf("%s: action=%s id=%s value=%s checked=%v index=%d item=%s", title, ctx.Name, fallbackText(ctx.ID, "-"), valueText, ctx.Checked, ctx.Index, itemText)
+	if statusLabel != nil {
+		statusLabel.SetText(text)
+	}
+	if app != nil {
+		app.SetTitle("Markup Demo - " + fallbackText(ctx.Name, title))
+	}
+}
 
-	root, err := markup.LoadHTMLFile(filepath.Join(baseDir, "demo.ui.html"), markup.LoadOptions{
-		Actions:     actions,
-		AssetsDir:   baseDir,
-		DefaultMode: widgets.ModeCustom,
-	})
-	if err != nil {
+func fallbackText(value string, fallback string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return fallback
+	}
+	return value
+}
+
+func demoTheme() *widgets.Theme {
+	theme := widgets.DefaultTheme()
+	theme.BackgroundColor = core.RGB(242, 246, 251)
+	theme.Button.Background = core.RGB(245, 249, 255)
+	theme.Button.Hover = core.RGB(227, 242, 255)
+	theme.Button.Pressed = core.RGB(33, 118, 215)
+	theme.Button.Border = core.RGB(155, 191, 232)
+	theme.Edit.FocusBorder = core.RGB(48, 126, 223)
+	theme.ListBox.ItemSelectedColor = core.RGB(210, 232, 255)
+	theme.ListBox.ItemHoverColor = core.RGB(232, 243, 255)
+	return theme
+}
+
+func ensureDemoAssets(dir string) error {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
-	if page, ok := root.(*widgets.Panel); ok {
-		page.SetStyle(mergePanelStyle(page.Style, widgets.PanelStyle{Background: core.RGB(246, 248, 251)}))
+	files := map[string][]byte{
+		"app.ico":     buildICO(color.RGBA{R: 52, G: 120, B: 220, A: 255}),
+		"save.ico":    buildICO(color.RGBA{R: 50, G: 168, B: 97, A: 255}),
+		"spinner.gif": tinyGIFData(),
 	}
-
-	demoPage = root
-	scene.Root().Add(root)
-	root.SetBounds(widgets.Rect{W: app.ClientSize().Width, H: app.ClientSize().Height})
-
-	statusLabel, _ = findWidget(root, "status").(*widgets.Label)
-	keywordEdit, _ = findWidget(root, "keyword").(*widgets.EditBox)
-	notesEdit, _ = findWidget(root, "notes").(*widgets.EditBox)
-	advancedBox, _ = findWidget(root, "advanced").(*widgets.CheckBox)
-	progressBar, _ = findWidget(root, "progress").(*widgets.ProgressBar)
-	modeCombo, _ = findWidget(root, "modeSelect").(*widgets.ComboBox)
-
-	applyDemoState(app)
+	for name, data := range files {
+		path := filepath.Join(dir, name)
+		if _, err := os.Stat(path); err == nil {
+			continue
+		}
+		if err := os.WriteFile(path, data, 0o600); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
-func resizeDemo(_ *core.App, _ *widgets.Scene, size core.Size) {
-	if demoPage != nil {
-		demoPage.SetBounds(widgets.Rect{W: size.Width, H: size.Height})
-	}
-}
-
-func destroyDemo(_ *core.App, _ *widgets.Scene) {
-	demoPage = nil
-	statusLabel = nil
-	keywordEdit = nil
-	notesEdit = nil
-	advancedBox = nil
-	progressBar = nil
-	modeCombo = nil
-}
-
-func applyDemoState(app *core.App) {
-	modeText := "未选择"
-	if modeCombo != nil {
-		if item, ok := modeCombo.SelectedItem(); ok {
-			modeText = item.Text
+func buildICO(fill color.RGBA) []byte {
+	img := image.NewRGBA(image.Rect(0, 0, 16, 16))
+	for y := 0; y < 16; y++ {
+		for x := 0; x < 16; x++ {
+			img.SetRGBA(x, y, fill)
 		}
 	}
-	keyword := ""
-	if keywordEdit != nil {
-		keyword = keywordEdit.TextValue()
-	}
-	lineCount := 0
-	if notesEdit != nil {
-		lineCount = notesEdit.LineCount()
-	}
-	advanced := false
-	if advancedBox != nil {
-		advanced = advancedBox.IsChecked()
-	}
-	progress := int32(35)
-	if advanced {
-		progress += 25
-	}
-	if keyword != "" {
-		progress += 20
-	}
-	if lineCount >= 3 {
-		progress += 20
-		if progress > 100 {
-			progress = 100
+	w := img.Bounds().Dx()
+	h := img.Bounds().Dy()
+	maskStride := ((w + 31) / 32) * 4
+	maskSize := maskStride * h
+	bmpSize := 40 + w*h*4 + maskSize
+
+	data := make([]byte, 6+16+bmpSize)
+	binary.LittleEndian.PutUint16(data[2:], 1)
+	binary.LittleEndian.PutUint16(data[4:], 1)
+
+	entry := data[6:22]
+	entry[0] = byte(w)
+	entry[1] = byte(h)
+	binary.LittleEndian.PutUint16(entry[4:], 1)
+	binary.LittleEndian.PutUint16(entry[6:], 32)
+	binary.LittleEndian.PutUint32(entry[8:], uint32(bmpSize))
+	binary.LittleEndian.PutUint32(entry[12:], 22)
+
+	bmp := data[22:]
+	binary.LittleEndian.PutUint32(bmp[0:], 40)
+	binary.LittleEndian.PutUint32(bmp[4:], uint32(w))
+	binary.LittleEndian.PutUint32(bmp[8:], uint32(h*2))
+	binary.LittleEndian.PutUint16(bmp[12:], 1)
+	binary.LittleEndian.PutUint16(bmp[14:], 32)
+	binary.LittleEndian.PutUint32(bmp[20:], uint32(w*h*4))
+
+	pixelOffset := 40
+	index := 0
+	for y := h - 1; y >= 0; y-- {
+		row := img.Pix[y*img.Stride:]
+		for x := 0; x < w; x++ {
+			src := x * 4
+			dst := pixelOffset + index*4
+			data[22+dst] = row[src+2]
+			data[22+dst+1] = row[src+1]
+			data[22+dst+2] = row[src]
+			data[22+dst+3] = row[src+3]
+			index++
 		}
 	}
-	if progressBar != nil {
-		progressBar.SetValue(progress)
-	}
-	if statusLabel != nil {
-		statusLabel.SetText(fmt.Sprintf("状态：mode=%s，keyword=%s，notes=%d 行，advanced=%v", modeText, displayText(keyword, "（空）"), lineCount, advanced))
-	}
-	if app != nil {
-		app.SetTitle("winui markup demo - " + strings.TrimSpace(modeText))
+	return data
+}
+
+func tinyGIFData() []byte {
+	return []byte{
+		'G', 'I', 'F', '8', '9', 'a',
+		0x01, 0x00, 0x01, 0x00,
+		0x80, 0x00, 0x00,
+		0x00, 0x00, 0x00,
+		0xFF, 0xFF, 0xFF,
+		0x21, 0xF9, 0x04, 0x01, 0x0A, 0x00, 0x01, 0x00,
+		0x2C, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00,
+		0x02, 0x02, 0x4C, 0x01, 0x00,
+		0x3B,
 	}
 }
 
-func findWidget(root widgets.Widget, id string) widgets.Widget {
+func findWidgetByID(root widgets.Widget, id string) widgets.Widget {
 	if root == nil || id == "" {
 		return nil
 	}
@@ -159,33 +259,9 @@ func findWidget(root widgets.Widget, id string) widgets.Widget {
 		return nil
 	}
 	for _, child := range container.Children() {
-		if found := findWidget(child, id); found != nil {
+		if found := findWidgetByID(child, id); found != nil {
 			return found
 		}
 	}
 	return nil
-}
-
-func displayText(value string, fallback string) string {
-	value = strings.TrimSpace(value)
-	if value == "" {
-		return fallback
-	}
-	return value
-}
-
-func mergePanelStyle(base, override widgets.PanelStyle) widgets.PanelStyle {
-	if override.Background != 0 {
-		base.Background = override.Background
-	}
-	if override.BorderColor != 0 {
-		base.BorderColor = override.BorderColor
-	}
-	if override.CornerRadius != 0 {
-		base.CornerRadius = override.CornerRadius
-	}
-	if override.BorderWidth != 0 {
-		base.BorderWidth = override.BorderWidth
-	}
-	return base
 }

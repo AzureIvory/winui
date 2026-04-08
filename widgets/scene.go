@@ -279,7 +279,10 @@ func NewScene(coreApp *core.App) *Scene {
 		nativeTargets: make(map[uintptr]nativeCommandHandler),
 	}
 	root.setScene(scene)
-	root.SetBounds(Rect{W: coreApp.ClientSize().Width, H: coreApp.ClientSize().Height})
+	if coreApp != nil {
+		size := coreApp.ClientSize()
+		root.SetBounds(Rect{W: size.Width, H: size.Height})
+	}
 	return scene
 }
 

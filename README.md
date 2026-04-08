@@ -102,3 +102,71 @@ go run ./cmd/demo
 
 
 
+
+## HTML 映射增强（`widgets/markup`）
+
+当前版本补齐了 HTML -> WinUI 映射中的关键缺口，保持旧入口兼容：
+
+- 新增文档级入口：
+  - `markup.LoadDocumentFile(...)`
+  - `markup.LoadDocumentString(...)`
+  - 返回 `*markup.Document`，包含：
+    - `Root widgets.Widget`
+    - `Meta markup.WindowMeta`
+- 旧入口仍可用且不破坏：
+  - `markup.LoadHTMLFile(...)`
+  - `markup.LoadHTMLString(...)`
+  - 内部复用文档级入口，只返回 `Root`
+
+### `<window>` 元数据
+
+支持：
+
+- `title`
+- `icon`（仅本地 `.ico`，通过 `core.LoadIconFromICO`）
+- `min-width`
+- `min-height`
+
+示例：
+
+```html
+<window title="Markup Demo" icon="assets/app.ico" min-width="900" min-height="640">
+  <body>...</body>
+</window>
+```
+
+应用方式：
+
+- `doc.ApplyWindowMeta(&opts)`：把标题、图标、最小尺寸写入 `core.Options`
+- `doc.Attach(scene)` 或 `markup.LoadIntoScene(...)`：挂载控件树并应用主题
+
+### 交互与控件映射新增
+
+- `input[type=password]` -> `widgets.EditBox` 密码模式（真实值仍由 `TextValue()` 返回）
+- `display:absolute`：对子项生效 `left/top/width/height`（支持 `x/y` 别名）
+  - `right/bottom` 目前明确报错，不做静默忽略
+- `listbox` + `option` -> `widgets.ListBox`
+  - 支持 `value`、`selected`、`onchange`、`onactivate`
+- `animated-img` -> `widgets.AnimatedImage`
+  - `src` 仅支持本地 `.gif`
+  - `autoplay`、`object-fit` 生效
+- `button` 新增图标属性：
+  - `icon="..."`（仅本地 `.ico`）
+  - `icon-position="left|top|auto"`
+
+### 动作上下文（兼容旧回调）
+
+- 保留：`LoadOptions.Actions map[string]func()`
+- 新增：`LoadOptions.ActionHandlers map[string]func(markup.ActionContext)`
+- 分发优先级：`ActionHandlers` > `Actions`
+- `ActionContext` 提供：`Name`、`Widget`、`ID`、`Value`、`Checked`、`Index`、`Item`
+
+### Theme 生效路径
+
+`LoadOptions.Theme` 不再是占位字段。通过文档入口可真实应用：
+
+- `doc.Attach(scene)`
+- `markup.LoadIntoScene(scene, html, css, opts)`
+- `markup.LoadFileIntoScene(scene, path, opts)`
+
+旧 `LoadHTML*` 入口仍保持“只构建 Root、不直接操作 Scene”的语义。

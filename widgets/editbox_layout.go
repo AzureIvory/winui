@@ -26,7 +26,7 @@ func (e *EditBox) effectiveWordWrap() bool {
 
 func (e *EditBox) textLayout(style EditStyle, contentWidth int32) editVisualLayout {
 	layout := editVisualLayout{lineHeight: e.textLineHeight(style)}
-	runes := []rune(e.Text)
+	runes := []rune(e.visualText())
 	if !e.multiline {
 		width := e.measureRunes(style, runes)
 		layout.lines = []editVisualLine{{text: string(runes), start: 0, end: len(runes), width: width}}

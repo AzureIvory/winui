@@ -1204,7 +1204,7 @@ root, err := markup.LoadHTMLString(htmlText, cssText, markup.LoadOptions{
 - `scroll` 如果出现多个直接子节点，会自动包一层 `column Panel` 作为内容容器。
 - `overflow-y: auto/scroll` 会把容器包装为 `ScrollView`。
 - `textarea` 直接复用多行 `EditBox`，不会引入新的渲染后端。
-- `onclick` / `onchange` / `onsubmit` 只能写动作名字符串，例如 `onclick="saveForm"`，再由 `LoadOptions.Actions` 绑定。
+- `onclick` / `onchange` / `onsubmit` / `onactivate` 仍使用动作名字符串（例如 `onclick="saveForm"`），可由 `LoadOptions.Actions` 或 `LoadOptions.ActionHandlers` 绑定。
 - `img[src]` 会从 `AssetsDir`（或 HTML 文件所在目录）读取资源。
 
 当前不支持的特性：
@@ -1212,7 +1212,7 @@ root, err := markup.LoadHTMLString(htmlText, cssText, markup.LoadOptions{
 - 不支持浏览器 DOM / JavaScript / WebView / Chromium / XAML。
 - 不支持 `table`、`ul/li`、`a`、`video`、`canvas`、`svg`、`script`。
 - 不支持伪类、伪元素、属性选择器、媒体查询、动画、`calc()`、CSS 变量。
-- `input[type=password]` 当前仍复用普通 `EditBox`，不会做密码遮罩。
+- `input[type=password]` 映射为 `EditBox` 密码模式，显示层使用掩码；`TextValue()` 与事件回调仍返回真实值。
 - `#AARRGGBB` 颜色中的 Alpha 通道当前会被忽略，`opacity` 暂未参与实际绘制。
 - `object-fit: cover` 目前按最接近的拉伸语义处理，不裁切图像。
 
@@ -1715,4 +1715,77 @@ reason := app.RenderFallbackReason()
 对于这个仓库里的 demo，`cmd/demo/main.manifest` 已经提供了对应 manifest，并通过 `manifest.syso` 编进可执行程序。
 
 对于你自己的应用，manifest 必须加在你的 `main` 包生成的 EXE 上；库本身不能替宿主进程自动开启 visual styles。
+
+
+## HTML DSL 映射补充（`widgets/markup`）
+
+本次更新补齐了 `widgets/markup` 的窗口元数据、密码输入、绝对定位与控件映射能力，并保持旧 API 兼容。
+
+### 新入口与兼容关系
+
+- 新增：
+  - `markup.LoadDocumentFile(path, opts)`
+  - `markup.LoadDocumentString(html, css, opts)`
+  - 返回 `*markup.Document`（包含 `Root` + `Meta`）
+- 旧入口兼容：
+  - `markup.LoadHTMLFile` / `markup.LoadHTMLString`
+  - 仍返回 `widgets.Widget`，内部复用新实现
+
+### 窗口元数据 `<window>`
+
+支持：
+
+- `title`
+- `icon`（仅本地 `.ico`）
+- `min-width`
+- `min-height`
+
+`Document` 可通过：
+
+- `doc.ApplyWindowMeta(&core.Options)` 把元数据写入窗口参数
+- `doc.Attach(scene)` 或 `markup.LoadIntoScene(...)` 挂载并应用主题
+
+### 主题应用
+
+`LoadOptions.Theme` 不再忽略。
+
+- 通过 `Document.Attach(scene)` / `LoadIntoScene` / `LoadFileIntoScene` 可直接生效。
+- 旧 `LoadHTML*` 仅构建 `Root`，不会自动改动 `Scene`，语义保持不变。
+
+### 事件动作上下文
+
+`LoadOptions` 新增：
+
+```go
+type LoadOptions struct {
+    Actions        map[string]func() // 旧接口，保留
+    ActionHandlers map[string]func(markup.ActionContext) // 新接口
+}
+```
+
+优先级：`ActionHandlers` > `Actions`。
+
+`ActionContext` 至少包含：
+
+- `Name`
+- `Widget`
+- `ID`
+- `Value`
+- `Checked`
+- `Index`
+- `Item`
+
+### 新增/补齐标签与属性
+
+- `input type="password"`：映射到 `EditBox` 密码模式
+- `listbox` + `option`：映射到 `ListBox`
+- `animated-img`：映射到 `AnimatedImage`（`src` 仅支持本地 `.gif`）
+- `button icon="..." icon-position="left|top|auto"`：按钮图标映射
+- `display:absolute`：对子项生效 `left/top/width/height`（支持 `x/y`）
+  - `right/bottom` 当前明确报错（尚未支持复杂锚定模型）
+
+图标支持说明：
+
+- 窗口图标与按钮图标当前都只支持本地 `.ico`。
+- 不支持 `png/jpg` 作为窗口图标输入。
 

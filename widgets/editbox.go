@@ -4,6 +4,7 @@ package widgets
 
 import (
 	"strings"
+	"unicode/utf8"
 
 	"github.com/AzureIvory/winui/core"
 )
@@ -50,6 +51,8 @@ type EditBox struct {
 	horizontalScroll bool
 	// acceptReturn 记录多行模式下回车是否插入换行。
 	acceptReturn bool
+	// password 记录当前是否启用密码掩码显示。
+	password bool
 	// scrollX 保存当前水平滚动偏移。
 	scrollX int32
 	// scrollY 保存当前垂直滚动偏移。
@@ -142,6 +145,23 @@ func (e *EditBox) SetReadOnly(readOnly bool) {
 		e.syncNativeReadOnly()
 		e.invalidate(e)
 	})
+}
+
+// SetPassword 更新编辑框的密码模式。启用后显示层使用掩码字符，内部文本仍保留真实值。
+func (e *EditBox) SetPassword(password bool) {
+	e.runOnUI(func() {
+		if e.password == password {
+			return
+		}
+		e.password = password
+		e.recreateNativeControl()
+		e.invalidate(e)
+	})
+}
+
+// Password 返回编辑框是否启用密码模式。
+func (e *EditBox) Password() bool {
+	return e.password
 }
 
 // SetMultiline 更新编辑框的多行模式。
@@ -380,7 +400,7 @@ func (e *EditBox) Paint(ctx *PaintCtx) {
 	restore := ctx.PushClipRect(textRect)
 	defer restore()
 
-	displayText := e.Text
+	displayText := e.visualText()
 	if displayText == "" {
 		displayText = e.Placeholder
 		textColor = style.PlaceholderColor
@@ -806,6 +826,17 @@ func (e *EditBox) nativeTextValue() string {
 	return strings.ReplaceAll(e.Text, "\n", "\r\n")
 }
 
+func (e *EditBox) visualText() string {
+	if !e.password {
+		return e.Text
+	}
+	count := utf8.RuneCountInString(e.Text)
+	if count <= 0 {
+		return ""
+	}
+	return strings.Repeat("•", count)
+}
+
 func (e *EditBox) recreateNativeControl() {
 	if !e.native.valid() {
 		return
@@ -817,6 +848,9 @@ func (e *EditBox) recreateNativeControl() {
 
 func (e *EditBox) nativeEditStyle() uint32 {
 	style := nativeWindowChild | nativeWindowVisible | nativeWindowTabStop | nativeWindowBorder
+	if e.password {
+		style |= nativeEditPassword
+	}
 	if !e.multiline {
 		style |= nativeEditAutoHScroll
 		return style

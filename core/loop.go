@@ -24,6 +24,22 @@ func appWndProc(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr {
 	}
 
 	switch msg {
+
+	case wmGetMinMaxInfo:
+		min := app.minTrackSize()
+		if lParam != 0 && (min.Width > 0 || min.Height > 0) {
+			var info minMaxInfo
+			size := uintptr(unsafe.Sizeof(info))
+			procRtlMoveMemory.Call(uintptr(unsafe.Pointer(&info)), lParam, size)
+			if min.Width > 0 {
+				info.PtMinTrackSize.X = min.Width
+			}
+			if min.Height > 0 {
+				info.PtMinTrackSize.Y = min.Height
+			}
+			procRtlMoveMemory.Call(lParam, uintptr(unsafe.Pointer(&info)), size)
+			return 0
+		}
 	case wmSetFocus:
 		if app.opts.OnFocus != nil {
 			app.opts.OnFocus(app, true)
