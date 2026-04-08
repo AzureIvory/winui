@@ -226,5 +226,8 @@ func dpiChangeFromMessage(wParam, lParam uintptr, current DPIInfo) (DPIInfo, *wi
 	if lParam == 0 {
 		return info, nil
 	}
-	return info, (*winRect)(unsafe.Pointer(lParam))
+	suggested := &winRect{}
+	size := uintptr(unsafe.Sizeof(*suggested))
+	procRtlMoveMemory.Call(uintptr(unsafe.Pointer(suggested)), lParam, size)
+	return info, suggested
 }

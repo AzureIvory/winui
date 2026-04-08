@@ -25,6 +25,8 @@ type cssSelector struct {
 var cssCommentPattern = regexp.MustCompile(`(?s)/\*.*?\*/`)
 
 func parseHTMLDocument(htmlText string) (*node, error) {
+	// 兼容某些编辑器保存出来的 UTF-8 BOM。
+	htmlText = strings.TrimPrefix(htmlText, "\ufeff")
 	decoder := xml.NewDecoder(strings.NewReader(htmlText))
 	decoder.Strict = false
 	var root *node
