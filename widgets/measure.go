@@ -184,7 +184,9 @@ func measureFormNatural(children []Widget, layout FormLayout) core.Size {
 				fieldWidth = size.Width
 			}
 			if size.Height > 0 {
-				height = height - preferredSizeOf(children[index-1]).Height + max32(preferredSizeOf(children[index-1]).Height, size.Height)
+				labelSize := preferredSizeForWidth(children[index-1], labelWidth)
+				fieldSize := preferredSizeForWidth(child, fieldWidth)
+				height = height - labelSize.Height + max32(labelSize.Height, fieldSize.Height)
 			}
 			rows++
 		}
@@ -226,6 +228,7 @@ func measureAbsoluteNatural(children []Widget) core.Size {
 				h = widgetDP(child, data.Height)
 			}
 		}
+		size = preferredSizeForWidth(child, w)
 		if w <= 0 {
 			w = size.Width
 		}

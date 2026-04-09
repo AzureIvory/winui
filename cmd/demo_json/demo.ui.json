@@ -4,6 +4,8 @@
       "id": "main",
       "title": "JSON Demo",
       "icon": "assets/app.ico",
+      "iconSizeDP": 32,
+      "iconPolicy": "auto",
       "w": 980,
       "h": 720,
       "minW": 980,
@@ -20,14 +22,24 @@
             "style": {
               "size": 18
             },
-            "frame": { "x": 20, "y": 20, "w": 360, "h": 28 }
+            "frame": {
+              "x": 20,
+              "y": 20,
+              "w": 360,
+              "h": 28
+            }
           },
           {
             "type": "input",
             "id": "pwd",
             "input": "password",
             "placeholder": "Enter password",
-            "frame": { "x": 20, "y": 60, "w": 220, "h": 36 },
+            "frame": {
+              "x": 20,
+              "y": 60,
+              "w": 220,
+              "h": 36
+            },
             "onChange": "pwdChanged",
             "onSubmit": "pwdSubmit"
           },
@@ -48,8 +60,15 @@
               "pad": 12,
               "gap": 8
             },
-            "frame": { "x": 260, "y": 56, "w": 140, "h": 40 },
-            "onClick": "save"
+            "frame": {
+              "x": 260,
+              "y": 56,
+              "w": 140,
+              "h": 40
+            },
+            "onClick": "save",
+            "iconSizeDP": 18,
+            "iconPolicy": "fixed"
           },
           {
             "type": "button",
@@ -63,7 +82,12 @@
               "border": "#b9c9dd",
               "radius": 10
             },
-            "frame": { "x": 410, "y": 56, "w": 140, "h": 40 },
+            "frame": {
+              "x": 410,
+              "y": 56,
+              "w": 140,
+              "h": 40
+            },
             "onClick": "legacyOnly"
           },
           {
@@ -71,9 +95,19 @@
             "id": "citySelect",
             "placeholder": "Choose city",
             "items": [
-              { "value": "bj", "text": "Beijing" },
-              { "value": "sh", "text": "Shanghai", "selected": true },
-              { "value": "sz", "text": "Shenzhen" }
+              {
+                "value": "bj",
+                "text": "Beijing"
+              },
+              {
+                "value": "sh",
+                "text": "Shanghai",
+                "selected": true
+              },
+              {
+                "value": "sz",
+                "text": "Shenzhen"
+              }
             ],
             "style": {
               "fg": "#1f2937",
@@ -92,15 +126,50 @@
               "itemH": 34,
               "maxItems": 5
             },
-            "frame": { "x": 560, "y": 60, "w": 220, "h": 36 }
+            "frame": {
+              "x": 560,
+              "y": 60,
+              "w": 220,
+              "h": 36
+            }
+          },
+          {
+            "type": "button",
+            "id": "openHelp",
+            "text": "Show Modal",
+            "style": {
+              "bg": "#ffffff",
+              "hoverBg": "#eef6ff",
+              "pressedBg": "#1d4ed8",
+              "disabledBg": "#e2e8f0",
+              "border": "#b9c9dd",
+              "radius": 10
+            },
+            "frame": {
+              "x": 790,
+              "y": 56,
+              "w": 150,
+              "h": 40
+            },
+            "onClick": "showHelpDialog"
           },
           {
             "type": "listbox",
             "id": "cityList",
             "items": [
-              { "value": "bj", "text": "Beijing" },
-              { "value": "sh", "text": "Shanghai", "selected": true },
-              { "value": "sz", "text": "Shenzhen" }
+              {
+                "value": "bj",
+                "text": "Beijing"
+              },
+              {
+                "value": "sh",
+                "text": "Shanghai",
+                "selected": true
+              },
+              {
+                "value": "sz",
+                "text": "Shenzhen"
+              }
             ],
             "style": {
               "fg": "#1f2937",
@@ -116,7 +185,12 @@
               "radius": 10,
               "itemH": 34
             },
-            "frame": { "x": 20, "y": 110, "w": 220, "h": 160 },
+            "frame": {
+              "x": 20,
+              "y": 110,
+              "w": 220,
+              "h": 160
+            },
             "onChange": "cityChanged",
             "onActivate": "cityOpen"
           },
@@ -132,7 +206,12 @@
               "radius": 12,
               "showPct": true
             },
-            "frame": { "x": 260, "y": 120, "w": 280, "h": 24 }
+            "frame": {
+              "x": 260,
+              "y": 120,
+              "w": 280,
+              "h": 24
+            }
           },
           {
             "type": "checkbox",
@@ -156,7 +235,12 @@
               "indicatorSize": 18,
               "indicatorGap": 10
             },
-            "frame": { "x": 260, "y": 168, "w": 240, "h": 28 }
+            "frame": {
+              "x": 260,
+              "y": 168,
+              "w": 240,
+              "h": 28
+            }
           },
           {
             "type": "input",
@@ -178,21 +262,38 @@
               "pad": 10,
               "radius": 10
             },
-            "frame": { "x": 260, "y": 210, "w": 300, "h": 120 }
+            "frame": {
+              "x": 260,
+              "y": 210,
+              "w": 300,
+              "h": 120
+            }
           },
           {
             "type": "animimg",
             "id": "spinner",
             "src": "assets/spinner.gif",
             "autoplay": true,
-            "frame": { "x": 580, "y": 120, "w": 48, "h": 48 }
+            "frame": {
+              "x": 580,
+              "y": 120,
+              "w": 48,
+              "h": 48
+            }
           },
           {
             "type": "label",
             "id": "dialogsTitle",
             "text": "Native File Dialogs",
-            "style": { "size": 16 },
-            "frame": { "x": 20, "y": 300, "w": 260, "h": 24 }
+            "style": {
+              "size": 16
+            },
+            "frame": {
+              "x": 20,
+              "y": 300,
+              "w": 260,
+              "h": 24
+            }
           },
           {
             "type": "file",
@@ -200,7 +301,11 @@
             "value": "README.md",
             "buttonText": "Open...",
             "dialogTitle": "Open a source file",
-            "accept": [ "*.txt", "*.md", "*.go" ],
+            "accept": [
+              "*.txt",
+              "*.md",
+              "*.go"
+            ],
             "style": {
               "fg": "#1f2937",
               "ph": "#94a3b8",
@@ -221,7 +326,12 @@
                 "radius": 10
               }
             },
-            "frame": { "x": 20, "y": 336, "w": 420, "h": 36 },
+            "frame": {
+              "x": 20,
+              "y": 336,
+              "w": 420,
+              "h": 36
+            },
             "onChange": "openPicked"
           },
           {
@@ -232,9 +342,18 @@
             "dialogTitle": "Save exported report",
             "defaultExt": "txt",
             "filters": [
-              { "name": "Text Files", "pattern": "*.txt" },
-              { "name": "Markdown", "pattern": "*.md" },
-              { "name": "All Files", "pattern": "*.*" }
+              {
+                "name": "Text Files",
+                "pattern": "*.txt"
+              },
+              {
+                "name": "Markdown",
+                "pattern": "*.md"
+              },
+              {
+                "name": "All Files",
+                "pattern": "*.*"
+              }
             ],
             "placeholder": "No export path selected",
             "style": {
@@ -247,7 +366,12 @@
               "pad": 10,
               "radius": 10
             },
-            "frame": { "x": 20, "y": 384, "w": 420, "h": 36 },
+            "frame": {
+              "x": 20,
+              "y": 384,
+              "w": 420,
+              "h": 36
+            },
             "onChange": "savePicked"
           },
           {
@@ -267,7 +391,12 @@
               "pad": 10,
               "radius": 10
             },
-            "frame": { "x": 20, "y": 432, "w": 420, "h": 36 },
+            "frame": {
+              "x": 20,
+              "y": 432,
+              "w": 420,
+              "h": 36
+            },
             "onChange": "folderPicked"
           },
           {
@@ -276,7 +405,11 @@
             "multiple": true,
             "buttonText": "Multi...",
             "dialogTitle": "Choose multiple project files",
-            "accept": [ "*.go", "*.md", "*.txt" ],
+            "accept": [
+              "*.go",
+              "*.md",
+              "*.txt"
+            ],
             "valueSep": " | ",
             "style": {
               "fg": "#1f2937",
@@ -288,7 +421,12 @@
               "pad": 10,
               "radius": 10
             },
-            "frame": { "x": 20, "y": 480, "w": 420, "h": 36 },
+            "frame": {
+              "x": 20,
+              "y": 480,
+              "w": 420,
+              "h": 36
+            },
             "onChange": "multiPicked"
           },
           {
@@ -300,14 +438,26 @@
               "borderW": 1,
               "radius": 12
             },
-            "frame": { "x": 470, "y": 336, "r": 20, "h": 180 },
+            "frame": {
+              "x": 470,
+              "y": 336,
+              "r": 20,
+              "h": 180
+            },
             "children": [
               {
                 "type": "label",
                 "id": "dialogsNoteText",
                 "text": "Use file widgets with dialog=open/save/folder, multiple, accept, filters, buttonText, dialogTitle, defaultExt, and valueSep.",
-                "style": { "align": "start" },
-                "frame": { "x": 16, "y": 16, "r": 16, "b": 16 }
+                "style": {
+                  "align": "start"
+                },
+                "frame": {
+                  "x": 16,
+                  "y": 16,
+                  "r": 16,
+                  "b": 16
+                }
               }
             ]
           },
@@ -320,14 +470,110 @@
               "borderW": 1,
               "radius": 12
             },
-            "frame": { "x": 20, "r": 20, "b": 20, "h": 110 },
+            "frame": {
+              "x": 20,
+              "r": 20,
+              "b": 20,
+              "h": 110
+            },
             "children": [
               {
                 "type": "label",
                 "id": "status",
                 "text": "Waiting for actions",
-                "style": { "align": "start" },
-                "frame": { "x": 12, "y": 10, "r": 12, "h": 90 }
+                "style": {
+                  "align": "start"
+                },
+                "frame": {
+                  "x": 12,
+                  "y": 10,
+                  "r": 12,
+                  "h": 90
+                }
+              }
+            ]
+          },
+          {
+            "type": "modal",
+            "id": "helpModal",
+            "visible": {
+              "bind": "overlay.helpVisible",
+              "default": false
+            },
+            "backdrop": {
+              "color": "#0f172a",
+              "opacity": 96,
+              "blur": 8,
+              "dismissOnClick": true
+            },
+            "onDismiss": "dismissHelpDialog",
+            "children": [
+              {
+                "type": "panel",
+                "id": "helpCard",
+                "style": {
+                  "bg": "#ffffff",
+                  "border": "#b9c9dd",
+                  "borderW": 1,
+                  "radius": 14
+                },
+                "frame": {
+                  "x": "50%-210",
+                  "y": "50%-130",
+                  "w": 420,
+                  "h": 220
+                },
+                "children": [
+                  {
+                    "type": "label",
+                    "id": "helpTitle",
+                    "text": "Declarative Modal",
+                    "style": {
+                      "size": 18,
+                      "align": "start"
+                    },
+                    "frame": {
+                      "x": 20,
+                      "y": 20,
+                      "w": 220,
+                      "h": 28
+                    }
+                  },
+                  {
+                    "type": "label",
+                    "id": "helpBody",
+                    "text": "This modal is declared in JSON. The backdrop supports opacity and a Direct2D-only soft blur tint, while dismiss flows stay in normal action handlers.",
+                    "multiline": true,
+                    "wordWrap": true,
+                    "style": {
+                      "align": "start"
+                    },
+                    "frame": {
+                      "x": 20,
+                      "y": 58,
+                      "w": 360
+                    }
+                  },
+                  {
+                    "type": "button",
+                    "id": "closeHelp",
+                    "text": "Close",
+                    "style": {
+                      "bg": "#f5f9ff",
+                      "hoverBg": "#e0f2fe",
+                      "pressedBg": "#2563eb",
+                      "border": "#9dbfe8",
+                      "radius": 10
+                    },
+                    "frame": {
+                      "x": 280,
+                      "y": 164,
+                      "w": 120,
+                      "h": 40
+                    },
+                    "onClick": "dismissHelpDialog"
+                  }
+                ]
               }
             ]
           }

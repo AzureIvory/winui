@@ -244,6 +244,8 @@ const (
 	DTRight uint32 = 0x00000002
 	// DTVCenter 让文本在垂直方向居中。
 	DTVCenter uint32 = 0x00000004
+	// DTWordBreak ??????????????
+	DTWordBreak uint32 = 0x00000010
 	// DTSingleLine 强制文本单行绘制。
 	DTSingleLine uint32 = 0x00000020
 	// DTEndEllipsis 在末尾显示省略号。

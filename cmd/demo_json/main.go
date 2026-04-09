@@ -25,6 +25,12 @@ func main() {
 		panic(err)
 	}
 
+	store := jsonui.NewStore(map[string]any{
+		"overlay": map[string]any{
+			"helpVisible": false,
+		},
+	})
+
 	var demoWindow *jsonui.Window
 	actionHandlers := map[string]func(jsonui.ActionContext){
 		"pwdChanged": func(ctx jsonui.ActionContext) { showActionStatus("Password changed", ctx) },
@@ -48,6 +54,14 @@ func main() {
 		"multiPicked": func(ctx jsonui.ActionContext) {
 			showActionStatus("Multi-file dialog selected", ctx)
 		},
+		"showHelpDialog": func(ctx jsonui.ActionContext) {
+			store.Set("overlay.helpVisible", true)
+			showActionStatus("Modal opened", ctx)
+		},
+		"dismissHelpDialog": func(ctx jsonui.ActionContext) {
+			store.Set("overlay.helpVisible", false)
+			showActionStatus("Modal dismissed", ctx)
+		},
 	}
 	legacyActions := map[string]func(){
 		"legacyOnly": func() {
@@ -68,6 +82,7 @@ func main() {
 		Actions:        legacyActions,
 		AssetsDir:      baseDir,
 		DefaultMode:    widgets.ModeCustom,
+		Data:           store,
 		Theme:          theme,
 	})
 	if err != nil {

@@ -44,6 +44,9 @@ func (d *Document) NewApps(base core.Options) ([]*HostedWindow, error) {
 			OnCreate: func(_ *core.App, scene *widgets.Scene) error {
 				return window.Attach(scene)
 			},
+			OnDPIChanged: func(_ *core.App, _ *widgets.Scene, _ core.DPIInfo) {
+				_ = window.ReloadResources(ReloadReasonDPIChanged)
+			},
 		})
 		app, err := core.NewApp(opts)
 		if err != nil {

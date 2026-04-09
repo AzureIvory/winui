@@ -47,10 +47,16 @@ func (AbsoluteLayout) Apply(parent Rect, children []Widget) {
 		} else if data.HasLeft && data.HasRight {
 			width = parent.W - widgetDP(child, data.Left) - widgetDP(child, data.Right)
 		}
+		size = preferredSizeForWidth(child, width)
+		if !data.HasWidth && width <= 0 {
+			width = size.Width
+		}
 		if data.HasHeight {
 			height = widgetDP(child, data.Height)
 		} else if data.HasTop && data.HasBottom {
 			height = parent.H - widgetDP(child, data.Top) - widgetDP(child, data.Bottom)
+		} else if size.Height > 0 {
+			height = size.Height
 		}
 		if width < 0 {
 			width = 0
@@ -440,7 +446,7 @@ func (l FormLayout) Apply(parent Rect, children []Widget) {
 				continue
 			}
 			data := formDataOf(label.LayoutData())
-			labelSize := preferredSizeOf(label)
+			labelSize := preferredSizeForWidth(label, content.W)
 			cell := Rect{X: content.X, Y: y, W: content.W, H: max32(0, labelSize.Height)}
 			label.SetBounds(alignedRect(
 				cell,
@@ -454,7 +460,7 @@ func (l FormLayout) Apply(parent Rect, children []Widget) {
 		}
 		if label == nil {
 			fieldData := formDataOf(field.LayoutData())
-			fieldSize := preferredSizeOf(field)
+			fieldSize := preferredSizeForWidth(field, content.W)
 			rowHeight := max32(0, fieldSize.Height)
 			field.SetBounds(formFieldRect(
 				Rect{X: content.X, Y: y, W: content.W, H: rowHeight},
@@ -469,8 +475,9 @@ func (l FormLayout) Apply(parent Rect, children []Widget) {
 
 		labelData := formDataOf(label.LayoutData())
 		fieldData := defaultFormData(formDataOf(field.LayoutData()))
-		labelSize := preferredSizeOf(label)
-		fieldSize := preferredSizeOf(field)
+		labelSize := preferredSizeForWidth(label, labelWidth)
+		fieldWidth := max32(0, content.W-labelWidth-columnGap)
+		fieldSize := preferredSizeForWidth(field, fieldWidth)
 		rowHeight := max32(labelSize.Height, fieldSize.Height)
 
 		labelCell := Rect{X: content.X, Y: y, W: labelWidth, H: rowHeight}
@@ -548,8 +555,12 @@ type flexItem struct {
 
 // preferredSizer 描述可直接返回首选尺寸的控件能力。
 type preferredSizer interface {
-	// preferredSize 返回控件在布局前保存的首选尺寸。
+	// preferredSize ????????????????
 	preferredSize() core.Size
+}
+
+type widthConstrainedSizer interface {
+	preferredSizeForWidth(width int32) core.Size
 }
 
 // applyFlexLayout 根据统一逻辑执行行布局或列布局。
@@ -566,11 +577,20 @@ func applyFlexLayout(parent Rect, children []Widget, opts flexOptions) {
 	items := make([]flexItem, 0, len(children))
 	totalBase := int32(0)
 	totalGrow := int32(0)
+	availableMain := content.W
+	availableCross := content.H
+	if opts.axis == AxisVertical {
+		availableMain = content.H
+		availableCross = content.W
+	}
 	for _, child := range children {
 		if child == nil {
 			continue
 		}
 		size := preferredSizeOf(child)
+		if opts.axis == AxisVertical {
+			size = preferredSizeForWidth(child, availableCross)
+		}
 		item := flexItem{
 			widget: child,
 			data:   flexDataOf(child.LayoutData()),
@@ -596,12 +616,6 @@ func applyFlexLayout(parent Rect, children []Widget, opts flexOptions) {
 	}
 
 	totalGap := opts.gap * int32(maxInt(0, len(items)-1))
-	availableMain := content.W
-	availableCross := content.H
-	if opts.axis == AxisVertical {
-		availableMain = content.H
-		availableCross = content.W
-	}
 
 	extra := availableMain - totalBase - totalGap
 	if extra < 0 {
@@ -656,16 +670,30 @@ func preferredSizeOf(widget Widget) core.Size {
 		preferredSizeInfo() (core.Size, bool)
 	}); ok {
 		size, logical := info.preferredSizeInfo()
-		if logical {
-			return scaleSizeForWidget(widget, size)
+		if size.Width > 0 || size.Height > 0 {
+			if logical {
+				return scaleSizeForWidget(widget, size)
+			}
+			return size
 		}
-		return size
 	}
 	if sized, ok := widget.(preferredSizer); ok {
 		return sized.preferredSize()
 	}
 	bounds := widget.Bounds()
 	return core.Size{Width: bounds.W, Height: bounds.H}
+}
+
+func preferredSizeForWidth(widget Widget, width int32) core.Size {
+	if widget == nil {
+		return core.Size{}
+	}
+	if width > 0 {
+		if sized, ok := widget.(widthConstrainedSizer); ok {
+			return sized.preferredSizeForWidth(width)
+		}
+	}
+	return preferredSizeOf(widget)
 }
 
 // gridItem 表示网格布局中的单个排版项。

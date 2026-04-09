@@ -5,7 +5,6 @@ package jsonui
 import (
 	"encoding/json"
 	"fmt"
-	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -20,15 +19,17 @@ type documentSpec struct {
 }
 
 type windowSpec struct {
-	ID    string          `json:"id"`
-	Title json.RawMessage `json:"title"`
-	Icon  string          `json:"icon"`
-	W     json.RawMessage `json:"w"`
-	H     json.RawMessage `json:"h"`
-	MinW  json.RawMessage `json:"minW"`
-	MinH  json.RawMessage `json:"minH"`
-	BG    string          `json:"bg"`
-	Root  *nodeSpec       `json:"root"`
+	ID         string          `json:"id"`
+	Title      json.RawMessage `json:"title"`
+	Icon       string          `json:"icon"`
+	IconSizeDP json.RawMessage `json:"iconSizeDP"`
+	IconPolicy string          `json:"iconPolicy"`
+	W          json.RawMessage `json:"w"`
+	H          json.RawMessage `json:"h"`
+	MinW       json.RawMessage `json:"minW"`
+	MinH       json.RawMessage `json:"minH"`
+	BG         string          `json:"bg"`
+	Root       *nodeSpec       `json:"root"`
 }
 
 type nodeSpec struct {
@@ -54,12 +55,14 @@ type nodeSpec struct {
 	Style            json.RawMessage `json:"style"`
 	Children         []nodeSpec      `json:"children"`
 
-	Group    string          `json:"group"`
-	Src      string          `json:"src"`
-	Fit      string          `json:"fit"`
-	Autoplay json.RawMessage `json:"autoplay"`
-	Icon     string          `json:"icon"`
-	IconPos  string          `json:"iconPos"`
+	Group      string          `json:"group"`
+	Src        string          `json:"src"`
+	Fit        string          `json:"fit"`
+	Autoplay   json.RawMessage `json:"autoplay"`
+	Icon       string          `json:"icon"`
+	IconPos    string          `json:"iconPos"`
+	IconSizeDP json.RawMessage `json:"iconSizeDP"`
+	IconPolicy string          `json:"iconPolicy"`
 
 	Dialog      string          `json:"dialog"`
 	Multiple    json.RawMessage `json:"multiple"`
@@ -69,8 +72,10 @@ type nodeSpec struct {
 	DialogTitle json.RawMessage `json:"dialogTitle"`
 	DefaultExt  string          `json:"defaultExt"`
 	ValueSep    string          `json:"valueSep"`
+	Backdrop    json.RawMessage `json:"backdrop"`
 
 	OnClick    string `json:"onClick"`
+	OnDismiss  string `json:"onDismiss"`
 	OnChange   string `json:"onChange"`
 	OnSubmit   string `json:"onSubmit"`
 	OnActivate string `json:"onActivate"`
@@ -180,13 +185,8 @@ func (b *builder) buildWindow(spec windowSpec) (*Window, error) {
 			ID: spec.ID,
 		},
 	}
-	if spec.Icon != "" {
-		icon, err := b.loadICO(spec.Icon)
-		if err != nil {
-			return nil, fmt.Errorf("window %q icon: %w", spec.ID, err)
-		}
-		window.Meta.Icon = icon
-		window.Meta.IconPath = spec.Icon
+	if err := b.configureWindowIcon(window, spec); err != nil {
+		return nil, err
 	}
 	if spec.BG != "" {
 		color, ok, err := parseColorValue(spec.BG)
@@ -248,6 +248,8 @@ func (b *builder) buildNode(window *Window, spec nodeSpec, parentLayout string) 
 	switch spec.Type {
 	case "panel":
 		widget, err = b.buildPanel(window, spec)
+	case "modal":
+		widget, err = b.buildModal(window, spec)
 	case "label":
 		widget, err = b.buildLabel(window, spec)
 	case "button":
@@ -300,12 +302,24 @@ func (b *builder) buildPanel(window *Window, spec nodeSpec) (widgets.Widget, err
 		panel.SetStyle(style)
 	}
 	b.applyCommonState(window, panel, spec)
+	regular := make([]widgets.Widget, 0, len(spec.Children))
+	modals := make([]widgets.Widget, 0, len(spec.Children))
 	for _, child := range spec.Children {
 		built, err := b.buildNode(window, child, layoutKind)
 		if err != nil {
 			return nil, err
 		}
-		panel.Add(built)
+		if _, ok := built.(*widgets.Modal); ok {
+			modals = append(modals, built)
+			continue
+		}
+		regular = append(regular, built)
+	}
+	for _, child := range regular {
+		panel.Add(child)
+	}
+	for _, child := range modals {
+		panel.Add(child)
 	}
 	return panel, nil
 }
@@ -316,12 +330,15 @@ func (b *builder) buildLabel(window *Window, spec nodeSpec) (widgets.Widget, err
 		return nil, err
 	}
 	label := widgets.NewLabel(nodeID(spec), resolveStringSource(textSource, b.opts.Data))
-	style, err := parseTextStyle(spec.Style, false)
+	if err := b.applyLabelOptions(window, label, spec); err != nil {
+		return nil, err
+	}
+	style, err := parseTextStyle(spec.Style, label.Multiline())
 	if err != nil {
 		return nil, err
 	}
 	label.SetStyle(style)
-	widgets.SetPreferredSize(label, core.Size{Width: 180, Height: 28})
+	setLabelPreferredSize(label)
 	b.applyCommonState(window, label, spec)
 	if textSource.Binding != "" {
 		b.addBinding(window, []string{textSource.Binding}, func(ctx *bindingContext) {
@@ -343,12 +360,8 @@ func (b *builder) buildButton(window *Window, spec nodeSpec) (widgets.Widget, er
 	}
 	button.SetStyle(style)
 	widgets.SetPreferredSize(button, core.Size{Width: 120, Height: 36})
-	if spec.Icon != "" {
-		icon, err := b.loadICO(spec.Icon)
-		if err != nil {
-			return nil, err
-		}
-		button.SetIcon(icon)
+	if err := b.configureButtonIcon(window, button, spec); err != nil {
+		return nil, err
 	}
 	switch strings.ToLower(strings.TrimSpace(spec.IconPos)) {
 	case "", "auto":
@@ -873,7 +886,13 @@ func (b *builder) applyCommonState(window *Window, widget widgets.Widget, spec n
 }
 
 func (b *builder) applyLayoutData(window *Window, widget widgets.Widget, spec nodeSpec, parentLayout string) error {
-	if widget == nil || spec.Frame == nil {
+	if widget == nil {
+		return nil
+	}
+	if spec.Frame == nil {
+		if parentLayout == "abs" && spec.Type == "modal" {
+			widget.SetLayoutData(modalAbsoluteLayoutData(window))
+		}
 		return nil
 	}
 	if parentLayout != "abs" {
@@ -1133,17 +1152,6 @@ func (b *builder) resolveAssetPath(path string) string {
 	return filepath.Join(b.opts.AssetsDir, resolved)
 }
 
-func (b *builder) loadICO(src string) (*core.Icon, error) {
-	if strings.ToLower(filepath.Ext(src)) != ".ico" {
-		return nil, fmt.Errorf("icon %q must be a local .ico file", src)
-	}
-	data, err := os.ReadFile(b.resolveAssetPath(src))
-	if err != nil {
-		return nil, err
-	}
-	return core.LoadIconFromICO(data, b.iconLoadSize())
-}
-
 func (b *builder) baseActionContext(window *Window, name string, widget widgets.Widget) ActionContext {
 	ctx := ActionContext{
 		Name:   name,
@@ -1232,30 +1240,18 @@ func (b *builder) applyEditBoxOptions(window *Window, edit *widgets.EditBox, spe
 	return nil
 }
 
-func (b *builder) iconLoadSize() int32 {
-	scale := core.ScreenDPI().Scale
-	return resolveIconLoadSize(b.opts.IconSizeDP, scale)
-}
-
-func resolveIconLoadSize(sizeDP int32, scale float64) int32 {
-	if sizeDP <= 0 {
-		sizeDP = 32
-	}
-	if scale <= 0 {
-		scale = 1
-	}
-	size := int32(math.Round(float64(sizeDP) * scale))
-	if size < 1 {
-		return 1
-	}
-	return size
-}
-
 func resolveBoolSourceOrDefault(source boolSource, data DataSource, fallback bool) bool {
 	if !source.Has {
 		return fallback
 	}
 	return resolveBoolSource(source, data)
+}
+
+func resolveIntSourceOrDefault(source intSource, data DataSource, fallback int32) int32 {
+	if !source.Has {
+		return fallback
+	}
+	return resolveIntSource(source, data)
 }
 
 func (b *builder) dispatchAction(name string, ctx ActionContext) {

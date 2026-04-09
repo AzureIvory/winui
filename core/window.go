@@ -261,6 +261,27 @@ func (a *App) SetTitle(title string) {
 	})
 }
 
+// SetIcon updates the window icon handles used by the current app window.
+func (a *App) SetIcon(icon *Icon) {
+	if a == nil || a.hwnd == 0 || a.closed.Load() {
+		return
+	}
+	a.opts.Icon = icon
+	apply := func() {
+		var handle windows.Handle
+		if icon != nil {
+			handle = icon.Handle()
+		}
+		procSendMessageW.Call(uintptr(a.hwnd), wmSetIcon, iconSmall, uintptr(handle))
+		procSendMessageW.Call(uintptr(a.hwnd), wmSetIcon, iconBig, uintptr(handle))
+	}
+	if a.IsUIThread() {
+		apply()
+		return
+	}
+	_ = a.Post(apply)
+}
+
 // MessageBox 显示一个由应用窗口拥有的原生 Windows 消息框。
 func (a *App) MessageBox(title, text string, flags uint32, timeout time.Duration) (int, error) {
 	if a == nil || a.hwnd == 0 {

@@ -16,6 +16,8 @@ It targets native desktop tools that need explicit control over window lifecycle
 - DPI-aware JSON frame expressions such as `100`, `50%`, `50%-100`, `winW-100`, `parentW-100`
 - State-driven bindings through `jsonui.DataSource`
 - JSON text inputs with `readOnly`, `multiline`, wrapping, and scroll flags
+- Declarative multiline `label` with width-constrained auto-height measurement
+- Declarative `modal` / backdrop support with Direct2D-only blur tint
 - Runtime lookup helpers such as `Window.FindWidget`, `Document.FindWidget`, and `widgets.FindByID`
 - Single-window and multi-window helpers
 - Demo apps in `cmd/demo` and `cmd/demo_json`
@@ -130,7 +132,10 @@ store.Set("page.title", "Updated Title")
 - Frame values are logical DP by default and scale with DPI
 - Widget ids must stay unique within each declared window
 - `input` / `textarea` support `readOnly`, `multiline`, `wordWrap`, `acceptReturn`, `verticalScroll`, and `horizontalScroll`
-- `.ico` assets are loaded at screen-DPI-scaled size by default and can be overridden with `LoadOptions.IconSizeDP`
+- `.ico` assets are loaded at screen-DPI-scaled size by default and can be overridden with `LoadOptions.IconSizeDP`, per-window `iconSizeDP`, or per-node `iconSizeDP`
+- JSON icon declarations also accept `iconPolicy: "auto" | "fixed"` for DPI reload behavior
+- `label` supports `multiline` and `wordWrap`, including auto-measured height when width is constrained
+- `modal` supports `backdrop.color`, `backdrop.opacity`, `backdrop.blur`, `backdrop.dismissOnClick`, and `onDismiss`
 - `frame` supports `x`, `y`, `r`, `b`, `w`, `h`
 - Expressions support:
   - `100`
@@ -181,6 +186,7 @@ JSON UI:
 - `doc.FindWidget("main", "status")` looks up across windows
 - `ActionContext.Window` points back to the runtime window in action handlers
 - `doc.NewApps(baseOpts)` creates one `core.App` per window
+- `jsonui.MountWindow(scene, win)` creates a `WindowHost` for mount / replace / detach hot reload flows
 - `jsonui.RunApps(...)` starts every hosted window and waits for all loops to exit
 
 ## Run Demos

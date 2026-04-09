@@ -30,6 +30,8 @@ type WindowMeta struct {
 	Title      string
 	Icon       *core.Icon
 	IconPath   string
+	IconSizeDP int32
+	IconPolicy iconPolicy
 	Width      int32
 	Height     int32
 	MinWidth   int32
@@ -57,6 +59,7 @@ type Window struct {
 	theme       *widgets.Theme
 	data        DataSource
 	bindings    []windowBinding
+	reloaders   []resourceReloader
 	unsubscribe func()
 	widgetIndex map[string]widgets.Widget
 
@@ -100,6 +103,12 @@ func (w *Window) Attach(scene *widgets.Scene) error {
 	if scene == nil {
 		return errors.New("scene is nil")
 	}
+	if current := w.Scene(); current != nil {
+		if current == scene {
+			return nil
+		}
+		return fmt.Errorf("window %q is already attached", w.ID)
+	}
 
 	if w.theme != nil {
 		scene.SetTheme(w.theme)
@@ -118,7 +127,33 @@ func (w *Window) Attach(scene *widgets.Scene) error {
 		root.Add(w.Root)
 		w.Root.SetBounds(root.Bounds())
 	}
+	if err := w.ReloadResources(ReloadReasonAttach); err != nil {
+		_ = w.Detach()
+		return err
+	}
 	w.RefreshBindings()
+	return nil
+}
+
+// Detach unmounts the window root from its current scene.
+func (w *Window) Detach() error {
+	if w == nil {
+		return nil
+	}
+
+	w.mu.Lock()
+	scene := w.scene
+	w.scene = nil
+	w.mu.Unlock()
+
+	if scene == nil {
+		return nil
+	}
+	root := scene.Root()
+	if root == nil || w.Root == nil {
+		return nil
+	}
+	root.Remove(w.Root.ID())
 	return nil
 }
 
@@ -200,6 +235,13 @@ func (w *Window) registerWidget(widget widgets.Widget) error {
 	}
 	w.widgetIndex[id] = widget
 	return nil
+}
+
+func (w *Window) addResourceReloader(policy iconPolicy, reload func(resourceReloadContext) error) {
+	if w == nil || reload == nil {
+		return
+	}
+	w.reloaders = append(w.reloaders, resourceReloader{policy: normalizeIconPolicy(policy), reload: reload})
 }
 
 // RefreshBindings reapplies all matching bindings against the current data source.

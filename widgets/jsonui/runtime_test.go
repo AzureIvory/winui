@@ -207,3 +207,60 @@ func TestResolveIconLoadSizeScalesLogicalPixels(t *testing.T) {
 		})
 	}
 }
+
+func TestResolveIconLoadSizeHonorsPolicy(t *testing.T) {
+	tests := []struct {
+		name   string
+		sizeDP int32
+		scale  float64
+		policy iconPolicy
+		want   int32
+	}{
+		{name: "auto scales", sizeDP: 32, scale: 1.5, policy: iconPolicyAuto, want: 48},
+		{name: "fixed does not scale", sizeDP: 32, scale: 1.5, policy: iconPolicyFixed, want: 32},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := resolveIconLoadSize(tt.sizeDP, tt.scale, tt.policy); got != tt.want {
+				t.Fatalf("resolveIconLoadSize(%d, %v, %q) = %d, want %d", tt.sizeDP, tt.scale, tt.policy, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestWindowReloadResourcesSkipsFixedIconReloadersOnDPIChange(t *testing.T) {
+	var autoCount, fixedCount int
+	window := &Window{
+		reloaders: []resourceReloader{
+			{
+				policy: iconPolicyAuto,
+				reload: func(resourceReloadContext) error {
+					autoCount++
+					return nil
+				},
+			},
+			{
+				policy: iconPolicyFixed,
+				reload: func(resourceReloadContext) error {
+					fixedCount++
+					return nil
+				},
+			},
+		},
+	}
+
+	if err := window.ReloadResources(ReloadReasonAttach); err != nil {
+		t.Fatalf("ReloadResources(attach) returned error: %v", err)
+	}
+	if autoCount != 1 || fixedCount != 1 {
+		t.Fatalf("attach reload counts = auto:%d fixed:%d, want 1/1", autoCount, fixedCount)
+	}
+
+	if err := window.ReloadResources(ReloadReasonDPIChanged); err != nil {
+		t.Fatalf("ReloadResources(dpi) returned error: %v", err)
+	}
+	if autoCount != 2 || fixedCount != 1 {
+		t.Fatalf("dpi reload counts = auto:%d fixed:%d, want 2/1", autoCount, fixedCount)
+	}
+}

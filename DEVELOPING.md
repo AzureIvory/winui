@@ -25,6 +25,8 @@
 - Treat JSON UI frame values as logical DP units, not raw device pixels
 - Keep per-window JSON widget ids unique; the loader indexes them for runtime lookup
 - Keep JSON icon loading DPI-aware through logical DP sizing instead of fixed pixel constants
+- Keep icon reload policy in runtime hooks such as `Window.ReloadResources(...)`; do not declare callback names in JSON
+- Keep hot-reload APIs coarse-grained: whole-window mount / replace / detach, with data reuse but without promising transient widget-state migration
 - Keep JSON style fields aligned with existing widget style structs instead of inventing a parallel rendering layer
 - Keep data mutation in the host through `jsonui.DataSource`; JSON only declares binding relationships
 
@@ -54,7 +56,8 @@ Recommended:
 - If you touch DPI-sensitive layout code, verify that JSON absolute expressions still reflow on resize and DPI changes
 - If you touch `sysapi/` or `widgets.FilePicker`, manually verify open, save, folder, and multi-select flows in `cmd/demo_json`
 - If you touch binding code, verify title, text, value, visibility, selection, and frame refresh behavior
-- If you touch JSON runtime helpers or action dispatch, verify `Window.FindWidget`, `Document.FindWidget`, and `ActionContext.Window` behavior
+- If you touch JSON runtime helpers or action dispatch, verify `Window.FindWidget`, `Document.FindWidget`, `ActionContext.Window`, `MountWindow`, `ReplaceWindow`, and `Detach` behavior
+- If you touch modal / overlay behavior, verify backdrop hit testing, card hit testing, and Direct2D fallback behavior together
 
 ## Documentation Sync
 

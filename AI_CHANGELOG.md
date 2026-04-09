@@ -51,3 +51,7 @@ Only keep behavior here that changes how future edits should be reasoned about.
 - `Window.FindWidget(...)`, `Document.FindWidget(...)`, and `widgets.FindByID(...)` are the supported imperative lookup helpers
 - `ActionContext.Window` points back to the runtime window that dispatched the action
 - JSON `.ico` loading now scales a logical `32dp` default by the current screen DPI and can be overridden with `LoadOptions.IconSizeDP`
+- window and widget icon declarations also accept `iconSizeDP` and `iconPolicy: auto | fixed`, and runtime reloads skip fixed-policy icons on DPI changes
+- `label` now supports declarative `multiline` / `wordWrap`, and layout can measure multiline height from constrained width
+- `Window.ReloadResources(...)`, `MountWindow(...)`, `WindowHost.ReplaceWindow(...)`, and `WindowHost.Detach()` are the supported coarse-grained runtime reload helpers
+- JSON `type: "modal"` supports `backdrop.color`, `backdrop.opacity`, `backdrop.blur`, `backdrop.dismissOnClick`, and `onDismiss`; blur is a Direct2D-only soft backdrop pass
