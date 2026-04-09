@@ -112,11 +112,11 @@ Document APIs:
 
 Native file dialog APIs:
 
-- `dialogs.ShowFileDialog(...)`
-- `dialogs.OpenFile(...)`
-- `dialogs.OpenFiles(...)`
-- `dialogs.SaveFile(...)`
-- `dialogs.PickFolder(...)`
+- `sysapi.ShowFileDialog(...)`
+- `sysapi.OpenFile(...)`
+- `sysapi.OpenFiles(...)`
+- `sysapi.SaveFile(...)`
+- `sysapi.PickFolder(...)`
 
 Legacy APIs:
 
@@ -146,6 +146,74 @@ Example:
   </body>
 </window>
 ```
+
+### 6.1.1 Declarative Binding
+
+Markup supports declarative bindings through `markup.State` and `bind-*`
+attributes.
+
+Typical flow:
+
+1. Create a `markup.State`
+2. Pass it through `markup.LoadOptions{State: state}`
+3. Declare `bind-*` attributes in markup
+4. Call `state.Set(...)`, `state.Patch(...)`, or `state.Replace(...)`
+
+Common bindings:
+
+- `bind-title` on `<window>`
+- `bind-text` on `label`, `button`, `checkbox`, `radio`
+- `bind-value` on `input`, `textarea`, `progress`
+- `bind-visible`
+- `bind-enabled`
+- `bind-width`
+- `bind-height`
+- `bind-left`, `bind-top`, `bind-right`, `bind-bottom`
+- aliases `bind-x` and `bind-y`
+- `bind-items` and `bind-selected` on `select` and `listbox`
+
+Example:
+
+```go
+state := markup.NewState(map[string]any{
+	"page": map[string]any{
+		"title":   "Search",
+		"visible": true,
+	},
+	"form": map[string]any{
+		"query": "initial",
+	},
+})
+
+doc, err := markup.LoadIntoScene(scene, htmlText, "", markup.LoadOptions{
+	State: state,
+})
+if err != nil {
+	panic(err)
+}
+
+state.Set("page.title", "Updated Search")
+state.Set("form.query", "next value")
+_ = doc
+```
+
+```html
+<window bind-title="page.title">
+  <body>
+    <label bind-text="page.title" bind-visible="page.visible"></label>
+    <input bind-value="form.query" />
+  </body>
+</window>
+```
+
+Notes:
+
+- `State.Set(...)` is designed for map-based snapshots rooted at `map[string]any`
+- use `State.Replace(...)` when your source data is easier to rebuild as a struct snapshot
+- changing text does not automatically recalculate natural size; bind width and height when size must track data
+- list item binding accepts `[]string`, `[]widgets.ListItem`, and slices of structs or maps with `item-text-field`, `item-value-field`, and `item-disabled-field`
+
+See [MARKUP_BINDING.zh-CN.md](./MARKUP_BINDING.zh-CN.md) for the end-user guide.
 
 ### 6.2 Common Tag Mapping
 
@@ -246,6 +314,7 @@ Notes:
 
 - `Actions map[string]func()`
 - `ActionHandlers map[string]func(markup.ActionContext)`
+- `State *markup.State`
 
 Priority:
 
@@ -276,11 +345,11 @@ go run ./cmd/demo_html
 
 ## 8. Validation
 
-The repository no longer keeps `*_test.go` files:
+The repository now keeps a small set of regression tests:
 
 ```powershell
 go test ./...
 go vet ./...
 ```
 
-Treat `go test` as a build check and use the demos for manual regression.
+Treat `go test` as a build-and-regression check and use the demos for manual regression.

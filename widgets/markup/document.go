@@ -7,56 +7,63 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/AzureIvory/winui/core"
 	"github.com/AzureIvory/winui/widgets"
 )
 
-// ActionContext 描述 HTML 动作触发时可用的上下文信息。
+// ActionContext describes runtime information exposed to markup action handlers.
 type ActionContext struct {
-	// Name 是动作名，对应 HTML 中的 onclick、onchange、onsubmit、onactivate。
+	// Name is the action name declared in markup, such as onclick or onchange.
 	Name string
-	// Widget 是触发动作的控件实例。
+	// Widget is the widget instance that triggered the action.
 	Widget widgets.Widget
-	// ID 是触发控件的 ID。
+	// ID is the triggering widget ID.
 	ID string
-	// Value 是触发时可读取到的当前值。
+	// Value stores the current value exposed by the widget.
 	Value string
-	// Paths 保存 file input 等控件返回的完整路径列表。
+	// Paths contains full file paths returned by file-input style widgets.
 	Paths []string
-	// Checked 是 checkbox/radio 的勾选状态。
+	// Checked reports the current checkbox/radio state.
 	Checked bool
-	// Index 是 select/listbox 的当前索引，未命中时为 -1。
+	// Index reports the selected index for select/listbox widgets, or -1.
 	Index int
-	// Item 是 select/listbox 的当前项，未命中时为零值。
+	// Item reports the current selected item for select/listbox widgets.
 	Item widgets.ListItem
 }
 
-// WindowMeta 描述窗口级元数据。
+// WindowMeta describes window-level metadata extracted from markup.
 type WindowMeta struct {
-	// Title 是窗口标题。
+	// Title is the window title.
 	Title string
-	// Icon 是窗口图标对象，当前仅支持本地 .ico。
+	// Icon is the resolved window icon.
 	Icon *core.Icon
-	// IconPath 是 icon 属性的原始路径。
+	// IconPath stores the original icon attribute value.
 	IconPath string
-	// MinWidth 是窗口客户区最小宽度。
+	// MinWidth is the minimum client width.
 	MinWidth int32
-	// MinHeight 是窗口客户区最小高度。
+	// MinHeight is the minimum client height.
 	MinHeight int32
 }
 
-// Document 表示 HTML/CSS DSL 构建后的文档结果。
+// Document is the built result of the markup HTML/CSS DSL.
 type Document struct {
-	// Root 是文档构建得到的控件树根节点。
+	// Root is the root widget tree built from the document body.
 	Root widgets.Widget
-	// Meta 是文档解析得到的窗口级元数据。
+	// Meta contains parsed window-level metadata.
 	Meta WindowMeta
 
 	theme *widgets.Theme
+	mu    sync.Mutex
+
+	scene       *widgets.Scene
+	state       *State
+	bindings    []documentBinding
+	unsubscribe func()
 }
 
-// ApplyWindowMeta 把文档中的窗口元数据写入 core.Options。
+// ApplyWindowMeta copies document window metadata into core.Options.
 func (d *Document) ApplyWindowMeta(opts *core.Options) {
 	if d == nil || opts == nil {
 		return
@@ -75,7 +82,7 @@ func (d *Document) ApplyWindowMeta(opts *core.Options) {
 	}
 }
 
-// Attach 将文档挂载到 Scene。
+// Attach mounts the document root into a scene.
 func (d *Document) Attach(scene *widgets.Scene) error {
 	if scene == nil {
 		return errors.New("scene is nil")
@@ -87,18 +94,29 @@ func (d *Document) Attach(scene *widgets.Scene) error {
 		scene.SetTheme(d.theme)
 	}
 	if d.Root == nil {
+		d.mu.Lock()
+		d.scene = scene
+		d.mu.Unlock()
+		d.RefreshBindings()
 		return nil
 	}
 	root := scene.Root()
 	if root == nil {
 		return errors.New("scene root panel is nil")
 	}
+
+	d.mu.Lock()
+	d.scene = scene
+	d.mu.Unlock()
+
 	root.Add(d.Root)
 	d.Root.SetBounds(root.Bounds())
+	d.RefreshBindings()
 	return nil
 }
 
-// LoadDocumentFile 从 .ui.html 文件加载文档，并自动尝试读取同名 .ui.css 文件。
+// LoadDocumentFile loads a document from a .ui.html file and optionally reads
+// a sibling .ui.css file with the same base name.
 func LoadDocumentFile(path string, opts LoadOptions) (*Document, error) {
 	htmlBytes, err := os.ReadFile(path)
 	if err != nil {
@@ -115,7 +133,7 @@ func LoadDocumentFile(path string, opts LoadOptions) (*Document, error) {
 	return LoadDocumentString(string(htmlBytes), string(cssBytes), opts)
 }
 
-// LoadDocumentString 从 HTML 文本和 CSS 文本构建文档。
+// LoadDocumentString builds a document from HTML and CSS strings.
 func LoadDocumentString(htmlText string, cssText string, opts LoadOptions) (*Document, error) {
 	root, err := parseHTMLDocument(htmlText)
 	if err != nil {
@@ -134,10 +152,11 @@ func LoadDocumentString(htmlText string, cssText string, opts LoadOptions) (*Doc
 		return nil, err
 	}
 	doc.theme = opts.Theme
+	doc.SetState(opts.State)
 	return doc, nil
 }
 
-// LoadIntoScene 直接把 HTML/CSS 构建结果挂载到 Scene。
+// LoadIntoScene builds a document and attaches it to the provided scene.
 func LoadIntoScene(scene *widgets.Scene, htmlText string, cssText string, opts LoadOptions) (*Document, error) {
 	doc, err := LoadDocumentString(htmlText, cssText, opts)
 	if err != nil {
@@ -149,7 +168,7 @@ func LoadIntoScene(scene *widgets.Scene, htmlText string, cssText string, opts L
 	return doc, nil
 }
 
-// LoadFileIntoScene 直接把 .ui.html 文件构建结果挂载到 Scene。
+// LoadFileIntoScene loads a document file and attaches it to the provided scene.
 func LoadFileIntoScene(scene *widgets.Scene, path string, opts LoadOptions) (*Document, error) {
 	doc, err := LoadDocumentFile(path, opts)
 	if err != nil {

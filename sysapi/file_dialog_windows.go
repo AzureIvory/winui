@@ -1,6 +1,6 @@
 //go:build windows
 
-package dialogs
+package sysapi
 
 import (
 	"fmt"

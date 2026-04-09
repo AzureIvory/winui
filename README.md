@@ -11,9 +11,10 @@ It targets small native desktop tools that need direct control over window lifec
 - `RenderModeAuto`: prefer Direct2D, fall back to GDI
 - Retained widget scene tree with themes and layouts
 - Reusable built-in controls
-- Native file dialog API in `dialogs`
+- Native file dialog API in `sysapi`
 - `FilePicker` widget for readonly path display + browse button flows
 - HTML/CSS-style markup loader with window metadata support
+- Declarative markup bindings via `markup.State` and `bind-*` attributes
 - Markup lengths are logical DP values and reflow on DPI changes
 - Absolute markup layout supports `left` / `top` / `right` / `bottom` / `width` / `height`
 - Markup style mapping covers button, progress, choice, combo, list, edit, and panel styles
@@ -24,7 +25,7 @@ It targets small native desktop tools that need direct control over window lifec
 ## Packages
 
 - `core/`: window lifecycle, paint, DPI, input, timer, icon, font
-- `dialogs/`: native open/save/folder dialogs on top of Win32 COM
+- `sysapi/`: Windows system API helpers, including native open/save/folder dialogs on top of Win32 COM
 - `widgets/`: scene tree, event routing, layout, theme, controls, markup
 - `cmd/demo/`: manual regression demo
 - `cmd/demo_html/`: markup and document-loading demo
@@ -104,13 +105,13 @@ Go API:
 import (
 	"fmt"
 
-	"github.com/AzureIvory/winui/dialogs"
+	"github.com/AzureIvory/winui/sysapi"
 )
 
-result, err := dialogs.ShowFileDialog(app, dialogs.Options{
-	Mode:        dialogs.DialogOpen,
+result, err := sysapi.ShowFileDialog(app, sysapi.Options{
+	Mode:        sysapi.DialogOpen,
 	Title:       "Open a file",
-	Filters:     []dialogs.FileFilter{{Name: "Text Files", Pattern: "*.txt;*.md"}},
+	Filters:     []sysapi.FileFilter{{Name: "Text Files", Pattern: "*.txt;*.md"}},
 	MultiSelect: true,
 })
 if err != nil {
@@ -130,6 +131,51 @@ Markup:
        onchange="savePicked" />
 ```
 
+## Markup Bindings
+
+`widgets/markup` also supports state-driven bindings for common UI updates such
+as window titles, text content, visibility, enabled state, preferred size,
+absolute positioning, list items, and selection.
+
+Go:
+
+```go
+state := markup.NewState(map[string]any{
+	"page": map[string]any{
+		"title":   "Search",
+		"visible": true,
+	},
+	"form": map[string]any{
+		"query": "initial",
+	},
+})
+
+doc, err := markup.LoadIntoScene(scene, htmlText, "", markup.LoadOptions{
+	State: state,
+})
+if err != nil {
+	panic(err)
+}
+
+state.Set("page.title", "Updated Search")
+state.Set("form.query", "next value")
+_ = doc
+```
+
+Markup:
+
+```html
+<window bind-title="page.title">
+  <body>
+    <label bind-text="page.title" bind-visible="page.visible"></label>
+    <input bind-value="form.query" />
+  </body>
+</window>
+```
+
+For a Chinese end-user guide focused on markup bindings, see
+[MARKUP_BINDING.zh-CN.md](./MARKUP_BINDING.zh-CN.md).
+
 ## Run Demos
 
 Core widget demo:
@@ -146,7 +192,7 @@ go run ./cmd/demo_html
 
 ## Validation
 
-The repository no longer keeps `*_test.go` files. `go test` is currently a build-level check.
+The repository now keeps a small set of regression tests. `go test` is still primarily a build-level check plus helper regression coverage.
 
 ```powershell
 go test ./...
@@ -159,6 +205,7 @@ go run ./cmd/demo_html
 
 - [DEVELOPING.md](./DEVELOPING.md): maintainer rules, architecture boundaries, validation
 - [WIDGETS.zh-CN.md](./WIDGETS.zh-CN.md): widget, layout, `BindScene`, and markup guide
+- [MARKUP_BINDING.zh-CN.md](./MARKUP_BINDING.zh-CN.md): Chinese guide for `markup.State` and `bind-*`
 - [AGENTS.md](./AGENTS.md): compact agent-facing repository guide
 - [AI_CHANGELOG.md](./AI_CHANGELOG.md): recent behavior changes that affect agent reasoning
 

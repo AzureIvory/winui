@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/AzureIvory/winui/core"
-	"github.com/AzureIvory/winui/dialogs"
+	"github.com/AzureIvory/winui/sysapi"
 	"github.com/AzureIvory/winui/widgets"
 )
 
@@ -20,7 +20,7 @@ func (b *uiBuilder) buildFileInput(n *node) (widgets.Widget, error) {
 		return nil, newParseError("builder", n.Pos, n.inlineContext(), err.Error())
 	}
 	multiple := b.boolAttrOrStyle(n, "multiple", "multiple")
-	if mode != dialogs.DialogOpen && multiple {
+	if mode != sysapi.DialogOpen && multiple {
 		return nil, newParseError("builder", n.Pos, n.inlineContext(), "multiple is only supported when dialog=open")
 	}
 
@@ -43,7 +43,7 @@ func (b *uiBuilder) buildFileInput(n *node) (widgets.Widget, error) {
 	if initialPath == "" {
 		initialPath = strings.TrimSpace(n.attr("value"))
 	}
-	picker.SetDialogOptions(dialogs.Options{
+	picker.SetDialogOptions(sysapi.Options{
 		Mode:             mode,
 		Title:            strings.TrimSpace(n.attr("dialog-title")),
 		InitialPath:      initialPath,
@@ -118,26 +118,26 @@ func (b *uiBuilder) prefixedStyleNode(n *node, prefix string) *node {
 	}
 }
 
-func parseDialogModeAttr(value string) (dialogs.DialogMode, error) {
+func parseDialogModeAttr(value string) (sysapi.DialogMode, error) {
 	text := strings.TrimSpace(strings.ToLower(value))
-	if text == "" || text == string(dialogs.DialogOpen) {
-		return dialogs.DialogOpen, nil
+	if text == "" || text == string(sysapi.DialogOpen) {
+		return sysapi.DialogOpen, nil
 	}
-	switch dialogs.DialogMode(text) {
-	case dialogs.DialogSave:
-		return dialogs.DialogSave, nil
-	case dialogs.DialogFolder:
-		return dialogs.DialogFolder, nil
+	switch sysapi.DialogMode(text) {
+	case sysapi.DialogSave:
+		return sysapi.DialogSave, nil
+	case sysapi.DialogFolder:
+		return sysapi.DialogFolder, nil
 	default:
-		return dialogs.DialogOpen, fmt.Errorf("invalid dialog value %q", value)
+		return sysapi.DialogOpen, fmt.Errorf("invalid dialog value %q", value)
 	}
 }
 
-func parseDialogFilters(raw string, accept string) ([]dialogs.FileFilter, error) {
+func parseDialogFilters(raw string, accept string) ([]sysapi.FileFilter, error) {
 	raw = strings.TrimSpace(raw)
 	if raw != "" {
 		items := strings.Split(raw, ",")
-		filters := make([]dialogs.FileFilter, 0, len(items))
+		filters := make([]sysapi.FileFilter, 0, len(items))
 		for _, item := range items {
 			item = strings.TrimSpace(item)
 			if item == "" {
@@ -152,7 +152,7 @@ func parseDialogFilters(raw string, accept string) ([]dialogs.FileFilter, error)
 			if name == "" || pattern == "" {
 				return nil, fmt.Errorf("invalid filters value %q", raw)
 			}
-			filters = append(filters, dialogs.FileFilter{Name: name, Pattern: pattern})
+			filters = append(filters, sysapi.FileFilter{Name: name, Pattern: pattern})
 		}
 		if len(filters) > 0 {
 			return filters, nil
@@ -184,7 +184,7 @@ func parseDialogFilters(raw string, accept string) ([]dialogs.FileFilter, error)
 	if len(patterns) == 0 {
 		return nil, nil
 	}
-	return []dialogs.FileFilter{{Name: "Accepted Files", Pattern: strings.Join(patterns, ";")}}, nil
+	return []sysapi.FileFilter{{Name: "Accepted Files", Pattern: strings.Join(patterns, ";")}}, nil
 }
 
 func parseInitialDialogPaths(raw string, multiple bool) []string {

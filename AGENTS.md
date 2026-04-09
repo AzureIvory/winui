@@ -7,7 +7,7 @@ Windows-only Go UI toolkit on top of Win32. No WebView, no XAML, no app logic.
 ## Packages
 
 - `core`: low-level Win32 window, paint, DPI, input, timer, icon, font
-- `dialogs`: native open/save/folder dialogs on top of Win32 COM
+- `sysapi`: Windows system API helpers, including native open/save/folder dialogs on top of Win32 COM
 - `widgets`: scene tree, theme, layout, controls, markup
 - `cmd/demo`: manual regression demo
 - `cmd/demo_html`: markup demo
@@ -26,7 +26,7 @@ Windows-only Go UI toolkit on top of Win32. No WebView, no XAML, no app logic.
 - Changes must work with `cgo` on and off
 - UI state changes should follow existing UI-thread patterns: `app.Post(...)` or `runOnUI(...)`
 - State mutations usually need invalidation
-- `dialogs` should stay as the single owner of Win32 file dialog COM interop
+- `sysapi` should stay as the single owner of Win32 file dialog COM interop
 - Markup-created preferred sizes are stored as logical DP values and scaled during layout
 - `Scene.ReloadResources()` re-applies layout, so DPI changes can move and resize markup-created widgets
 
@@ -58,7 +58,7 @@ go run ./cmd/demo
 go run ./cmd/demo_html
 ```
 
-`go test` is currently a build check. The repo does not keep `*_test.go` files.
+`go test` is primarily a build check plus helper regression coverage.
 
 ## Docs To Update
 

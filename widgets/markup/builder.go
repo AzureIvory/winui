@@ -12,21 +12,23 @@ import (
 	"github.com/AzureIvory/winui/widgets"
 )
 
-// LoadOptions 描述�?HTML/CSS DSL 构建控件树时使用的可选参数�?
+// LoadOptions describes optional parameters used when building a widget tree from the HTML/CSS DSL.
 type LoadOptions struct {
-	// Actions ���ڰ� onclick/onchange/onsubmit �ȶ������󶨵��޲λص���
+	// Actions binds onclick/onchange/onsubmit handlers to callbacks without context.
 	Actions map[string]func()
-	// ActionHandlers ���ڰ󶨴������ĵĶ����ص�������ʱ������ Actions��
+	// ActionHandlers binds action callbacks that receive an ActionContext and takes priority over Actions.
 	ActionHandlers map[string]func(ActionContext)
-	// AssetsDir ָ�������Դ�ļ������� img[src]���Ĳ���Ŀ¼��
+	// AssetsDir sets the root directory used to resolve relative asset paths such as img[src].
 	AssetsDir string
-	// DefaultMode ָ��������ؼ�Ĭ��ʹ�õĺ��ģʽ��
+	// DefaultMode sets the default control backend mode for created widgets.
 	DefaultMode widgets.ControlMode
-	// Theme ���ĵ����ص� Scene ʱ��Ӧ�õ����⡣
+	// State supplies declarative binding data for bind-* attributes.
+	State *State
+	// Theme is applied when the document is attached to a Scene.
 	Theme *widgets.Theme
 }
 
-// LoadHTMLFile �?.ui.html 文件加载控件树，并自动尝试读取同�?.ui.css 文件�?
+// LoadHTMLFile loads a widget tree from a .ui.html file and also tries to read the matching .ui.css file.
 func LoadHTMLFile(path string, opts LoadOptions) (widgets.Widget, error) {
 	doc, err := LoadDocumentFile(path, opts)
 	if err != nil {
@@ -35,7 +37,7 @@ func LoadHTMLFile(path string, opts LoadOptions) (widgets.Widget, error) {
 	return doc.Root, nil
 }
 
-// LoadHTMLString �?HTML 文本�?CSS 文本构建控件树�?
+// LoadHTMLString builds a widget tree from HTML and CSS strings.
 func LoadHTMLString(htmlText string, cssText string, opts LoadOptions) (widgets.Widget, error) {
 	doc, err := LoadDocumentString(htmlText, cssText, opts)
 	if err != nil {
@@ -47,6 +49,7 @@ func LoadHTMLString(htmlText string, cssText string, opts LoadOptions) (widgets.
 type uiBuilder struct {
 	opts       LoadOptions
 	autoIDSeed int
+	bindings   []documentBinding
 }
 
 func (b *uiBuilder) buildDocument(root *node) (*Document, error) {
@@ -68,6 +71,7 @@ func (b *uiBuilder) buildDocument(root *node) (*Document, error) {
 		return nil, err
 	}
 	doc.Root = widget
+	doc.bindings = append(doc.bindings, b.bindings...)
 	return doc, nil
 }
 
@@ -105,6 +109,9 @@ func (b *uiBuilder) extractWindowRoot(window *node) (*node, WindowMeta, error) {
 func (b *uiBuilder) parseWindowMeta(window *node) (WindowMeta, error) {
 	meta := WindowMeta{}
 	meta.Title = strings.TrimSpace(window.attr("title"))
+	if err := b.registerWindowTitleBinding(window, meta.Title); err != nil {
+		return meta, err
+	}
 	iconPath := strings.TrimSpace(window.attr("icon"))
 	if iconPath != "" {
 		icon, err := b.loadICO(iconPath, window.Pos, window.inlineContext(), "window icon")
@@ -291,6 +298,9 @@ func (b *uiBuilder) addContainerChildren(panel *widgets.Panel, n *node, parentLa
 			if err := b.applyLayoutData(widget, labelNode, parentLayout); err != nil {
 				return err
 			}
+			if err := b.registerLayoutBindings(widget, labelNode, parentLayout); err != nil {
+				return err
+			}
 			panel.Add(widget)
 		case nodeElement:
 			if child.Tag == "option" {
@@ -301,6 +311,9 @@ func (b *uiBuilder) addContainerChildren(panel *widgets.Panel, n *node, parentLa
 				return err
 			}
 			if err := b.applyLayoutData(widget, child, parentLayout); err != nil {
+				return err
+			}
+			if err := b.registerLayoutBindings(widget, child, parentLayout); err != nil {
 				return err
 			}
 			panel.Add(widget)
@@ -318,6 +331,9 @@ func (b *uiBuilder) buildLabel(n *node) (widgets.Widget, error) {
 	if err := b.applyCommonWidgetState(label, n); err != nil {
 		return nil, err
 	}
+	if err := b.registerStringBinding(n, "bind-text", label.Text, label.SetText); err != nil {
+		return nil, err
+	}
 	defaultSize := measureTextBox(label.Text, b.textStyle(n, false).Font, 12, 24)
 	if err := b.applyPreferredSize(label, n, defaultSize); err != nil {
 		return nil, err
@@ -332,6 +348,9 @@ func (b *uiBuilder) buildButton(n *node) (widgets.Widget, error) {
 	button := widgets.NewButton(b.nodeID(n), normalizeInlineText(n.textContent()), b.mode())
 	button.SetStyle(b.buttonStyle(n))
 	if err := b.applyCommonWidgetState(button, n); err != nil {
+		return nil, err
+	}
+	if err := b.registerStringBinding(n, "bind-text", button.Text, button.SetText); err != nil {
 		return nil, err
 	}
 	if iconPath := strings.TrimSpace(n.attr("icon")); iconPath != "" {
@@ -400,6 +419,9 @@ func (b *uiBuilder) buildInput(n *node) (widgets.Widget, error) {
 	if err := b.applyCommonWidgetState(edit, n); err != nil {
 		return nil, err
 	}
+	if err := b.registerValueBinding(n, "bind-value", edit.Text, edit.SetText); err != nil {
+		return nil, err
+	}
 	if actionName, err := b.actionName(n, "onchange"); err != nil {
 		return nil, err
 	} else if actionName != "" {
@@ -452,6 +474,9 @@ func (b *uiBuilder) buildTextArea(n *node) (widgets.Widget, error) {
 	}
 	edit.SetText(value)
 	if err := b.applyCommonWidgetState(edit, n); err != nil {
+		return nil, err
+	}
+	if err := b.registerValueBinding(n, "bind-value", edit.TextValue(), edit.SetText); err != nil {
 		return nil, err
 	}
 	if actionName, err := b.actionName(n, "onchange"); err != nil {
@@ -528,6 +553,9 @@ func (b *uiBuilder) buildProgress(n *node) (widgets.Widget, error) {
 	if err := b.applyCommonWidgetState(progress, n); err != nil {
 		return nil, err
 	}
+	if err := b.registerProgressBinding(n, progress.Value(), progress.SetValue); err != nil {
+		return nil, err
+	}
 	defaultSize := core.Size{Width: 220, Height: 24}
 	if err := b.applyPreferredSize(progress, n, defaultSize); err != nil {
 		return nil, err
@@ -543,6 +571,12 @@ func (b *uiBuilder) buildCheckBox(n *node) (widgets.Widget, error) {
 	check.SetStyle(b.choiceStyle(n))
 	check.SetChecked(b.boolAttrOrStyle(n, "checked", "checked"))
 	if err := b.applyCommonWidgetState(check, n); err != nil {
+		return nil, err
+	}
+	if err := b.registerStringBinding(n, "bind-text", check.Text, check.SetText); err != nil {
+		return nil, err
+	}
+	if err := b.registerCheckedBinding(n, check.IsChecked(), check.SetChecked); err != nil {
 		return nil, err
 	}
 	if actionName, err := b.actionName(n, "onchange"); err != nil {
@@ -576,6 +610,12 @@ func (b *uiBuilder) buildRadio(n *node) (widgets.Widget, error) {
 	}
 	radio.SetChecked(b.boolAttrOrStyle(n, "checked", "checked"))
 	if err := b.applyCommonWidgetState(radio, n); err != nil {
+		return nil, err
+	}
+	if err := b.registerStringBinding(n, "bind-text", radio.Text, radio.SetText); err != nil {
+		return nil, err
+	}
+	if err := b.registerCheckedBinding(n, radio.IsChecked(), radio.SetChecked); err != nil {
 		return nil, err
 	}
 	if actionName, err := b.actionName(n, "onchange"); err != nil {
@@ -637,6 +677,22 @@ func (b *uiBuilder) buildSelect(n *node) (widgets.Widget, error) {
 	if err := b.applyCommonWidgetState(combo, n); err != nil {
 		return nil, err
 	}
+	if err := b.registerItemsBinding(n, items, bindingOptionsForNode(n), combo.SetItems); err != nil {
+		return nil, err
+	}
+	if err := b.registerSelectionBinding(
+		n,
+		selected,
+		preferredSelectionValue(selected, items),
+		combo.Items,
+		func(index int, hasSelection bool) {
+			if hasSelection {
+				combo.SetSelected(index)
+			}
+		},
+	); err != nil {
+		return nil, err
+	}
 	if actionName, err := b.actionName(n, "onchange"); err != nil {
 		return nil, err
 	} else if actionName != "" {
@@ -691,6 +747,24 @@ func (b *uiBuilder) buildListBox(n *node) (widgets.Widget, error) {
 		list.SetSelected(selected)
 	}
 	if err := b.applyCommonWidgetState(list, n); err != nil {
+		return nil, err
+	}
+	if err := b.registerItemsBinding(n, items, bindingOptionsForNode(n), list.SetItems); err != nil {
+		return nil, err
+	}
+	if err := b.registerSelectionBinding(
+		n,
+		selected,
+		preferredSelectionValue(selected, items),
+		list.Items,
+		func(index int, hasSelection bool) {
+			if !hasSelection {
+				list.ClearSelection()
+				return
+			}
+			list.SetSelected(index)
+		},
+	); err != nil {
 		return nil, err
 	}
 	if actionName, err := b.actionName(n, "onchange"); err != nil {
@@ -909,7 +983,7 @@ func (b *uiBuilder) applyCommonWidgetState(widget widgets.Widget, n *node) error
 	}
 	widget.SetVisible(visible)
 	widget.SetEnabled(enabled)
-	return nil
+	return b.registerCommonBindings(widget, n, visible, enabled)
 }
 
 func (b *uiBuilder) applyPreferredSize(widget widgets.Widget, n *node, defaultSize core.Size) error {
@@ -952,11 +1026,10 @@ func (b *uiBuilder) applyPreferredSize(widget widgets.Widget, n *node, defaultSi
 		height = 0
 	}
 	if width == 0 && height == 0 {
-		return nil
+		return b.registerPreferredSizeBindings(widget, n)
 	}
-	widget.SetBounds(widgets.Rect{W: width, H: height})
-	widgets.SetPreferredSize(widget, core.Size{Width: width, Height: height})
-	return nil
+	applyBoundPreferredSize(widget, core.Size{Width: width, Height: height})
+	return b.registerPreferredSizeBindings(widget, n)
 }
 
 func (b *uiBuilder) layoutForNode(n *node) (string, widgets.Layout, error) {

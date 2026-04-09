@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/AzureIvory/winui/core"
-	"github.com/AzureIvory/winui/dialogs"
+	"github.com/AzureIvory/winui/sysapi"
 )
 
 // FilePicker 表示由只读路径框和触发按钮组成的文件选择控件。
@@ -16,7 +16,7 @@ type FilePicker struct {
 	field  *EditBox
 	button *Button
 
-	options           dialogs.Options
+	options           sysapi.Options
 	paths             []string
 	separator         string
 	onChange          func([]string)
@@ -29,8 +29,8 @@ func NewFilePicker(id string, mode ControlMode) *FilePicker {
 	picker := &FilePicker{
 		Panel:     *NewPanel(id),
 		separator: "; ",
-		options: dialogs.Options{
-			Mode: dialogs.DialogOpen,
+		options: sysapi.Options{
+			Mode: sysapi.DialogOpen,
 		},
 	}
 	picker.SetLayout(RowLayout{
@@ -94,21 +94,21 @@ func (p *FilePicker) SetButtonStyle(style ButtonStyle) {
 }
 
 // SetDialogOptions 更新文件对话框配置。
-func (p *FilePicker) SetDialogOptions(opts dialogs.Options) {
+func (p *FilePicker) SetDialogOptions(opts sysapi.Options) {
 	if p == nil {
 		return
 	}
 	p.options = opts
 	if p.options.Mode == "" {
-		p.options.Mode = dialogs.DialogOpen
+		p.options.Mode = sysapi.DialogOpen
 	}
 	p.applyDefaults()
 }
 
 // DialogOptions 返回当前文件对话框配置。
-func (p *FilePicker) DialogOptions() dialogs.Options {
+func (p *FilePicker) DialogOptions() sysapi.Options {
 	if p == nil {
-		return dialogs.Options{}
+		return sysapi.Options{}
 	}
 	return p.options
 }
@@ -180,7 +180,7 @@ func (p *FilePicker) showDialog() {
 	if scene := p.scene(); scene != nil {
 		app = scene.app
 	}
-	result, err := dialogs.ShowFileDialog(app, p.options)
+	result, err := sysapi.ShowFileDialog(app, p.options)
 	if err != nil || result.Canceled() {
 		return
 	}
@@ -226,7 +226,7 @@ func (p *FilePicker) applyDefaults() {
 		return
 	}
 	if p.options.Mode == "" {
-		p.options.Mode = dialogs.DialogOpen
+		p.options.Mode = sysapi.DialogOpen
 	}
 	if p.field != nil && !p.customPlaceholder {
 		p.field.SetPlaceholder(defaultPlaceholder(p.options.Mode))
@@ -238,22 +238,22 @@ func (p *FilePicker) applyDefaults() {
 	}
 }
 
-func defaultButtonText(mode dialogs.DialogMode) string {
+func defaultButtonText(mode sysapi.DialogMode) string {
 	switch mode {
-	case dialogs.DialogSave:
+	case sysapi.DialogSave:
 		return "Save As"
-	case dialogs.DialogFolder:
+	case sysapi.DialogFolder:
 		return "Choose Folder"
 	default:
 		return "Browse"
 	}
 }
 
-func defaultPlaceholder(mode dialogs.DialogMode) string {
+func defaultPlaceholder(mode sysapi.DialogMode) string {
 	switch mode {
-	case dialogs.DialogSave:
+	case sysapi.DialogSave:
 		return "Choose a save path"
-	case dialogs.DialogFolder:
+	case sysapi.DialogFolder:
 		return "No folder selected"
 	default:
 		return "No file selected"

@@ -2,6 +2,28 @@
 
 Only keep behavior here that changes how an agent should reason about edits or validation.
 
+## 2026-04-09
+
+### Markup state bindings
+
+- `widgets/markup` now supports declarative `bind-*` attributes backed by `markup.State`
+- `LoadOptions` includes `State *markup.State`
+- `Document` now supports `SetState(...)`, `State()`, and `RefreshBindings(...)`
+- supported bindings include:
+  - `bind-title` on `<window>`
+  - `bind-text`
+  - `bind-value`
+  - `bind-visible`
+  - `bind-enabled`
+  - `bind-checked`
+  - `bind-width` / `bind-height`
+  - `bind-left` / `bind-top` / `bind-right` / `bind-bottom`
+  - aliases `bind-x` / `bind-y`
+  - `bind-items` / `bind-selected` on `select` and `listbox`
+- list bindings accept `[]string`, `[]widgets.ListItem`, and slices of structs or maps with `item-text-field`, `item-value-field`, and `item-disabled-field`
+- `markup.State.Set(...)` is map-oriented; prefer `State.Replace(...)` when the source snapshot is easier to rebuild as a struct
+- markup text updates do not automatically recompute natural widget size; bind width/height when size must follow data
+
 ## 2026-04-08
 
 ### Markup input normalization
@@ -33,8 +55,8 @@ Only keep behavior here that changes how an agent should reason about edits or v
 
 ### Native file dialogs
 
-- `dialogs` is the native open/save/folder dialog package; keep COM interop there
-- `widgets.FilePicker` wraps a readonly field plus browse button and uses `dialogs.ShowFileDialog(...)`
+- `sysapi` is the Windows system API package; native file dialog COM interop lives there
+- `widgets.FilePicker` wraps a readonly field plus browse button and uses `sysapi.ShowFileDialog(...)`
 - Markup `input type="file"` supports `dialog="open|save|folder"`, `multiple`, `accept`, `filters`, `button-text`, `dialog-title`, `dialog-button-text`, `default-extension`, `value-separator`, and `initial-path`
 - File input selections surface in `markup.ActionContext.Paths`
 
