@@ -17,12 +17,6 @@ import (
 	"github.com/AzureIvory/winui/widgets/jsonui"
 )
 
-var (
-	demoWindow  *jsonui.Window
-	demoRoot    widgets.Widget
-	statusLabel *widgets.Label
-)
-
 func main() {
 	_, currentFile, _, _ := runtime.Caller(0)
 	baseDir := filepath.Dir(currentFile)
@@ -31,37 +25,39 @@ func main() {
 		panic(err)
 	}
 
-	var app *core.App
+	var demoWindow *jsonui.Window
 	actionHandlers := map[string]func(jsonui.ActionContext){
-		"pwdChanged": func(ctx jsonui.ActionContext) { showActionStatus(app, "Password changed", ctx) },
-		"pwdSubmit":  func(ctx jsonui.ActionContext) { showActionStatus(app, "Password submitted", ctx) },
-		"save":       func(ctx jsonui.ActionContext) { showActionStatus(app, "Save button clicked", ctx) },
+		"pwdChanged": func(ctx jsonui.ActionContext) { showActionStatus("Password changed", ctx) },
+		"pwdSubmit":  func(ctx jsonui.ActionContext) { showActionStatus("Password submitted", ctx) },
+		"save":       func(ctx jsonui.ActionContext) { showActionStatus("Save button clicked", ctx) },
 		"cityChanged": func(ctx jsonui.ActionContext) {
-			showActionStatus(app, "City changed", ctx)
+			showActionStatus("City changed", ctx)
 		},
 		"cityOpen": func(ctx jsonui.ActionContext) {
-			showActionStatus(app, "City activated", ctx)
+			showActionStatus("City activated", ctx)
 		},
 		"openPicked": func(ctx jsonui.ActionContext) {
-			showActionStatus(app, "Open dialog selected", ctx)
+			showActionStatus("Open dialog selected", ctx)
 		},
 		"savePicked": func(ctx jsonui.ActionContext) {
-			showActionStatus(app, "Save dialog selected", ctx)
+			showActionStatus("Save dialog selected", ctx)
 		},
 		"folderPicked": func(ctx jsonui.ActionContext) {
-			showActionStatus(app, "Folder dialog selected", ctx)
+			showActionStatus("Folder dialog selected", ctx)
 		},
 		"multiPicked": func(ctx jsonui.ActionContext) {
-			showActionStatus(app, "Multi-file dialog selected", ctx)
+			showActionStatus("Multi-file dialog selected", ctx)
 		},
 	}
 	legacyActions := map[string]func(){
 		"legacyOnly": func() {
-			if statusLabel != nil {
-				statusLabel.SetText("legacyOnly: using the older Actions map[string]func() callback")
-			}
-			if app != nil {
-				app.SetTitle("JSON Demo - legacyOnly")
+			if demoWindow != nil {
+				if statusLabel, ok := demoWindow.FindWidget("status").(*widgets.Label); ok {
+					statusLabel.SetText("legacyOnly: using the older Actions map[string]func() callback")
+				}
+				if app := demoWindow.App(); app != nil {
+					app.SetTitle("JSON Demo - legacyOnly")
+				}
 			}
 		},
 	}
@@ -98,32 +94,31 @@ func main() {
 
 	widgets.BindScene(&opts, widgets.SceneHooks{
 		OnCreate: func(createdApp *core.App, scene *widgets.Scene) error {
-			app = createdApp
 			if err := demoWindow.Attach(scene); err != nil {
 				return err
 			}
-			demoRoot = demoWindow.Root
-			if demoRoot != nil {
-				size := app.ClientSize()
-				demoRoot.SetBounds(widgets.Rect{W: size.Width, H: size.Height})
+			if demoWindow.Root != nil {
+				size := createdApp.ClientSize()
+				demoWindow.Root.SetBounds(widgets.Rect{W: size.Width, H: size.Height})
 			}
-			statusLabel, _ = findWidgetByID(demoRoot, "status").(*widgets.Label)
-			showActionStatus(app, "Ready", jsonui.ActionContext{Name: "init", ID: "page", Index: -1})
+			showActionStatus("Ready", jsonui.ActionContext{
+				Name:   "init",
+				Window: demoWindow,
+				ID:     "page",
+				Index:  -1,
+			})
 			return nil
 		},
 		OnResize: func(_ *core.App, _ *widgets.Scene, size core.Size) {
-			if demoRoot != nil {
-				demoRoot.SetBounds(widgets.Rect{W: size.Width, H: size.Height})
+			if demoWindow.Root != nil {
+				demoWindow.Root.SetBounds(widgets.Rect{W: size.Width, H: size.Height})
 			}
 		},
 		OnDestroy: func(_ *core.App, _ *widgets.Scene) {
-			demoRoot = nil
-			statusLabel = nil
-			demoWindow = nil
 		},
 	})
 
-	app, err = core.NewApp(opts)
+	app, err := core.NewApp(opts)
 	if err != nil {
 		panic(err)
 	}
@@ -133,7 +128,7 @@ func main() {
 	app.Run()
 }
 
-func showActionStatus(app *core.App, title string, ctx jsonui.ActionContext) {
+func showActionStatus(title string, ctx jsonui.ActionContext) {
 	if ctx.Index == 0 && ctx.Item.Value == "" && ctx.Item.Text == "" {
 		ctx.Index = -1
 	}
@@ -163,11 +158,15 @@ func showActionStatus(app *core.App, title string, ctx jsonui.ActionContext) {
 		itemText,
 		pathsText,
 	)
-	if statusLabel != nil {
-		statusLabel.SetText(text)
+	if ctx.Window != nil {
+		if statusLabel, ok := ctx.Window.FindWidget("status").(*widgets.Label); ok {
+			statusLabel.SetText(text)
+		}
 	}
-	if app != nil {
-		app.SetTitle("JSON Demo - " + fallbackText(ctx.Name, title))
+	if ctx.Window != nil {
+		if app := ctx.Window.App(); app != nil {
+			app.SetTitle("JSON Demo - " + fallbackText(ctx.Name, title))
+		}
 	}
 }
 
@@ -275,23 +274,4 @@ func tinyGIFData() []byte {
 		0x02, 0x02, 0x4C, 0x01, 0x00,
 		0x3B,
 	}
-}
-
-func findWidgetByID(root widgets.Widget, id string) widgets.Widget {
-	if root == nil || id == "" {
-		return nil
-	}
-	if root.ID() == id {
-		return root
-	}
-	container, ok := root.(widgets.Container)
-	if !ok {
-		return nil
-	}
-	for _, child := range container.Children() {
-		if found := findWidgetByID(child, id); found != nil {
-			return found
-		}
-	}
-	return nil
 }

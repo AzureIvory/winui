@@ -159,8 +159,10 @@
             "frame": { "x": 260, "y": 168, "w": 240, "h": 28 }
           },
           {
-            "type": "textarea",
+            "type": "input",
             "id": "notes",
+            "multiline": true,
+            "readOnly": true,
             "placeholder": "Multi-line notes",
             "value": "Supports right / bottom constraints and DPI-aware layout.",
             "style": {

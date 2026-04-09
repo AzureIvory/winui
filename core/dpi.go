@@ -152,6 +152,11 @@ func queryScreenDPI() DPIInfo {
 	return info
 }
 
+// ScreenDPI returns the current primary-screen DPI information.
+func ScreenDPI() DPIInfo {
+	return queryScreenDPI()
+}
+
 // refreshWindowDPI 刷新应用窗口的 DPI 信息。
 func (a *App) refreshWindowDPI() {
 	if a == nil || a.hwnd == 0 {

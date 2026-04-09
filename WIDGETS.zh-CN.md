@@ -81,6 +81,10 @@
 - `jsonui.LoadFileIntoScene(...)`
 - `doc.PrimaryWindow()`
 - `doc.Window(id)`
+- `win.FindWidget(id)`
+- `doc.FindWidget(winID, widgetID)`
+- `widgets.FindByID(root, id)`
+- `widgets.FindByIDAs[T](root, id)`
 - `doc.NewApps(baseOpts)`
 - `jsonui.RunApps(...)`
 
@@ -127,6 +131,12 @@
 - `style`
 - `text`
 - `value`
+- `readOnly`
+- `multiline`
+- `wordWrap`
+- `acceptReturn`
+- `verticalScroll`
+- `horizontalScroll`
 - `items`
 - `sel`
 
@@ -158,6 +168,8 @@ store := jsonui.NewStore(map[string]any{
 
 store.Set("page.title", "Updated")
 ```
+
+缁戝畾鍚屾牱鍙互鐢ㄥ湪缂栬緫妗嗙殑 `readOnly`銆?`multiline` 绛夊紑鍏充笂锛屾柟渚垮湪瀹夸富灞傚拰灞€閮?imperative 浠ｇ爜涔嬮棿鍒囨崲銆?
 
 当前支持的常见绑定目标：
 

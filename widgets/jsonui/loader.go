@@ -5,6 +5,7 @@ package jsonui
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -31,21 +32,27 @@ type windowSpec struct {
 }
 
 type nodeSpec struct {
-	Type        string          `json:"type"`
-	ID          string          `json:"id"`
-	Input       string          `json:"input"`
-	Text        json.RawMessage `json:"text"`
-	Value       json.RawMessage `json:"value"`
-	Placeholder json.RawMessage `json:"placeholder"`
-	Visible     json.RawMessage `json:"visible"`
-	Enabled     json.RawMessage `json:"enabled"`
-	Checked     json.RawMessage `json:"checked"`
-	Items       json.RawMessage `json:"items"`
-	Sel         json.RawMessage `json:"sel"`
-	Layout      json.RawMessage `json:"layout"`
-	Frame       *frameSpec      `json:"frame"`
-	Style       json.RawMessage `json:"style"`
-	Children    []nodeSpec      `json:"children"`
+	Type             string          `json:"type"`
+	ID               string          `json:"id"`
+	Input            string          `json:"input"`
+	Text             json.RawMessage `json:"text"`
+	Value            json.RawMessage `json:"value"`
+	Placeholder      json.RawMessage `json:"placeholder"`
+	Visible          json.RawMessage `json:"visible"`
+	Enabled          json.RawMessage `json:"enabled"`
+	ReadOnly         json.RawMessage `json:"readOnly"`
+	Multiline        json.RawMessage `json:"multiline"`
+	WordWrap         json.RawMessage `json:"wordWrap"`
+	AcceptReturn     json.RawMessage `json:"acceptReturn"`
+	VerticalScroll   json.RawMessage `json:"verticalScroll"`
+	HorizontalScroll json.RawMessage `json:"horizontalScroll"`
+	Checked          json.RawMessage `json:"checked"`
+	Items            json.RawMessage `json:"items"`
+	Sel              json.RawMessage `json:"sel"`
+	Layout           json.RawMessage `json:"layout"`
+	Frame            *frameSpec      `json:"frame"`
+	Style            json.RawMessage `json:"style"`
+	Children         []nodeSpec      `json:"children"`
 
 	Group    string          `json:"group"`
 	Src      string          `json:"src"`
@@ -166,8 +173,9 @@ func LoadFileIntoScene(scene *widgets.Scene, path string, opts LoadOptions) (*Wi
 
 func (b *builder) buildWindow(spec windowSpec) (*Window, error) {
 	window := &Window{
-		ID:    spec.ID,
-		theme: b.opts.Theme,
+		ID:          spec.ID,
+		theme:       b.opts.Theme,
+		widgetIndex: map[string]widgets.Widget{},
 		Meta: WindowMeta{
 			ID: spec.ID,
 		},
@@ -270,6 +278,9 @@ func (b *builder) buildNode(window *Window, spec nodeSpec, parentLayout string) 
 	if err != nil {
 		return nil, err
 	}
+	if err := window.registerWidget(widget); err != nil {
+		return nil, err
+	}
 	if err := b.applyLayoutData(window, widget, spec, parentLayout); err != nil {
 		return nil, err
 	}
@@ -356,7 +367,7 @@ func (b *builder) buildButton(window *Window, spec nodeSpec) (widgets.Widget, er
 	}
 	if actionName := strings.TrimSpace(spec.OnClick); actionName != "" {
 		button.SetOnClick(func() {
-			ctx := b.baseActionContext(actionName, button)
+			ctx := b.baseActionContext(window, actionName, button)
 			ctx.Value = button.Text
 			b.dispatchAction(actionName, ctx)
 		})
@@ -384,7 +395,6 @@ func (b *builder) buildInput(window *Window, spec nodeSpec) (widgets.Widget, err
 		return nil, err
 	}
 	edit := widgets.NewEditBox(nodeID(spec), b.opts.DefaultMode)
-	edit.SetMultiline(false)
 	if inputType == "password" {
 		edit.SetPassword(true)
 	}
@@ -393,9 +403,18 @@ func (b *builder) buildInput(window *Window, spec nodeSpec) (widgets.Widget, err
 		return nil, err
 	}
 	edit.SetStyle(style)
+	if err := b.applyEditBoxOptions(window, edit, spec, editBoxDefaults{
+		Multiline: false,
+	}); err != nil {
+		return nil, err
+	}
 	edit.SetText(resolveStringSource(valueSource, b.opts.Data))
 	edit.SetPlaceholder(resolveStringSource(placeholderSource, b.opts.Data))
-	widgets.SetPreferredSize(edit, core.Size{Width: 220, Height: 36})
+	if edit.Multiline() {
+		widgets.SetPreferredSize(edit, core.Size{Width: 320, Height: 96})
+	} else {
+		widgets.SetPreferredSize(edit, core.Size{Width: 220, Height: 36})
+	}
 	b.applyCommonState(window, edit, spec)
 	if valueSource.Binding != "" {
 		b.addBinding(window, []string{valueSource.Binding}, func(ctx *bindingContext) {
@@ -409,14 +428,14 @@ func (b *builder) buildInput(window *Window, spec nodeSpec) (widgets.Widget, err
 	}
 	if actionName := strings.TrimSpace(spec.OnChange); actionName != "" {
 		edit.SetOnChange(func(_ string) {
-			ctx := b.baseActionContext(actionName, edit)
+			ctx := b.baseActionContext(window, actionName, edit)
 			ctx.Value = edit.TextValue()
 			b.dispatchAction(actionName, ctx)
 		})
 	}
 	if actionName := strings.TrimSpace(spec.OnSubmit); actionName != "" {
 		edit.SetOnSubmit(func(_ string) {
-			ctx := b.baseActionContext(actionName, edit)
+			ctx := b.baseActionContext(window, actionName, edit)
 			ctx.Value = edit.TextValue()
 			b.dispatchAction(actionName, ctx)
 		})
@@ -434,17 +453,25 @@ func (b *builder) buildTextArea(window *Window, spec nodeSpec) (widgets.Widget, 
 		return nil, err
 	}
 	edit := widgets.NewEditBox(nodeID(spec), b.opts.DefaultMode)
-	edit.SetMultiline(true)
-	edit.SetAcceptReturn(true)
-	edit.SetVerticalScroll(true)
 	style, err := parseEditStyle(spec.Style)
 	if err != nil {
 		return nil, err
 	}
 	edit.SetStyle(style)
+	if err := b.applyEditBoxOptions(window, edit, spec, editBoxDefaults{
+		Multiline:      true,
+		AcceptReturn:   true,
+		VerticalScroll: true,
+	}); err != nil {
+		return nil, err
+	}
 	edit.SetText(resolveStringSource(valueSource, b.opts.Data))
 	edit.SetPlaceholder(resolveStringSource(placeholderSource, b.opts.Data))
-	widgets.SetPreferredSize(edit, core.Size{Width: 320, Height: 96})
+	if edit.Multiline() {
+		widgets.SetPreferredSize(edit, core.Size{Width: 320, Height: 96})
+	} else {
+		widgets.SetPreferredSize(edit, core.Size{Width: 220, Height: 36})
+	}
 	b.applyCommonState(window, edit, spec)
 	if valueSource.Binding != "" {
 		b.addBinding(window, []string{valueSource.Binding}, func(ctx *bindingContext) {
@@ -458,14 +485,14 @@ func (b *builder) buildTextArea(window *Window, spec nodeSpec) (widgets.Widget, 
 	}
 	if actionName := strings.TrimSpace(spec.OnChange); actionName != "" {
 		edit.SetOnChange(func(_ string) {
-			ctx := b.baseActionContext(actionName, edit)
+			ctx := b.baseActionContext(window, actionName, edit)
 			ctx.Value = edit.TextValue()
 			b.dispatchAction(actionName, ctx)
 		})
 	}
 	if actionName := strings.TrimSpace(spec.OnSubmit); actionName != "" {
 		edit.SetOnSubmit(func(_ string) {
-			ctx := b.baseActionContext(actionName, edit)
+			ctx := b.baseActionContext(window, actionName, edit)
 			ctx.Value = edit.TextValue()
 			b.dispatchAction(actionName, ctx)
 		})
@@ -525,7 +552,7 @@ func (b *builder) buildCheckBox(window *Window, spec nodeSpec) (widgets.Widget, 
 	}
 	if actionName := strings.TrimSpace(spec.OnChange); actionName != "" {
 		check.SetOnChange(func(checked bool) {
-			ctx := b.baseActionContext(actionName, check)
+			ctx := b.baseActionContext(window, actionName, check)
 			ctx.Checked = checked
 			ctx.Value = check.Text
 			b.dispatchAction(actionName, ctx)
@@ -567,7 +594,7 @@ func (b *builder) buildRadio(window *Window, spec nodeSpec) (widgets.Widget, err
 	}
 	if actionName := strings.TrimSpace(spec.OnChange); actionName != "" {
 		radio.SetOnChange(func(checked bool) {
-			ctx := b.baseActionContext(actionName, radio)
+			ctx := b.baseActionContext(window, actionName, radio)
 			ctx.Checked = checked
 			ctx.Value = radio.Text
 			b.dispatchAction(actionName, ctx)
@@ -620,7 +647,7 @@ func (b *builder) buildSelect(window *Window, spec nodeSpec) (widgets.Widget, er
 	}
 	if actionName := strings.TrimSpace(spec.OnChange); actionName != "" {
 		combo.SetOnChange(func(index int, item widgets.ListItem) {
-			ctx := b.baseActionContext(actionName, combo)
+			ctx := b.baseActionContext(window, actionName, combo)
 			ctx.Index = index
 			ctx.Item = item
 			ctx.Value = item.Value
@@ -664,7 +691,7 @@ func (b *builder) buildListBox(window *Window, spec nodeSpec) (widgets.Widget, e
 	}
 	if actionName := strings.TrimSpace(spec.OnChange); actionName != "" {
 		list.SetOnChange(func(index int, item widgets.ListItem) {
-			ctx := b.baseActionContext(actionName, list)
+			ctx := b.baseActionContext(window, actionName, list)
 			ctx.Index = index
 			ctx.Item = item
 			ctx.Value = item.Value
@@ -673,7 +700,7 @@ func (b *builder) buildListBox(window *Window, spec nodeSpec) (widgets.Widget, e
 	}
 	if actionName := strings.TrimSpace(spec.OnActivate); actionName != "" {
 		list.SetOnActivate(func(index int, item widgets.ListItem) {
-			ctx := b.baseActionContext(actionName, list)
+			ctx := b.baseActionContext(window, actionName, list)
 			ctx.Index = index
 			ctx.Item = item
 			ctx.Value = item.Value
@@ -749,7 +776,7 @@ func (b *builder) buildFilePicker(window *Window, spec nodeSpec) (widgets.Widget
 	b.applyCommonState(window, picker, spec)
 	if actionName := strings.TrimSpace(spec.OnChange); actionName != "" {
 		picker.SetOnChange(func(paths []string) {
-			ctx := b.baseActionContext(actionName, picker)
+			ctx := b.baseActionContext(window, actionName, picker)
 			ctx.Paths = append([]string(nil), paths...)
 			if len(paths) > 0 {
 				ctx.Value = paths[0]
@@ -1114,12 +1141,13 @@ func (b *builder) loadICO(src string) (*core.Icon, error) {
 	if err != nil {
 		return nil, err
 	}
-	return core.LoadIconFromICO(data, 32)
+	return core.LoadIconFromICO(data, b.iconLoadSize())
 }
 
-func (b *builder) baseActionContext(name string, widget widgets.Widget) ActionContext {
+func (b *builder) baseActionContext(window *Window, name string, widget widgets.Widget) ActionContext {
 	ctx := ActionContext{
 		Name:   name,
+		Window: window,
 		Widget: widget,
 		Index:  -1,
 	}
@@ -1127,6 +1155,107 @@ func (b *builder) baseActionContext(name string, widget widgets.Widget) ActionCo
 		ctx.ID = widget.ID()
 	}
 	return ctx
+}
+
+type editBoxDefaults struct {
+	Multiline        bool
+	WordWrap         bool
+	AcceptReturn     bool
+	VerticalScroll   bool
+	HorizontalScroll bool
+	ReadOnly         bool
+}
+
+func (b *builder) applyEditBoxOptions(window *Window, edit *widgets.EditBox, spec nodeSpec, defaults editBoxDefaults) error {
+	readOnlySource, err := parseBoolSource(spec.ReadOnly)
+	if err != nil {
+		return err
+	}
+	multilineSource, err := parseBoolSource(spec.Multiline)
+	if err != nil {
+		return err
+	}
+	wordWrapSource, err := parseBoolSource(spec.WordWrap)
+	if err != nil {
+		return err
+	}
+	acceptReturnSource, err := parseBoolSource(spec.AcceptReturn)
+	if err != nil {
+		return err
+	}
+	verticalScrollSource, err := parseBoolSource(spec.VerticalScroll)
+	if err != nil {
+		return err
+	}
+	horizontalScrollSource, err := parseBoolSource(spec.HorizontalScroll)
+	if err != nil {
+		return err
+	}
+
+	edit.SetReadOnly(resolveBoolSourceOrDefault(readOnlySource, b.opts.Data, defaults.ReadOnly))
+	edit.SetMultiline(resolveBoolSourceOrDefault(multilineSource, b.opts.Data, defaults.Multiline))
+	edit.SetWordWrap(resolveBoolSourceOrDefault(wordWrapSource, b.opts.Data, defaults.WordWrap))
+	edit.SetAcceptReturn(resolveBoolSourceOrDefault(acceptReturnSource, b.opts.Data, defaults.AcceptReturn))
+	edit.SetVerticalScroll(resolveBoolSourceOrDefault(verticalScrollSource, b.opts.Data, defaults.VerticalScroll))
+	edit.SetHorizontalScroll(resolveBoolSourceOrDefault(horizontalScrollSource, b.opts.Data, defaults.HorizontalScroll))
+
+	if readOnlySource.Binding != "" {
+		b.addBinding(window, []string{readOnlySource.Binding}, func(ctx *bindingContext) {
+			edit.SetReadOnly(resolveBoolSourceOrDefault(readOnlySource, ctx.data, defaults.ReadOnly))
+		})
+	}
+	if multilineSource.Binding != "" {
+		b.addBinding(window, []string{multilineSource.Binding}, func(ctx *bindingContext) {
+			edit.SetMultiline(resolveBoolSourceOrDefault(multilineSource, ctx.data, defaults.Multiline))
+		})
+	}
+	if wordWrapSource.Binding != "" {
+		b.addBinding(window, []string{wordWrapSource.Binding}, func(ctx *bindingContext) {
+			edit.SetWordWrap(resolveBoolSourceOrDefault(wordWrapSource, ctx.data, defaults.WordWrap))
+		})
+	}
+	if acceptReturnSource.Binding != "" {
+		b.addBinding(window, []string{acceptReturnSource.Binding}, func(ctx *bindingContext) {
+			edit.SetAcceptReturn(resolveBoolSourceOrDefault(acceptReturnSource, ctx.data, defaults.AcceptReturn))
+		})
+	}
+	if verticalScrollSource.Binding != "" {
+		b.addBinding(window, []string{verticalScrollSource.Binding}, func(ctx *bindingContext) {
+			edit.SetVerticalScroll(resolveBoolSourceOrDefault(verticalScrollSource, ctx.data, defaults.VerticalScroll))
+		})
+	}
+	if horizontalScrollSource.Binding != "" {
+		b.addBinding(window, []string{horizontalScrollSource.Binding}, func(ctx *bindingContext) {
+			edit.SetHorizontalScroll(resolveBoolSourceOrDefault(horizontalScrollSource, ctx.data, defaults.HorizontalScroll))
+		})
+	}
+	return nil
+}
+
+func (b *builder) iconLoadSize() int32 {
+	scale := core.ScreenDPI().Scale
+	return resolveIconLoadSize(b.opts.IconSizeDP, scale)
+}
+
+func resolveIconLoadSize(sizeDP int32, scale float64) int32 {
+	if sizeDP <= 0 {
+		sizeDP = 32
+	}
+	if scale <= 0 {
+		scale = 1
+	}
+	size := int32(math.Round(float64(sizeDP) * scale))
+	if size < 1 {
+		return 1
+	}
+	return size
+}
+
+func resolveBoolSourceOrDefault(source boolSource, data DataSource, fallback bool) bool {
+	if !source.Has {
+		return fallback
+	}
+	return resolveBoolSource(source, data)
 }
 
 func (b *builder) dispatchAction(name string, ctx ActionContext) {

@@ -84,7 +84,7 @@ func TestLoadDocumentStringAppliesBindingsFromStore(t *testing.T) {
 func findTextWidget(t *testing.T, win *Window, id string) string {
 	t.Helper()
 
-	widget := findWidgetByID(win.Root, id)
+	widget := win.FindWidget(id)
 	switch typed := widget.(type) {
 	case *widgets.Label:
 		return typed.Text
@@ -98,23 +98,4 @@ func findTextWidget(t *testing.T, win *Window, id string) string {
 		t.Fatalf("widget %q type = %T, does not expose text", id, widget)
 		return ""
 	}
-}
-
-func findWidgetByID(root widgets.Widget, id string) widgets.Widget {
-	if root == nil || id == "" {
-		return nil
-	}
-	if root.ID() == id {
-		return root
-	}
-	container, ok := root.(widgets.Container)
-	if !ok {
-		return nil
-	}
-	for _, child := range container.Children() {
-		if found := findWidgetByID(child, id); found != nil {
-			return found
-		}
-	}
-	return nil
 }

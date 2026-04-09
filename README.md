@@ -15,6 +15,8 @@ It targets native desktop tools that need explicit control over window lifecycle
 - Declarative JSON UI loader in `widgets/jsonui`
 - DPI-aware JSON frame expressions such as `100`, `50%`, `50%-100`, `winW-100`, `parentW-100`
 - State-driven bindings through `jsonui.DataSource`
+- JSON text inputs with `readOnly`, `multiline`, wrapping, and scroll flags
+- Runtime lookup helpers such as `Window.FindWidget`, `Document.FindWidget`, and `widgets.FindByID`
 - Single-window and multi-window helpers
 - Demo apps in `cmd/demo` and `cmd/demo_json`
 
@@ -89,8 +91,10 @@ if err != nil {
 	panic(err)
 }
 
+title := win.FindWidget("title")
+_ = title
+
 store.Set("page.title", "Updated Title")
-_ = win
 ```
 
 ```json
@@ -124,6 +128,9 @@ _ = win
 - JSON declares widget trees, styles, actions, and bindings
 - Host code owns all data mutation through `jsonui.DataSource`
 - Frame values are logical DP by default and scale with DPI
+- Widget ids must stay unique within each declared window
+- `input` / `textarea` support `readOnly`, `multiline`, `wordWrap`, `acceptReturn`, `verticalScroll`, and `horizontalScroll`
+- `.ico` assets are loaded at screen-DPI-scaled size by default and can be overridden with `LoadOptions.IconSizeDP`
 - `frame` supports `x`, `y`, `r`, `b`, `w`, `h`
 - Expressions support:
   - `100`
@@ -170,6 +177,9 @@ JSON UI:
 
 - `doc.PrimaryWindow()` returns the first one
 - `doc.Window("tools")` looks up by id
+- `win.FindWidget("status")` looks up a widget inside one window
+- `doc.FindWidget("main", "status")` looks up across windows
+- `ActionContext.Window` points back to the runtime window in action handlers
 - `doc.NewApps(baseOpts)` creates one `core.App` per window
 - `jsonui.RunApps(...)` starts every hosted window and waits for all loops to exit
 

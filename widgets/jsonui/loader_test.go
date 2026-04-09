@@ -148,6 +148,10 @@ func TestLoadDocumentStringRejectsInvalidSchema(t *testing.T) {
 			name: "unsupported widget type",
 			json: `{"wins":[{"id":"main","root":{"type":"unknown"}}]}`,
 		},
+		{
+			name: "duplicate widget id in window",
+			json: `{"wins":[{"id":"main","root":{"type":"panel","layout":"col","children":[{"type":"label","id":"dup","text":"A"},{"type":"button","id":"dup","text":"B"}]}}]}`,
+		},
 	}
 
 	for _, tt := range tests {

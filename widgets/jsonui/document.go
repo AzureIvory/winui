@@ -4,6 +4,7 @@ package jsonui
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/AzureIvory/winui/core"
@@ -13,6 +14,7 @@ import (
 // ActionContext describes runtime information exposed to JSON UI action handlers.
 type ActionContext struct {
 	Name    string
+	Window  *Window
 	Widget  widgets.Widget
 	ID      string
 	Value   string
@@ -43,6 +45,7 @@ type LoadOptions struct {
 	DefaultMode    widgets.ControlMode
 	Data           DataSource
 	Theme          *widgets.Theme
+	IconSizeDP     int32
 }
 
 // Window is one built top-level window from a JSON UI document.
@@ -55,6 +58,7 @@ type Window struct {
 	data        DataSource
 	bindings    []windowBinding
 	unsubscribe func()
+	widgetIndex map[string]widgets.Widget
 
 	mu    sync.Mutex
 	scene *widgets.Scene
@@ -148,6 +152,54 @@ func (w *Window) Data() DataSource {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	return w.data
+}
+
+// Scene returns the scene the window is currently attached to.
+func (w *Window) Scene() *widgets.Scene {
+	if w == nil {
+		return nil
+	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.scene
+}
+
+// App returns the bound app when the window is attached.
+func (w *Window) App() *core.App {
+	scene := w.Scene()
+	if scene == nil {
+		return nil
+	}
+	return scene.App()
+}
+
+// FindWidget looks up a widget by ID within the window.
+func (w *Window) FindWidget(id string) widgets.Widget {
+	if w == nil || id == "" {
+		return nil
+	}
+	if w.widgetIndex != nil {
+		return w.widgetIndex[id]
+	}
+	return widgets.FindByID(w.Root, id)
+}
+
+func (w *Window) registerWidget(widget widgets.Widget) error {
+	if w == nil || widget == nil {
+		return nil
+	}
+	id := widget.ID()
+	if id == "" {
+		return nil
+	}
+	if w.widgetIndex == nil {
+		w.widgetIndex = map[string]widgets.Widget{}
+	}
+	if existing := w.widgetIndex[id]; existing != nil {
+		return fmt.Errorf("duplicate widget id %q in window %q", id, w.ID)
+	}
+	w.widgetIndex[id] = widget
+	return nil
 }
 
 // RefreshBindings reapplies all matching bindings against the current data source.
@@ -247,6 +299,15 @@ func (d *Document) Window(id string) *Window {
 		return nil
 	}
 	return d.index[id]
+}
+
+// FindWidget looks up a widget by window id and widget id.
+func (d *Document) FindWidget(windowID string, widgetID string) widgets.Widget {
+	window := d.Window(windowID)
+	if window == nil {
+		return nil
+	}
+	return window.FindWidget(widgetID)
 }
 
 // SetData reconnects every built window to the provided host data source.

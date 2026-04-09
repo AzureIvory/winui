@@ -43,3 +43,11 @@ Only keep behavior here that changes how future edits should be reasoned about.
 
 - `sysapi` remains the single owner of native file dialog COM interop
 - JSON `type: "file"` maps to `widgets.FilePicker`, which still delegates to `sysapi`
+
+### JSON UI text/runtime helpers
+
+- `input` and `textarea` now expose `readOnly`, `multiline`, `wordWrap`, `acceptReturn`, `verticalScroll`, and `horizontalScroll`
+- widget ids are indexed per window and must stay unique within one window
+- `Window.FindWidget(...)`, `Document.FindWidget(...)`, and `widgets.FindByID(...)` are the supported imperative lookup helpers
+- `ActionContext.Window` points back to the runtime window that dispatched the action
+- JSON `.ico` loading now scales a logical `32dp` default by the current screen DPI and can be overridden with `LoadOptions.IconSizeDP`
