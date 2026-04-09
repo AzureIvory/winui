@@ -43,17 +43,50 @@ jobs:
         if: matrix.cgo == '1'
         shell: powershell
         run: |
-          "C:\msys64\mingw64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          "CC=C:\msys64\mingw64\bin\gcc.exe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          "CXX=C:\msys64\mingw64\bin\g++.exe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $gccPath = $null
+
+          $command = Get-Command gcc -ErrorAction SilentlyContinue
+          if ($command) {
+            $gccPath = $command.Source
+          }
+
+          if (-not $gccPath) {
+            $roots = @($env:RUNNER_TEMP, 'C:\msys64', 'D:\a\_temp')
+            foreach ($root in $roots) {
+              if (-not $root -or -not (Test-Path $root)) {
+                continue
+              }
+
+              $candidate = Get-ChildItem -Path $root -Filter gcc.exe -Recurse -ErrorAction SilentlyContinue |
+                Where-Object { $_.FullName -match '[\\/](mingw64|ucrt64)[\\/]bin[\\/]gcc\.exe$' } |
+                Select-Object -First 1 -ExpandProperty FullName
+              if ($candidate) {
+                $gccPath = $candidate
+                break
+              }
+            }
+          }
+
+          if (-not $gccPath) {
+            throw 'gcc.exe not found after msys2 setup'
+          }
+
+          $binDir = Split-Path -Path $gccPath -Parent
+          $gxxPath = Join-Path -Path $binDir -ChildPath 'g++.exe'
+          if (-not (Test-Path $gxxPath)) {
+            throw "g++.exe not found next to gcc.exe in $binDir"
+          }
+
+          $binDir | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          "CC=$gccPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "CXX=$gxxPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Check formatting
         if: matrix.cgo == '0'
         shell: powershell
         run: |
-          $unformatted = Get-ChildItem -Path . -Recurse -Filter *.go -File |
-            Where-Object { $_.FullName -notmatch '\\vendor\\' } |
-            ForEach-Object { gofmt -l $_.FullName } |
+          $unformatted = git ls-files '*.go' |
+            ForEach-Object { gofmt -l $_ } |
             Where-Object { $_ }
           if ($unformatted) {
             $unformatted | ForEach-Object { Write-Host $_ }
