@@ -108,6 +108,66 @@ func TestParseScalarExprResolve(t *testing.T) {
 			axis: AxisHeight,
 			want: 80,
 		},
+		{
+			name:  "parent width arithmetic with spaces",
+			input: "(parentW - 12*3 - 20*2 - 108) / 4",
+			ctx: ExprContext{
+				WindowW: 980,
+				WindowH: 720,
+				ParentW: 420,
+				ParentH: 200,
+			},
+			axis: AxisWidth,
+			want: 59,
+		},
+		{
+			name:  "parent width arithmetic without spaces",
+			input: "(parentW-184)/4",
+			ctx: ExprContext{
+				WindowW: 980,
+				WindowH: 720,
+				ParentW: 420,
+				ParentH: 200,
+			},
+			axis: AxisWidth,
+			want: 59,
+		},
+		{
+			name:  "percent plus offset",
+			input: "50%+12",
+			ctx: ExprContext{
+				WindowW: 300,
+				WindowH: 200,
+				ParentW: 240,
+				ParentH: 180,
+			},
+			axis: AxisX,
+			want: 162,
+		},
+		{
+			name:  "percent plus offset uses height on height axis",
+			input: "50%+12",
+			ctx: ExprContext{
+				WindowW: 300,
+				WindowH: 200,
+				ParentW: 240,
+				ParentH: 180,
+			},
+			axis: AxisHeight,
+			want: 112,
+		},
+		{
+			name:  "operator precedence keeps multiplication before subtraction",
+			input: "parentW-12*3",
+			ctx: ExprContext{
+				WindowW: 500,
+				WindowH: 320,
+				ParentW: 280,
+				ParentH: 200,
+			},
+			axis: AxisWidth,
+			want: 244,
+		},
 	}
 
 	for _, tt := range tests {
@@ -128,9 +188,10 @@ func TestParseScalarExprRejectsInvalidInput(t *testing.T) {
 	tests := []any{
 		"",
 		"abc",
-		"50%+12",
-		"winW+12",
 		"parentX-10",
+		"winW +",
+		"(parentW-184",
+		"parentW / / 2",
 		[]int{1, 2, 3},
 	}
 

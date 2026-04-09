@@ -47,7 +47,7 @@ Windows-only Go UI toolkit on top of Win32. No WebView, no XAML, no app logic.
 - `type: "file"` maps to `widgets.FilePicker`
 - file actions surface full selections through `jsonui.ActionContext.Paths`
 - absolute `frame` supports `x`, `y`, `r`, `b`, `w`, `h`
-- frame expressions support `100`, `50%`, `50%-100`, `winW-100`, `winH-100`, `parentW-100`, `parentH-100`
+- frame expressions support `+`, `-`, `*`, `/`, `()`, `%`, and the variables `winW`, `winH`, `parentW`, `parentH`
 - JSON style mapping should target existing widget style structs for button, progress, choice, combo, list, edit, and panel controls
 - JSON only declares binding relationships; host-side mutation lives in `jsonui.DataSource`
 

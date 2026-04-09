@@ -279,7 +279,7 @@ func modalAbsoluteLayoutData(window *Window) absoluteLayoutData {
 }
 
 func literalExprSource(value int32) exprSource {
-	return exprSource{Has: true, Literal: ScalarExpr{base: exprLiteral, value: value}}
+	return exprSource{Has: true, Literal: literalScalarExpr(value)}
 }
 
 func clampInt32(value, min, max int32) int32 {

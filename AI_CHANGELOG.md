@@ -29,14 +29,10 @@ Only keep behavior here that changes how future edits should be reasoned about.
 ### DPI-aware frame expressions
 
 - JSON absolute layout is based on logical DP units
-- supported expressions are:
-  - `100`
-  - `50%`
-  - `50%-100`
-  - `winW-100`
-  - `winH-100`
-  - `parentW-100`
-  - `parentH-100`
+- expressions now use an arithmetic parser with `+`, `-`, `*`, `/`, and parentheses
+- allowed variables are limited to `winW`, `winH`, `parentW`, and `parentH`
+- percent literals such as `50%` keep the legacy axis-based window percentage semantics
+- representative expressions include `50%+12` and `(parentW - 12*3 - 20*2 - 108) / 4`
 - `frame` uses `x`, `y`, `r`, `b`, `w`, `h`
 
 ### System API ownership

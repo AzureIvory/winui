@@ -13,7 +13,7 @@ It targets native desktop tools that need explicit control over window lifecycle
 - Reusable built-in controls
 - Native open / save / folder dialogs in `sysapi`
 - Declarative JSON UI loader in `widgets/jsonui`
-- DPI-aware JSON frame expressions such as `100`, `50%`, `50%-100`, `winW-100`, `parentW-100`
+- DPI-aware JSON frame expressions with `+`, `-`, `*`, `/`, `()`, `%`, and window/parent size variables
 - State-driven bindings through `jsonui.DataSource`
 - JSON text inputs with `readOnly`, `multiline`, wrapping, and scroll flags
 - Declarative multiline `label` with width-constrained auto-height measurement
@@ -137,14 +137,14 @@ store.Set("page.title", "Updated Title")
 - `label` supports `multiline` and `wordWrap`, including auto-measured height when width is constrained
 - `modal` supports `backdrop.color`, `backdrop.opacity`, `backdrop.blur`, `backdrop.dismissOnClick`, and `onDismiss`
 - `frame` supports `x`, `y`, `r`, `b`, `w`, `h`
-- Expressions support:
+- Expressions support integer arithmetic with `+`, `-`, `*`, `/`, and parentheses
+- Variables are limited to `winW`, `winH`, `parentW`, and `parentH`
+- Percent literals such as `"50%"` keep the legacy axis-based window percentage semantics
+- Example expressions include:
   - `100`
-  - `"50%"`
-  - `"50%-100"`
-  - `"winW-100"`
-  - `"winH-100"`
-  - `"parentW-100"`
-  - `"parentH-100"`
+  - `"50%+12"`
+  - `"(parentW - 12*3 - 20*2 - 108) / 4"`
+  - `"(parentW-184)/4"`
 
 ## File Dialogs
 
