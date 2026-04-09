@@ -1,32 +1,30 @@
-# WIDGETS Guide
+# WIDGETS 指南
 
-This file keeps the legacy name `WIDGETS.zh-CN.md`, but the content is now English for encoding stability and easier maintenance.
+## 1. 核心模型
 
-## 1. Core Model
+`widgets` 建立在 `core` 之上，`Scene` 是运行时协调者。
 
-`widgets` sits on top of `core`, and `Scene` is the runtime coordinator.
+- `widgets.BindScene(&opts, hooks)` 把控件生命周期接到 `core.Options`
+- `scene.Root()` 返回根面板
+- `scene.Theme()` 返回当前主题
+- `Scene` 负责焦点、悬停、鼠标捕获、定时器、事件分发和重绘协调
 
-- `widgets.BindScene(&opts, hooks)` connects widget lifecycle to `core.Options`
-- `scene.Root()` returns the root panel
-- `scene.Theme()` returns the active theme
-- `Scene` owns focus, hover, capture, timers, event dispatch, and repaint coordination
+典型流程：
 
-Typical flow:
+1. 配置 `core.Options`
+2. 调用 `widgets.BindScene`
+3. 在 `OnCreate` 中创建控件
+4. 把控件加到 `scene.Root()`
+5. 调用 `app.Init()` 和 `app.Run()`
 
-1. Configure `core.Options`
-2. Call `widgets.BindScene`
-3. Create widgets in `OnCreate`
-4. Add them to `scene.Root()`
-5. Call `app.Init()` and `app.Run()`
+## 2. 控件模式
 
-## 2. Control Modes
+以下控件支持 `mode`：
 
-Some controls accept a `mode` argument:
+- `widgets.ModeCustom`
+- `widgets.ModeNative`
 
-- `widgets.ModeCustom`: custom-drawn control
-- `widgets.ModeNative`: system-native control
-
-Common controls with mode support:
+常见控件：
 
 - `Button`
 - `EditBox`
@@ -35,13 +33,13 @@ Common controls with mode support:
 - `ComboBox`
 - `FilePicker`
 
-If you need themed native controls, the final executable still needs a `Microsoft.Windows.Common-Controls` v6 manifest.
+如果需要 Win10 / Win11 视觉样式，最终可执行文件仍然需要 `Microsoft.Windows.Common-Controls` v6 manifest。
 
-## 3. Layout
+## 3. 布局
 
-`Panel` is the base container. Use `SetLayout(...)` to assign a layout.
+`Panel` 是基础容器，使用 `SetLayout(...)` 指定布局。
 
-Built-in layouts:
+内置布局：
 
 - `AbsoluteLayout`
 - `RowLayout`
@@ -49,19 +47,13 @@ Built-in layouts:
 - `GridLayout`
 - `FormLayout`
 
-Per-child layout data:
+常用子项布局数据：
 
 - `FlexLayoutData`
 - `GridLayoutData`
 - `FormLayoutData`
 
-Use cases:
-
-- use `AbsoluteLayout` for explicit coordinates
-- use `RowLayout` / `ColumnLayout` for linear toolbars or lists
-- use `GridLayout` / `FormLayout` for structured forms
-
-## 4. Common Controls
+## 4. 常用控件
 
 - `Panel`
 - `Label`
@@ -77,197 +69,143 @@ Use cases:
 - `ProgressBar`
 - `ScrollView`
 
-Most control state changes already invalidate automatically. Composite widgets still need to invalidate explicitly when they cache extra state.
+## 5. JSON UI
 
-## 5. ScrollView
+声明式 UI 现在统一放在 `widgets/jsonui`。
 
-`ScrollView` hosts scrollable content.
+核心 API：
 
-```go
-content := widgets.NewPanel("content")
-content.SetLayout(widgets.ColumnLayout{Gap: 8})
+- `jsonui.LoadDocumentFile(...)`
+- `jsonui.LoadDocumentString(...)`
+- `jsonui.LoadIntoScene(...)`
+- `jsonui.LoadFileIntoScene(...)`
+- `doc.PrimaryWindow()`
+- `doc.Window(id)`
+- `doc.NewApps(baseOpts)`
+- `jsonui.RunApps(...)`
 
-scroll := widgets.NewScrollView("list")
-scroll.SetContent(content)
-scroll.SetVerticalScroll(true)
-scroll.SetHorizontalScroll(false)
-```
+## 6. JSON 结构
 
-Current behavior:
+顶层使用 `wins` 声明一个或多个窗口：
 
-- viewport clipping affects both painting and scene hit testing
-- scrolled-off children do not receive pointer input outside the visible viewport
-- if you change hit testing, keep overlay routing and ancestor clip propagation consistent
-
-## 6. Markup
-
-`widgets/markup` provides an HTML/CSS-style DSL for building UI.
-
-Document APIs:
-
-- `markup.LoadDocumentFile(...)`
-- `markup.LoadDocumentString(...)`
-- `markup.LoadIntoScene(...)`
-- `markup.LoadFileIntoScene(...)`
-
-Native file dialog APIs:
-
-- `sysapi.ShowFileDialog(...)`
-- `sysapi.OpenFile(...)`
-- `sysapi.OpenFiles(...)`
-- `sysapi.SaveFile(...)`
-- `sysapi.PickFolder(...)`
-
-Legacy APIs:
-
-- `markup.LoadHTMLFile(...)`
-- `markup.LoadHTMLString(...)`
-
-`Document` contains:
-
-- `Root widgets.Widget`
-- `Meta markup.WindowMeta`
-
-### 6.1 Window Metadata
-
-Supported on `<window>`:
-
-- `title`
-- `icon`
-- `min-width`
-- `min-height`
-
-Example:
-
-```html
-<window title="Markup Demo" icon="assets/app.ico" min-width="900" min-height="640">
-  <body>
-    <label id="title">Hello</label>
-  </body>
-</window>
-```
-
-### 6.1.1 Declarative Binding
-
-Markup supports declarative bindings through `markup.State` and `bind-*`
-attributes.
-
-Typical flow:
-
-1. Create a `markup.State`
-2. Pass it through `markup.LoadOptions{State: state}`
-3. Declare `bind-*` attributes in markup
-4. Call `state.Set(...)`, `state.Patch(...)`, or `state.Replace(...)`
-
-Common bindings:
-
-- `bind-title` on `<window>`
-- `bind-text` on `label`, `button`, `checkbox`, `radio`
-- `bind-value` on `input`, `textarea`, `progress`
-- `bind-visible`
-- `bind-enabled`
-- `bind-width`
-- `bind-height`
-- `bind-left`, `bind-top`, `bind-right`, `bind-bottom`
-- aliases `bind-x` and `bind-y`
-- `bind-items` and `bind-selected` on `select` and `listbox`
-
-Example:
-
-```go
-state := markup.NewState(map[string]any{
-	"page": map[string]any{
-		"title":   "Search",
-		"visible": true,
-	},
-	"form": map[string]any{
-		"query": "initial",
-	},
-})
-
-doc, err := markup.LoadIntoScene(scene, htmlText, "", markup.LoadOptions{
-	State: state,
-})
-if err != nil {
-	panic(err)
+```json
+{
+  "wins": [
+    {
+      "id": "main",
+      "title": "Demo",
+      "w": 980,
+      "h": 720,
+      "root": {
+        "type": "panel",
+        "layout": "abs",
+        "children": [
+          {
+            "type": "label",
+            "id": "title",
+            "text": "Hello",
+            "frame": { "x": 20, "y": 20, "w": 240, "h": 28 }
+          }
+        ]
+      }
+    }
+  ]
 }
-
-state.Set("page.title", "Updated Search")
-state.Set("form.query", "next value")
-_ = doc
 ```
 
-```html
-<window bind-title="page.title">
-  <body>
-    <label bind-text="page.title" bind-visible="page.visible"></label>
-    <input bind-value="form.query" />
-  </body>
-</window>
+常用键：
+
+- `wins`
+- `id`
+- `title`
+- `w` / `h` / `minW` / `minH`
+- `root`
+- `type`
+- `layout`
+- `children`
+- `frame`
+- `style`
+- `text`
+- `value`
+- `items`
+- `sel`
+
+## 7. 绑定模型
+
+JSON 只声明绑定关系，不在 JSON 文本里做数据增删改查。
+
+宿主层负责数据：
+
+- 自己实现 `jsonui.DataSource`
+- 或直接使用 `jsonui.Store`
+
+绑定写法：
+
+```json
+{
+  "title": { "bind": "page.title", "default": "Fallback" }
+}
 ```
 
-Notes:
+Go 侧更新：
 
-- `State.Set(...)` is designed for map-based snapshots rooted at `map[string]any`
-- use `State.Replace(...)` when your source data is easier to rebuild as a struct snapshot
-- changing text does not automatically recalculate natural size; bind width and height when size must track data
-- list item binding accepts `[]string`, `[]widgets.ListItem`, and slices of structs or maps with `item-text-field`, `item-value-field`, and `item-disabled-field`
+```go
+store := jsonui.NewStore(map[string]any{
+	"page": map[string]any{
+		"title": "Initial",
+	},
+})
 
-See [MARKUP_BINDING.zh-CN.md](./MARKUP_BINDING.zh-CN.md) for the end-user guide.
+store.Set("page.title", "Updated")
+```
 
-### 6.2 Common Tag Mapping
+当前支持的常见绑定目标：
 
-- `body` / `div` / `section` / `panel`
-- `row` / `column` / `form`
-- `scroll`
-- `label`
-- `button`
-- `input`
-- `textarea`
-- `checkbox`
-- `radio`
-- `select`
-- `listbox`
-- `img`
-- `animated-img`
-- `progress`
+- 窗口标题
+- 文本内容
+- 输入值
+- 可见状态
+- 可用状态
+- 选中状态
+- 列表项
+- 当前选择
+- 绝对布局 `frame`
 
-`input type="file"` maps to `widgets.FilePicker`.
+## 8. 表达式与 DPI
 
-### 6.3 Length and DPI
+`frame` 的数值默认按逻辑 DP 处理，并在布局时按 DPI 缩放。
 
-Markup length values such as `20` and `20px` are treated as logical DP units.
+支持的表达式：
 
-- the loader stores logical preferred sizes for markup-created widgets
-- layout converts those values with the active scene DPI
-- `Scene.ReloadResources()` now re-applies layout, so markup UIs reflow after DPI changes
+- `100`
+- `"50%"`
+- `"50%-100"`
+- `"winW-100"`
+- `"winH-100"`
+- `"parentW-100"`
+- `"parentH-100"`
 
-### 6.4 Absolute Layout
+`frame` 支持：
 
-`display:absolute` is a constraint-based layout, not full CSS positioning.
+- `x`
+- `y`
+- `r`
+- `b`
+- `w`
+- `h`
 
-Supported absolute properties:
+常见组合：
 
-- `left`
-- `top`
-- `right`
-- `bottom`
-- `width`
-- `height`
-- aliases `x` and `y`
+- `x + y + w + h`
+- `x + r + h`
+- `y + b + w`
+- `x + r + y + b`
 
-Common combinations:
+## 9. 样式映射
 
-- `left + top + width + height`
-- `left + right + height`
-- `top + bottom + width`
-- `left + right + top + bottom`
+JSON 样式直接映射到现有控件样式结构，而不是再造一套渲染系统。
 
-### 6.5 Style Mapping
-
-Markup style fields map into the existing widget theme structs instead of using a separate render layer.
-
-High-coverage mappings exist for:
+覆盖范围包括：
 
 - `button`
 - `progress`
@@ -279,77 +217,42 @@ High-coverage mappings exist for:
 - `textarea`
 - `panel`
 
-Examples of mapped fields include:
+常用键示例：
 
-- text and placeholder colors
-- hover, focus, pressed, and disabled colors
-- border and corner radius
-- item height, padding, gap, indicator size, and max visible items
+- `fg`
+- `bg`
+- `ph`
+- `border`
+- `hoverBg`
+- `pressedBg`
+- `hoverBorder`
+- `focusBorder`
+- `radius`
+- `pad`
+- `gap`
+- `itemH`
+- `indicatorStyle`
 
-### 6.6 File Dialog Input
+## 10. 文件对话框控件
 
-Supported attributes on `input type="file"`:
+`type: "file"` 映射到 `widgets.FilePicker`。
 
-- `dialog="open|save|folder"`
+常用字段：
+
+- `dialog: "open" | "save" | "folder"`
 - `multiple`
 - `accept`
 - `filters`
-- `button-text`
-- `dialog-title`
-- `dialog-button-text`
-- `default-extension`
-- `value-separator`
-- `initial-path`
+- `buttonText`
+- `dialogTitle`
+- `defaultExt`
+- `valueSep`
 
-Notes:
-
-- `multiple` is only valid with `dialog="open"`
-- `accept` is for simple extension or wildcard filters such as `.txt,.md` or `*.png`
-- `filters` uses `Name=pattern` pairs separated by commas, for example `Text Files=*.txt,All Files=*.*`
-- file actions report full path lists through `ActionContext.Paths`
-
-### 6.7 Action Routing
-
-`LoadOptions` supports:
-
-- `Actions map[string]func()`
-- `ActionHandlers map[string]func(markup.ActionContext)`
-- `State *markup.State`
-
-Priority:
-
-- `ActionHandlers`
-- `Actions`
-
-`ActionContext` includes:
-
-- action name
-- widget instance
-- widget ID
-- current value
-- selected paths for file inputs
-- checked state
-- index and list item
-
-## 7. Demos
-
-Run both demos when you touch interaction or rendering:
+## 11. Demo 与验证
 
 ```powershell
 go run ./cmd/demo
-go run ./cmd/demo_html
-```
-
-- `cmd/demo`: core controls, layout, theme, rendering
-- `cmd/demo_html`: markup, document metadata, assets, actions, DPI-aware layout, style mapping, and native file dialog flows
-
-## 8. Validation
-
-The repository now keeps a small set of regression tests:
-
-```powershell
+go run ./cmd/demo_json
 go test ./...
 go vet ./...
 ```
-
-Treat `go test` as a build-and-regression check and use the demos for manual regression.

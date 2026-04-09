@@ -2,58 +2,34 @@
 
 `winui` is a Windows-only Go UI toolkit built directly on top of Win32.
 
-It targets small native desktop tools that need direct control over window lifecycle, painting, DPI behavior, input, and reusable widgets without relying on WebView, XAML, or cross-platform layers.
+It targets native desktop tools that need explicit control over window lifecycle, painting, DPI, input, reusable widgets, and a declarative JSON UI layer without WebView, XAML, or cross-platform wrappers.
 
 ## Features
 
 - Windows only
-- Clear `core` / `widgets` split
+- Clear `core` / `widgets` / `sysapi` split
 - `RenderModeAuto`: prefer Direct2D, fall back to GDI
 - Retained widget scene tree with themes and layouts
 - Reusable built-in controls
-- Native file dialog API in `sysapi`
-- `FilePicker` widget for readonly path display + browse button flows
-- HTML/CSS-style markup loader with window metadata support
-- Declarative markup bindings via `markup.State` and `bind-*` attributes
-- Markup lengths are logical DP values and reflow on DPI changes
-- Absolute markup layout supports `left` / `top` / `right` / `bottom` / `width` / `height`
-- Markup style mapping covers button, progress, choice, combo, list, edit, and panel styles
-- Markup `<input type="file">` supports open / save / folder / multi-select flows
-- Native demo app in `cmd/demo`
-- Markup demo app in `cmd/demo_html`
+- Native open / save / folder dialogs in `sysapi`
+- Declarative JSON UI loader in `widgets/jsonui`
+- DPI-aware JSON frame expressions such as `100`, `50%`, `50%-100`, `winW-100`, `parentW-100`
+- State-driven bindings through `jsonui.DataSource`
+- Single-window and multi-window helpers
+- Demo apps in `cmd/demo` and `cmd/demo_json`
 
 ## Packages
 
 - `core/`: window lifecycle, paint, DPI, input, timer, icon, font
-- `sysapi/`: Windows system API helpers, including native open/save/folder dialogs on top of Win32 COM
-- `widgets/`: scene tree, event routing, layout, theme, controls, markup
-- `cmd/demo/`: manual regression demo
-- `cmd/demo_html/`: markup and document-loading demo
-- `scripts/`: maintenance scripts
-
-## Built-in Controls
-
-- `Panel`
-- `Label`
-- `Button`
-- `CheckBox`
-- `RadioButton`
-- `ComboBox`
-- `EditBox`
-- `FilePicker`
-- `Image`
-- `AnimatedImage`
-- `ListBox`
-- `ProgressBar`
-- `ScrollView`
-
-## Requirements
-
-- Windows
-- Go `1.24.0` or newer
-- Optional: `cgo` for Direct2D support
+- `sysapi/`: Windows system API helpers, including native file dialogs
+- `widgets/`: scene tree, event routing, layout, theme, controls
+- `widgets/jsonui/`: JSON schema loader, bindings, expressions, multi-window helpers
+- `cmd/demo/`: manual widget regression demo
+- `cmd/demo_json/`: manual JSON UI regression demo
 
 ## Quick Start
+
+Imperative widgets:
 
 ```go
 package main
@@ -93,21 +69,76 @@ func main() {
 	if err := app.Init(); err != nil {
 		panic(err)
 	}
-app.Run()
+	app.Run()
 }
 ```
+
+JSON UI:
+
+```go
+store := jsonui.NewStore(map[string]any{
+	"page": map[string]any{
+		"title": "JSON Demo",
+	},
+})
+
+win, err := jsonui.LoadFileIntoScene(scene, "demo.ui.json", jsonui.LoadOptions{
+	Data: store,
+})
+if err != nil {
+	panic(err)
+}
+
+store.Set("page.title", "Updated Title")
+_ = win
+```
+
+```json
+{
+  "wins": [
+    {
+      "id": "main",
+      "title": { "bind": "page.title", "default": "Fallback" },
+      "w": 980,
+      "h": 720,
+      "root": {
+        "type": "panel",
+        "layout": "abs",
+        "children": [
+          {
+            "type": "label",
+            "id": "title",
+            "text": { "bind": "page.title" },
+            "frame": { "x": 20, "y": 20, "w": 320, "h": 28 }
+          }
+        ]
+      }
+    }
+  ]
+}
+```
+
+## JSON UI Model
+
+- Top-level `wins` declares one or more windows
+- JSON declares widget trees, styles, actions, and bindings
+- Host code owns all data mutation through `jsonui.DataSource`
+- Frame values are logical DP by default and scale with DPI
+- `frame` supports `x`, `y`, `r`, `b`, `w`, `h`
+- Expressions support:
+  - `100`
+  - `"50%"`
+  - `"50%-100"`
+  - `"winW-100"`
+  - `"winH-100"`
+  - `"parentW-100"`
+  - `"parentH-100"`
 
 ## File Dialogs
 
 Go API:
 
 ```go
-import (
-	"fmt"
-
-	"github.com/AzureIvory/winui/sysapi"
-)
-
 result, err := sysapi.ShowFileDialog(app, sysapi.Options{
 	Mode:        sysapi.DialogOpen,
 	Title:       "Open a file",
@@ -117,101 +148,56 @@ result, err := sysapi.ShowFileDialog(app, sysapi.Options{
 if err != nil {
 	panic(err)
 }
-fmt.Println(result.Paths)
+_ = result.Paths
 ```
 
-Markup:
+JSON UI:
 
-```html
-<input type="file"
-       dialog="save"
-       default-extension="txt"
-       filters="Text Files=*.txt,All Files=*.*"
-       button-text="Save..."
-       onchange="savePicked" />
-```
-
-## Markup Bindings
-
-`widgets/markup` also supports state-driven bindings for common UI updates such
-as window titles, text content, visibility, enabled state, preferred size,
-absolute positioning, list items, and selection.
-
-Go:
-
-```go
-state := markup.NewState(map[string]any{
-	"page": map[string]any{
-		"title":   "Search",
-		"visible": true,
-	},
-	"form": map[string]any{
-		"query": "initial",
-	},
-})
-
-doc, err := markup.LoadIntoScene(scene, htmlText, "", markup.LoadOptions{
-	State: state,
-})
-if err != nil {
-	panic(err)
+```json
+{
+  "type": "file",
+  "id": "openFile",
+  "dialog": "open",
+  "buttonText": "Open...",
+  "dialogTitle": "Open a source file",
+  "accept": ["*.txt", "*.md", "*.go"]
 }
-
-state.Set("page.title", "Updated Search")
-state.Set("form.query", "next value")
-_ = doc
 ```
 
-Markup:
+## Multi-Window
 
-```html
-<window bind-title="page.title">
-  <body>
-    <label bind-text="page.title" bind-visible="page.visible"></label>
-    <input bind-value="form.query" />
-  </body>
-</window>
-```
+`jsonui.Document` keeps every declared window.
 
-For a Chinese end-user guide focused on markup bindings, see
-[MARKUP_BINDING.zh-CN.md](./MARKUP_BINDING.zh-CN.md).
+- `doc.PrimaryWindow()` returns the first one
+- `doc.Window("tools")` looks up by id
+- `doc.NewApps(baseOpts)` creates one `core.App` per window
+- `jsonui.RunApps(...)` starts every hosted window and waits for all loops to exit
 
 ## Run Demos
 
-Core widget demo:
-
 ```powershell
 go run ./cmd/demo
-```
-
-Markup demo:
-
-```powershell
-go run ./cmd/demo_html
+go run ./cmd/demo_json
 ```
 
 ## Validation
-
-The repository now keeps a small set of regression tests. `go test` is still primarily a build-level check plus helper regression coverage.
 
 ```powershell
 go test ./...
 go vet ./...
 go run ./cmd/demo
-go run ./cmd/demo_html
+go run ./cmd/demo_json
 ```
 
-GitHub Actions runs the Windows validation path in `.github/workflows/ci.yml`,
-including `gofmt`, `go test ./...`, and `go vet ./...` with `CGO_ENABLED=0`
-and `CGO_ENABLED=1`.
+GitHub Actions mirrors the Windows validation path in `.github/workflows/ci.yml` with `gofmt`, `go test ./...`, and `go vet ./...` under both `CGO_ENABLED=0` and `CGO_ENABLED=1`.
 
 ## Docs
 
 - [DEVELOPING.md](./DEVELOPING.md): maintainer rules, architecture boundaries, validation
-- [WIDGETS.zh-CN.md](./WIDGETS.zh-CN.md): widget, layout, `BindScene`, and markup guide
-- [MARKUP_BINDING.zh-CN.md](./MARKUP_BINDING.zh-CN.md): Chinese guide for `markup.State` and `bind-*`
-- [AGENTS.md](./AGENTS.md): compact agent-facing repository guide
-- [AI_CHANGELOG.md](./AI_CHANGELOG.md): recent behavior changes that affect agent reasoning
+- [WIDGETS.zh-CN.md](./WIDGETS.zh-CN.md): widget and JSON UI overview
+- [JSONUI.zh-CN.md](./JSONUI.zh-CN.md): Chinese end-user guide for the JSON DSL
+- [AGENTS.md](./AGENTS.md): compact repository guide
+- [AI_CHANGELOG.md](./AI_CHANGELOG.md): behavior changes that affect future edits
 
 ## Native Mode Note
 

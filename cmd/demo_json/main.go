@@ -14,11 +14,11 @@ import (
 
 	"github.com/AzureIvory/winui/core"
 	"github.com/AzureIvory/winui/widgets"
-	"github.com/AzureIvory/winui/widgets/markup"
+	"github.com/AzureIvory/winui/widgets/jsonui"
 )
 
 var (
-	demoDoc     *markup.Document
+	demoWindow  *jsonui.Window
 	demoRoot    widgets.Widget
 	statusLabel *widgets.Label
 )
@@ -32,26 +32,26 @@ func main() {
 	}
 
 	var app *core.App
-	actionHandlers := map[string]func(markup.ActionContext){
-		"pwdChanged": func(ctx markup.ActionContext) { showActionStatus(app, "Password changed", ctx) },
-		"pwdSubmit":  func(ctx markup.ActionContext) { showActionStatus(app, "Password submitted", ctx) },
-		"save":       func(ctx markup.ActionContext) { showActionStatus(app, "Save button clicked", ctx) },
-		"cityChanged": func(ctx markup.ActionContext) {
+	actionHandlers := map[string]func(jsonui.ActionContext){
+		"pwdChanged": func(ctx jsonui.ActionContext) { showActionStatus(app, "Password changed", ctx) },
+		"pwdSubmit":  func(ctx jsonui.ActionContext) { showActionStatus(app, "Password submitted", ctx) },
+		"save":       func(ctx jsonui.ActionContext) { showActionStatus(app, "Save button clicked", ctx) },
+		"cityChanged": func(ctx jsonui.ActionContext) {
 			showActionStatus(app, "City changed", ctx)
 		},
-		"cityOpen": func(ctx markup.ActionContext) {
+		"cityOpen": func(ctx jsonui.ActionContext) {
 			showActionStatus(app, "City activated", ctx)
 		},
-		"openPicked": func(ctx markup.ActionContext) {
+		"openPicked": func(ctx jsonui.ActionContext) {
 			showActionStatus(app, "Open dialog selected", ctx)
 		},
-		"savePicked": func(ctx markup.ActionContext) {
+		"savePicked": func(ctx jsonui.ActionContext) {
 			showActionStatus(app, "Save dialog selected", ctx)
 		},
-		"folderPicked": func(ctx markup.ActionContext) {
+		"folderPicked": func(ctx jsonui.ActionContext) {
 			showActionStatus(app, "Folder dialog selected", ctx)
 		},
-		"multiPicked": func(ctx markup.ActionContext) {
+		"multiPicked": func(ctx jsonui.ActionContext) {
 			showActionStatus(app, "Multi-file dialog selected", ctx)
 		},
 	}
@@ -61,13 +61,13 @@ func main() {
 				statusLabel.SetText("legacyOnly: using the older Actions map[string]func() callback")
 			}
 			if app != nil {
-				app.SetTitle("Markup Demo - legacyOnly")
+				app.SetTitle("JSON Demo - legacyOnly")
 			}
 		},
 	}
 
 	theme := demoTheme()
-	doc, err := markup.LoadDocumentFile(filepath.Join(baseDir, "demo.ui.html"), markup.LoadOptions{
+	doc, err := jsonui.LoadDocumentFile(filepath.Join(baseDir, "demo.ui.json"), jsonui.LoadOptions{
 		ActionHandlers: actionHandlers,
 		Actions:        legacyActions,
 		AssetsDir:      baseDir,
@@ -77,11 +77,14 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	demoDoc = doc
+	demoWindow = doc.PrimaryWindow()
+	if demoWindow == nil {
+		panic("demo window is nil")
+	}
 
 	opts := core.Options{
-		ClassName:      "WinUIMarkupDemo",
-		Title:          "winui markup demo",
+		ClassName:      "WinUIJSONDemo",
+		Title:          "winui json demo",
 		Width:          980,
 		Height:         720,
 		Style:          core.DefaultWindowStyle,
@@ -91,21 +94,21 @@ func main() {
 		DoubleBuffered: true,
 		RenderMode:     core.RenderModeAuto,
 	}
-	doc.ApplyWindowMeta(&opts)
+	demoWindow.ApplyOptions(&opts)
 
 	widgets.BindScene(&opts, widgets.SceneHooks{
 		OnCreate: func(createdApp *core.App, scene *widgets.Scene) error {
 			app = createdApp
-			if err := demoDoc.Attach(scene); err != nil {
+			if err := demoWindow.Attach(scene); err != nil {
 				return err
 			}
-			demoRoot = demoDoc.Root
+			demoRoot = demoWindow.Root
 			if demoRoot != nil {
 				size := app.ClientSize()
 				demoRoot.SetBounds(widgets.Rect{W: size.Width, H: size.Height})
 			}
 			statusLabel, _ = findWidgetByID(demoRoot, "status").(*widgets.Label)
-			showActionStatus(app, "Ready", markup.ActionContext{Name: "init", ID: "page", Index: -1})
+			showActionStatus(app, "Ready", jsonui.ActionContext{Name: "init", ID: "page", Index: -1})
 			return nil
 		},
 		OnResize: func(_ *core.App, _ *widgets.Scene, size core.Size) {
@@ -116,7 +119,7 @@ func main() {
 		OnDestroy: func(_ *core.App, _ *widgets.Scene) {
 			demoRoot = nil
 			statusLabel = nil
-			demoDoc = nil
+			demoWindow = nil
 		},
 	})
 
@@ -130,7 +133,7 @@ func main() {
 	app.Run()
 }
 
-func showActionStatus(app *core.App, title string, ctx markup.ActionContext) {
+func showActionStatus(app *core.App, title string, ctx jsonui.ActionContext) {
 	if ctx.Index == 0 && ctx.Item.Value == "" && ctx.Item.Text == "" {
 		ctx.Index = -1
 	}
@@ -164,7 +167,7 @@ func showActionStatus(app *core.App, title string, ctx markup.ActionContext) {
 		statusLabel.SetText(text)
 	}
 	if app != nil {
-		app.SetTitle("Markup Demo - " + fallbackText(ctx.Name, title))
+		app.SetTitle("JSON Demo - " + fallbackText(ctx.Name, title))
 	}
 }
 

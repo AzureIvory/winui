@@ -1,0 +1,336 @@
+{
+  "wins": [
+    {
+      "id": "main",
+      "title": "JSON Demo",
+      "icon": "assets/app.ico",
+      "w": 980,
+      "h": 720,
+      "minW": 980,
+      "minH": 720,
+      "bg": "#f2f6fb",
+      "root": {
+        "type": "panel",
+        "layout": "abs",
+        "children": [
+          {
+            "type": "label",
+            "id": "title",
+            "text": "JSON Demo -> WinUI",
+            "style": {
+              "size": 18
+            },
+            "frame": { "x": 20, "y": 20, "w": 360, "h": 28 }
+          },
+          {
+            "type": "input",
+            "id": "pwd",
+            "input": "password",
+            "placeholder": "Enter password",
+            "frame": { "x": 20, "y": 60, "w": 220, "h": 36 },
+            "onChange": "pwdChanged",
+            "onSubmit": "pwdSubmit"
+          },
+          {
+            "type": "button",
+            "id": "saveBtn",
+            "text": "Save",
+            "icon": "assets/save.ico",
+            "iconPos": "left",
+            "style": {
+              "fg": "#0f172a",
+              "downFg": "#ffffff",
+              "bg": "#f5f9ff",
+              "hoverBg": "#e0f2fe",
+              "pressedBg": "#2563eb",
+              "border": "#9dbfe8",
+              "radius": 10,
+              "pad": 12,
+              "gap": 8
+            },
+            "frame": { "x": 260, "y": 56, "w": 140, "h": 40 },
+            "onClick": "save"
+          },
+          {
+            "type": "button",
+            "id": "legacyBtn",
+            "text": "Legacy Actions",
+            "style": {
+              "bg": "#ffffff",
+              "hoverBg": "#eef6ff",
+              "pressedBg": "#1d4ed8",
+              "disabledBg": "#e2e8f0",
+              "border": "#b9c9dd",
+              "radius": 10
+            },
+            "frame": { "x": 410, "y": 56, "w": 140, "h": 40 },
+            "onClick": "legacyOnly"
+          },
+          {
+            "type": "select",
+            "id": "citySelect",
+            "placeholder": "Choose city",
+            "items": [
+              { "value": "bj", "text": "Beijing" },
+              { "value": "sh", "text": "Shanghai", "selected": true },
+              { "value": "sz", "text": "Shenzhen" }
+            ],
+            "style": {
+              "fg": "#1f2937",
+              "ph": "#94a3b8",
+              "bg": "#ffffff",
+              "border": "#cbd5e1",
+              "hoverBorder": "#60a5fa",
+              "focusBorder": "#2563eb",
+              "arrow": "#2563eb",
+              "popupBg": "#ffffff",
+              "itemHoverBg": "#eff6ff",
+              "itemSelectedBg": "#2563eb",
+              "itemFg": "#ffffff",
+              "pad": 10,
+              "radius": 10,
+              "itemH": 34,
+              "maxItems": 5
+            },
+            "frame": { "x": 560, "y": 60, "w": 220, "h": 36 }
+          },
+          {
+            "type": "listbox",
+            "id": "cityList",
+            "items": [
+              { "value": "bj", "text": "Beijing" },
+              { "value": "sh", "text": "Shanghai", "selected": true },
+              { "value": "sz", "text": "Shenzhen" }
+            ],
+            "style": {
+              "fg": "#1f2937",
+              "disabledFg": "#94a3b8",
+              "bg": "#ffffff",
+              "border": "#cbd5e1",
+              "hoverBorder": "#60a5fa",
+              "focusBorder": "#2563eb",
+              "itemHoverBg": "#eff6ff",
+              "itemSelectedBg": "#2563eb",
+              "itemFg": "#ffffff",
+              "pad": 8,
+              "radius": 10,
+              "itemH": 34
+            },
+            "frame": { "x": 20, "y": 110, "w": 220, "h": 160 },
+            "onChange": "cityChanged",
+            "onActivate": "cityOpen"
+          },
+          {
+            "type": "progress",
+            "id": "uploadProgress",
+            "value": 72,
+            "style": {
+              "fg": "#ffffff",
+              "track": "#dbeafe",
+              "fill": "#2563eb",
+              "bubble": "#1d4ed8",
+              "radius": 12,
+              "showPct": true
+            },
+            "frame": { "x": 260, "y": 120, "w": 280, "h": 24 }
+          },
+          {
+            "type": "checkbox",
+            "id": "newsCheck",
+            "text": "Subscribe updates",
+            "checked": true,
+            "style": {
+              "fg": "#1f2937",
+              "disabledFg": "#94a3b8",
+              "bg": "#ffffff",
+              "border": "#cbd5e1",
+              "hoverBorder": "#38bdf8",
+              "focusBorder": "#0ea5e9",
+              "indicator": "#0ea5e9",
+              "check": "#ffffff",
+              "indicatorStyle": "check",
+              "hoverBg": "#f0f9ff",
+              "disabledBg": "#f3f4f6",
+              "disabledBorder": "#d1d5db",
+              "radius": 6,
+              "indicatorSize": 18,
+              "indicatorGap": 10
+            },
+            "frame": { "x": 260, "y": 168, "w": 240, "h": 28 }
+          },
+          {
+            "type": "textarea",
+            "id": "notes",
+            "placeholder": "Multi-line notes",
+            "value": "Supports right / bottom constraints and DPI-aware layout.",
+            "style": {
+              "fg": "#1f2937",
+              "ph": "#94a3b8",
+              "bg": "#ffffff",
+              "border": "#cbd5e1",
+              "hoverBorder": "#60a5fa",
+              "focusBorder": "#2563eb",
+              "disabledFg": "#94a3b8",
+              "disabledBg": "#f3f4f6",
+              "caret": "#2563eb",
+              "pad": 10,
+              "radius": 10
+            },
+            "frame": { "x": 260, "y": 210, "w": 300, "h": 120 }
+          },
+          {
+            "type": "animimg",
+            "id": "spinner",
+            "src": "assets/spinner.gif",
+            "autoplay": true,
+            "frame": { "x": 580, "y": 120, "w": 48, "h": 48 }
+          },
+          {
+            "type": "label",
+            "id": "dialogsTitle",
+            "text": "Native File Dialogs",
+            "style": { "size": 16 },
+            "frame": { "x": 20, "y": 300, "w": 260, "h": 24 }
+          },
+          {
+            "type": "file",
+            "id": "openFile",
+            "value": "README.md",
+            "buttonText": "Open...",
+            "dialogTitle": "Open a source file",
+            "accept": [ "*.txt", "*.md", "*.go" ],
+            "style": {
+              "fg": "#1f2937",
+              "ph": "#94a3b8",
+              "bg": "#ffffff",
+              "border": "#cbd5e1",
+              "hoverBorder": "#60a5fa",
+              "focusBorder": "#2563eb",
+              "caret": "#2563eb",
+              "pad": 10,
+              "radius": 10,
+              "btn": {
+                "bg": "#f5f9ff",
+                "hoverBg": "#e0f2fe",
+                "pressedBg": "#2563eb",
+                "border": "#9dbfe8",
+                "gap": 8,
+                "pad": 12,
+                "radius": 10
+              }
+            },
+            "frame": { "x": 20, "y": 336, "w": 420, "h": 36 },
+            "onChange": "openPicked"
+          },
+          {
+            "type": "file",
+            "id": "saveFile",
+            "dialog": "save",
+            "buttonText": "Save...",
+            "dialogTitle": "Save exported report",
+            "defaultExt": "txt",
+            "filters": [
+              { "name": "Text Files", "pattern": "*.txt" },
+              { "name": "Markdown", "pattern": "*.md" },
+              { "name": "All Files", "pattern": "*.*" }
+            ],
+            "placeholder": "No export path selected",
+            "style": {
+              "fg": "#1f2937",
+              "ph": "#94a3b8",
+              "bg": "#ffffff",
+              "border": "#cbd5e1",
+              "hoverBorder": "#60a5fa",
+              "focusBorder": "#2563eb",
+              "pad": 10,
+              "radius": 10
+            },
+            "frame": { "x": 20, "y": 384, "w": 420, "h": 36 },
+            "onChange": "savePicked"
+          },
+          {
+            "type": "file",
+            "id": "folderPick",
+            "dialog": "folder",
+            "buttonText": "Folder...",
+            "dialogTitle": "Choose a working directory",
+            "placeholder": "No folder selected",
+            "style": {
+              "fg": "#1f2937",
+              "ph": "#94a3b8",
+              "bg": "#ffffff",
+              "border": "#cbd5e1",
+              "hoverBorder": "#60a5fa",
+              "focusBorder": "#2563eb",
+              "pad": 10,
+              "radius": 10
+            },
+            "frame": { "x": 20, "y": 432, "w": 420, "h": 36 },
+            "onChange": "folderPicked"
+          },
+          {
+            "type": "file",
+            "id": "multiFiles",
+            "multiple": true,
+            "buttonText": "Multi...",
+            "dialogTitle": "Choose multiple project files",
+            "accept": [ "*.go", "*.md", "*.txt" ],
+            "valueSep": " | ",
+            "style": {
+              "fg": "#1f2937",
+              "ph": "#94a3b8",
+              "bg": "#ffffff",
+              "border": "#cbd5e1",
+              "hoverBorder": "#60a5fa",
+              "focusBorder": "#2563eb",
+              "pad": 10,
+              "radius": 10
+            },
+            "frame": { "x": 20, "y": 480, "w": 420, "h": 36 },
+            "onChange": "multiPicked"
+          },
+          {
+            "type": "panel",
+            "id": "dialogsNote",
+            "style": {
+              "bg": "#ffffff",
+              "border": "#b9c9dd",
+              "borderW": 1,
+              "radius": 12
+            },
+            "frame": { "x": 470, "y": 336, "r": 20, "h": 180 },
+            "children": [
+              {
+                "type": "label",
+                "id": "dialogsNoteText",
+                "text": "Use file widgets with dialog=open/save/folder, multiple, accept, filters, buttonText, dialogTitle, defaultExt, and valueSep.",
+                "style": { "align": "start" },
+                "frame": { "x": 16, "y": 16, "r": 16, "b": 16 }
+              }
+            ]
+          },
+          {
+            "type": "panel",
+            "id": "statusBox",
+            "style": {
+              "bg": "#ffffff",
+              "border": "#b9c9dd",
+              "borderW": 1,
+              "radius": 12
+            },
+            "frame": { "x": 20, "r": 20, "b": 20, "h": 110 },
+            "children": [
+              {
+                "type": "label",
+                "id": "status",
+                "text": "Waiting for actions",
+                "style": { "align": "start" },
+                "frame": { "x": 12, "y": 10, "r": 12, "h": 90 }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

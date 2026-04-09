@@ -8,9 +8,10 @@ Windows-only Go UI toolkit on top of Win32. No WebView, no XAML, no app logic.
 
 - `core`: low-level Win32 window, paint, DPI, input, timer, icon, font
 - `sysapi`: Windows system API helpers, including native open/save/folder dialogs on top of Win32 COM
-- `widgets`: scene tree, theme, layout, controls, markup
+- `widgets`: scene tree, theme, layout, controls
+- `widgets/jsonui`: JSON schema loader, bindings, expressions, and multi-window helpers
 - `cmd/demo`: manual regression demo
-- `cmd/demo_html`: markup demo
+- `cmd/demo_json`: JSON UI demo
 
 ## Hard Rules
 
@@ -27,8 +28,8 @@ Windows-only Go UI toolkit on top of Win32. No WebView, no XAML, no app logic.
 - UI state changes should follow existing UI-thread patterns: `app.Post(...)` or `runOnUI(...)`
 - State mutations usually need invalidation
 - `sysapi` should stay as the single owner of Win32 file dialog COM interop
-- Markup-created preferred sizes are stored as logical DP values and scaled during layout
-- `Scene.ReloadResources()` re-applies layout, so DPI changes can move and resize markup-created widgets
+- JSON UI frame values are stored as logical DP expressions and resolved during layout
+- DPI changes should continue to reflow JSON absolute layouts
 
 ## Interaction Facts
 
@@ -37,17 +38,18 @@ Windows-only Go UI toolkit on top of Win32. No WebView, no XAML, no app logic.
 - Mouse routing depends on scene hit testing and overlay handling
 - If you change hit testing, check scroll clipping, overlays, and ancestor bounds together
 
-## Markup Facts
+## JSON UI Facts
 
 - Document API: `LoadDocumentFile`, `LoadDocumentString`, `LoadIntoScene`, `LoadFileIntoScene`
-- Legacy API: `LoadHTMLFile`, `LoadHTMLString`
-- `<window><body>...</body></window>` is supported
-- `WindowMeta` can set title, icon, min width, min height
-- `input type="file"` maps to `widgets.FilePicker`
-- File input actions surface full selections through `markup.ActionContext.Paths`
-- File input supports `dialog="open|save|folder"`, `multiple`, `accept`, `filters`, `button-text`, `dialog-title`, and `default-extension`
-- Markup absolute layout supports `left`, `top`, `right`, `bottom`, `width`, `height`, plus `x` / `y`
-- Markup style mapping should target existing widget style structs for button, progress, choice, combo, list, edit, and panel controls
+- Multi-window helpers: `Document.NewApps(...)`, `RunApps(...)`
+- top-level JSON uses `wins`
+- `WindowMeta` can set title, icon, size, and minimum size
+- `type: "file"` maps to `widgets.FilePicker`
+- file actions surface full selections through `jsonui.ActionContext.Paths`
+- absolute `frame` supports `x`, `y`, `r`, `b`, `w`, `h`
+- frame expressions support `100`, `50%`, `50%-100`, `winW-100`, `winH-100`, `parentW-100`, `parentH-100`
+- JSON style mapping should target existing widget style structs for button, progress, choice, combo, list, edit, and panel controls
+- JSON only declares binding relationships; host-side mutation lives in `jsonui.DataSource`
 
 ## Validation
 
@@ -55,18 +57,17 @@ Windows-only Go UI toolkit on top of Win32. No WebView, no XAML, no app logic.
 go test ./...
 go vet ./...
 go run ./cmd/demo
-go run ./cmd/demo_html
+go run ./cmd/demo_json
 ```
-
-`go test` is primarily a build check plus helper regression coverage.
 
 ## Docs To Update
 
 - `README.md`
 - `DEVELOPING.md`
 - `WIDGETS.zh-CN.md`
+- `JSONUI.zh-CN.md`
 - `AI_CHANGELOG.md`
 
 ## Current Open Risk
 
-- Markup absolute positioning is constraint-based for the supported fields above; it is still not a full CSS box model.
+- JSON absolute layout is still constraint-based for the supported `frame` fields above; it is not a full flexbox or CSS box model replacement.

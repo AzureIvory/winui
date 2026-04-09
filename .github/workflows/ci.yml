@@ -86,6 +86,7 @@ jobs:
         shell: powershell
         run: |
           $unformatted = git ls-files '*.go' |
+            Where-Object { Test-Path $_ } |
             ForEach-Object { gofmt -l $_ } |
             Where-Object { $_ }
           if ($unformatted) {
