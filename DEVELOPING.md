@@ -48,6 +48,10 @@ go run ./cmd/demo
 go run ./cmd/demo_html
 ```
 
+GitHub Actions mirrors the build-level checks on Windows in
+`.github/workflows/ci.yml` and runs them with both `CGO_ENABLED=0` and
+`CGO_ENABLED=1`.
+
 Recommended:
 
 - Use both demos after layout, painting, hit-testing, or input-routing changes

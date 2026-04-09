@@ -201,6 +201,10 @@ go run ./cmd/demo
 go run ./cmd/demo_html
 ```
 
+GitHub Actions runs the Windows validation path in `.github/workflows/ci.yml`,
+including `gofmt`, `go test ./...`, and `go vet ./...` with `CGO_ENABLED=0`
+and `CGO_ENABLED=1`.
+
 ## Docs
 
 - [DEVELOPING.md](./DEVELOPING.md): maintainer rules, architecture boundaries, validation
