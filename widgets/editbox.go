@@ -11,7 +11,7 @@ import (
 
 const (
 	// editKeyFlagCtrl 为测试和跨层路由保留的 Control 修饰位。
-	editKeyFlagCtrl uintptr = 1 << 63
+	editKeyFlagCtrl uint64 = 1 << 63
 )
 
 // EditBox 表示支持单行和多行模式的文本输入控件。
@@ -1008,5 +1008,5 @@ func alignTextFormat(align Alignment, base uint32) uint32 {
 }
 
 func keyHasCtrl(key core.KeyEvent) bool {
-	return key.Flags&editKeyFlagCtrl != 0 || keyHasCtrlState()
+	return uint64(key.Flags)&editKeyFlagCtrl != 0 || keyHasCtrlState()
 }
