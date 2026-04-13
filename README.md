@@ -9,6 +9,7 @@ It targets native desktop tools that need explicit control over window lifecycle
 - Windows only
 - Clear `core` / `widgets` / `sysapi` split
 - `RenderModeAuto`: prefer Direct2D, fall back to GDI
+- Direct2D text rendering keeps Windows color fonts such as emoji when `cgo` is enabled
 - Retained widget scene tree with themes and layouts
 - Reusable built-in controls
 - Native open / save / folder dialogs in `sysapi`

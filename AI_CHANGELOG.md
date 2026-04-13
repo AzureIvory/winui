@@ -2,6 +2,14 @@
 
 Only keep behavior here that changes how future edits should be reasoned about.
 
+## 2026-04-13
+
+### Direct2D color fonts
+
+- the Direct2D text path now enables color font rendering for controls and labels that go through `Canvas.DrawText`
+- emoji and other Windows color-font glyphs can render in color when the app is actually using the Direct2D backend
+- `RenderModeAuto` still falls back to GDI when Direct2D is unavailable, and the GDI fallback should still be treated as monochrome text rendering
+
 ## 2026-04-09
 
 ### JSON UI replaces markup

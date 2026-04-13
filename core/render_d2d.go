@@ -23,7 +23,7 @@ int winui_d2d_fill_rect(WinUID2DRenderer* renderer, int32_t left, int32_t top, i
 int winui_d2d_fill_round_rect(WinUID2DRenderer* renderer, int32_t left, int32_t top, int32_t right, int32_t bottom, float radius, uint32_t color, char* err, size_t err_len);
 int winui_d2d_stroke_round_rect(WinUID2DRenderer* renderer, int32_t left, int32_t top, int32_t right, int32_t bottom, float radius, uint32_t color, float width, char* err, size_t err_len);
 int winui_d2d_fill_polygon(WinUID2DRenderer* renderer, const WinUIDPoint* points, int32_t count, uint32_t color, char* err, size_t err_len);
-int winui_d2d_draw_text(WinUID2DRenderer* renderer, const uint16_t* text, const uint16_t* font_family, float font_size, int32_t font_weight, uint32_t color, uint32_t format, int32_t left, int32_t top, int32_t right, int32_t bottom, char* err, size_t err_len);
+int winui_d2d_draw_text(WinUID2DRenderer* renderer, const uint16_t* text, const uint16_t* font_family, float font_size, int32_t font_weight, uint32_t color, uint32_t format, uint32_t options, int32_t left, int32_t top, int32_t right, int32_t bottom, char* err, size_t err_len);
 int winui_d2d_measure_text(WinUID2DRenderer* renderer, const uint16_t* text, const uint16_t* font_family, float font_size, int32_t font_weight, int32_t* width, int32_t* height, char* err, size_t err_len);
 int winui_d2d_draw_icon(WinUID2DRenderer* renderer, uintptr_t hicon, int32_t left, int32_t top, int32_t right, int32_t bottom, char* err, size_t err_len);
 int winui_d2d_draw_bitmap(WinUID2DRenderer* renderer, uintptr_t hbitmap, int32_t left, int32_t top, int32_t right, int32_t bottom, uint8_t alpha, char* err, size_t err_len);
@@ -38,6 +38,15 @@ import (
 
 	"golang.org/x/sys/windows"
 )
+
+const (
+	d2dDrawTextOptionsClip            uint32 = 0x00000001
+	d2dDrawTextOptionsEnableColorFont uint32 = 0x00000004
+)
+
+func d2dTextDrawOptions() uint32 {
+	return d2dDrawTextOptionsClip | d2dDrawTextOptionsEnableColorFont
+}
 
 // d2dRenderer 持有 Go 侧对 Direct2D/DirectWrite/WIC 桥接对象的引用。
 // d2dRenderer 持有 Go 侧对 Direct2D/DirectWrite/WIC 桥接对象的引用。
@@ -191,6 +200,7 @@ func (r *d2dRenderer) drawText(text string, rect Rect, font *Font, color Color, 
 			C.int32_t(fontWeight),
 			C.uint32_t(color),
 			C.uint32_t(format),
+			C.uint32_t(d2dTextDrawOptions()),
 			C.int32_t(rect.X),
 			C.int32_t(rect.Y),
 			C.int32_t(rect.X+rect.W),

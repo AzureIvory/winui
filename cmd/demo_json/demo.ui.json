@@ -18,7 +18,7 @@
           {
             "type": "label",
             "id": "title",
-            "text": "JSON Demo -> WinUI",
+            "text": "JSON Demo -> WinUI😃",
             "style": {
               "size": 18
             },
@@ -227,7 +227,7 @@
               "focusBorder": "#0ea5e9",
               "indicator": "#0ea5e9",
               "check": "#ffffff",
-              "indicatorStyle": "check",
+              "indicatorStyle": "dot",
               "hoverBg": "#f0f9ff",
               "disabledBg": "#f3f4f6",
               "disabledBorder": "#d1d5db",

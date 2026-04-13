@@ -9,6 +9,10 @@
 #include <dwrite.h>
 #include <wincodec.h>
 
+#ifndef D2D1_DRAW_TEXT_OPTIONS_ENABLE_COLOR_FONT
+#define D2D1_DRAW_TEXT_OPTIONS_ENABLE_COLOR_FONT ((D2D1_DRAW_TEXT_OPTIONS)0x00000004)
+#endif
+
 // 该桥接层把 Go 侧的绘制请求映射到 Direct2D、DirectWrite 和 WIC。
 
 typedef struct WinUIDPoint {
@@ -444,7 +448,7 @@ int winui_d2d_fill_polygon(WinUID2DRenderer* renderer, const WinUIDPoint* points
 	return 1;
 }
 
-int winui_d2d_draw_text(WinUID2DRenderer* renderer, const uint16_t* text, const uint16_t* font_family, float font_size, int32_t font_weight, uint32_t color, uint32_t format, int32_t left, int32_t top, int32_t right, int32_t bottom, char* err, size_t err_len) {
+int winui_d2d_draw_text(WinUID2DRenderer* renderer, const uint16_t* text, const uint16_t* font_family, float font_size, int32_t font_weight, uint32_t color, uint32_t format, uint32_t options, int32_t left, int32_t top, int32_t right, int32_t bottom, char* err, size_t err_len) {
 	HRESULT hr;
 	IDWriteTextFormat* text_format = NULL;
 	IDWriteTextLayout* layout = NULL;
@@ -486,7 +490,7 @@ int winui_d2d_draw_text(WinUID2DRenderer* renderer, const uint16_t* text, const 
 
 	origin.x = (FLOAT)left;
 	origin.y = (FLOAT)top;
-	ID2D1DCRenderTarget_DrawTextLayout(renderer->target, origin, layout, (ID2D1Brush*)renderer->brush, D2D1_DRAW_TEXT_OPTIONS_CLIP);
+	ID2D1DCRenderTarget_DrawTextLayout(renderer->target, origin, layout, (ID2D1Brush*)renderer->brush, (D2D1_DRAW_TEXT_OPTIONS)options);
 
 	IDWriteTextLayout_Release(layout);
 	IDWriteTextFormat_Release(text_format);
