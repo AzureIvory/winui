@@ -1,0 +1,1120 @@
+{
+  "wins": [
+    {
+      "id": "main",
+      "title": {
+        "bind": "demo.windowTitle",
+        "default": "WinUI JSON Full Demo"
+      },
+      "icon": "assets/app.ico",
+      "iconSizeDP": 32,
+      "iconPolicy": "auto",
+      "w": 1380,
+      "h": 940,
+      "minW": 1280,
+      "minH": 860,
+      "bg": "#f4f7fb",
+      "root": {
+        "type": "panel",
+        "id": "pageRoot",
+        "layout": "abs",
+        "style": {
+          "bg": "#f4f7fb"
+        },
+        "children": [
+          {
+            "type": "panel",
+            "id": "headerCard",
+            "style": {
+              "bg": "#ffffff",
+              "border": "#d6deea",
+              "borderW": 1,
+              "radius": 18
+            },
+            "frame": {
+              "x": 20,
+              "y": 20,
+              "r": 20,
+              "h": 72
+            },
+            "children": [
+              {
+                "type": "label",
+                "id": "titleLabel",
+                "text": "WinUI JSON Full Demo",
+                "style": {
+                  "size": 24,
+                  "weight": "bold",
+                  "align": "start",
+                  "fg": "#0f172a"
+                },
+                "frame": {
+                  "x": 20,
+                  "y": 12,
+                  "w": 420,
+                  "h": 28
+                }
+              },
+              {
+                "type": "label",
+                "id": "subtitleLabel",
+                "text": "One native JSON page that showcases every public control, palette switching, and API checks.",
+                "style": {
+                  "size": 13,
+                  "align": "start",
+                  "fg": "#64748b"
+                },
+                "frame": {
+                  "x": 20,
+                  "y": 42,
+                  "w": 600,
+                  "h": 18
+                }
+              },
+              {
+                "type": "button",
+                "id": "togglePaletteBtn",
+                "text": "\u5207\u6362\u989c\u8272",
+                "icon": "assets/palette.ico",
+                "iconPos": "left",
+                "frame": {
+                  "r": 332,
+                  "y": 16,
+                  "w": 140,
+                  "h": 40
+                }
+              },
+              {
+                "type": "button",
+                "id": "runAllBtn",
+                "text": "\u6d4b\u8bd5\u6240\u6709\u63a7\u4ef6\u51fd\u6570",
+                "icon": "assets/save.ico",
+                "iconPos": "left",
+                "frame": {
+                  "r": 148,
+                  "y": 16,
+                  "w": 172,
+                  "h": 40
+                }
+              },
+              {
+                "type": "button",
+                "id": "openModalBtn",
+                "text": "Show modal",
+                "frame": {
+                  "r": 20,
+                  "y": 16,
+                  "w": 116,
+                  "h": 40
+                }
+              }
+            ]
+          },
+          {
+            "type": "scrollview",
+            "id": "showcaseScroll",
+            "layout": {
+              "type": "col",
+              "gap": 16,
+              "pad": [0, 0, 16, 0]
+            },
+            "verticalScroll": {
+              "bind": "demo.showVerticalScroll",
+              "default": true
+            },
+            "style": {
+              "bg": "#ffffff",
+              "border": "#d6deea",
+              "borderW": 1,
+              "radius": 18
+            },
+            "frame": {
+              "x": 20,
+              "y": 108,
+              "r": 380,
+              "b": 20
+            },
+            "children": [
+              {
+                "type": "panel",
+                "id": "introCard",
+                "layout": {
+                  "type": "col",
+                  "gap": 10,
+                  "pad": [18, 18, 18, 18]
+                },
+                "style": {
+                  "bg": "#ffffff",
+                  "border": "#d6deea",
+                  "borderW": 1,
+                  "radius": 16
+                },
+                "children": [
+                  {
+                    "type": "label",
+                    "id": "introTitle",
+                    "text": "Coverage",
+                    "style": {
+                      "size": 18,
+                      "weight": "bold",
+                      "align": "start",
+                      "fg": "#0f172a"
+                    }
+                  },
+                  {
+                    "type": "label",
+                    "id": "introBody",
+                    "text": "This page covers Panel, Modal, Label, Button, EditBox, ProgressBar, CheckBox, RadioButton, ComboBox, ListBox, FilePicker, Image, AnimatedImage, and ScrollView.",
+                    "multiline": true,
+                    "wordWrap": true,
+                    "style": {
+                      "align": "start",
+                      "fg": "#475569"
+                    }
+                  },
+                  {
+                    "type": "label",
+                    "id": "paletteValue",
+                    "text": {
+                      "bind": "demo.paletteName",
+                      "default": "Ocean Blue"
+                    },
+                    "style": {
+                      "size": 14,
+                      "weight": "bold",
+                      "align": "start",
+                      "fg": "#2563eb"
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "panel",
+                "id": "buttonsCard",
+                "layout": {
+                  "type": "col",
+                  "gap": 12,
+                  "pad": [18, 18, 18, 18]
+                },
+                "style": {
+                  "bg": "#ffffff",
+                  "border": "#d6deea",
+                  "borderW": 1,
+                  "radius": 16
+                },
+                "children": [
+                  {
+                    "type": "label",
+                    "id": "buttonsTitle",
+                    "text": "Buttons",
+                    "style": {
+                      "size": 18,
+                      "weight": "bold",
+                      "align": "start"
+                    }
+                  },
+                  {
+                    "type": "label",
+                    "id": "buttonsHint",
+                    "text": "Primary, icon-left, icon-top, ghost, and disabled states are all included in one section.",
+                    "multiline": true,
+                    "wordWrap": true,
+                    "style": {
+                      "align": "start",
+                      "fg": "#64748b"
+                    }
+                  },
+                  {
+                    "type": "panel",
+                    "id": "buttonsGrid",
+                    "layout": {
+                      "type": "grid",
+                      "cols": 2,
+                      "gap": 12
+                    },
+                    "children": [
+                      {
+                        "type": "button",
+                        "id": "saveBtn",
+                        "text": "Save changes",
+                        "icon": "assets/save.ico",
+                        "iconPos": "left"
+                      },
+                      {
+                        "type": "button",
+                        "id": "iconTopBtn",
+                        "text": "Top icon",
+                        "icon": "assets/palette.ico",
+                        "iconPos": "top"
+                      },
+                      {
+                        "type": "button",
+                        "id": "ghostBtn",
+                        "text": "Ghost action"
+                      },
+                      {
+                        "type": "button",
+                        "id": "disabledBtn",
+                        "text": "Disabled action",
+                        "enabled": false
+                      }
+                    ]
+                  }
+                ]
+              },              {
+                "type": "panel",
+                "id": "inputCard",
+                "layout": {
+                  "type": "col",
+                  "gap": 12,
+                  "pad": [18, 18, 18, 18]
+                },
+                "style": {
+                  "bg": "#ffffff",
+                  "border": "#d6deea",
+                  "borderW": 1,
+                  "radius": 16
+                },
+                "children": [
+                  {
+                    "type": "label",
+                    "id": "inputTitle",
+                    "text": "Inputs",
+                    "style": {
+                      "size": 18,
+                      "weight": "bold",
+                      "align": "start"
+                    }
+                  },
+                  {
+                    "type": "label",
+                    "id": "inputHint",
+                    "text": "Single-line, password, and read-only multiline input states are all present here.",
+                    "multiline": true,
+                    "wordWrap": true,
+                    "style": {
+                      "align": "start",
+                      "fg": "#64748b"
+                    }
+                  },
+                  {
+                    "type": "input",
+                    "id": "nameInput",
+                    "placeholder": "Project name"
+                  },
+                  {
+                    "type": "input",
+                    "id": "passwordInput",
+                    "input": "password",
+                    "placeholder": "Type a secret"
+                  },
+                  {
+                    "type": "textarea",
+                    "id": "notesBox",
+                    "readOnly": true,
+                    "placeholder": "Notes",
+                    "value": "JSON declares structure and bindings. The host runtime still owns mutations, actions, and API checks."
+                  }
+                ]
+              },
+              {
+                "type": "panel",
+                "id": "choiceCard",
+                "layout": {
+                  "type": "col",
+                  "gap": 12,
+                  "pad": [18, 18, 18, 18]
+                },
+                "style": {
+                  "bg": "#ffffff",
+                  "border": "#d6deea",
+                  "borderW": 1,
+                  "radius": 16
+                },
+                "children": [
+                  {
+                    "type": "label",
+                    "id": "choiceTitle",
+                    "text": "Checks and radios",
+                    "style": {
+                      "size": 18,
+                      "weight": "bold",
+                      "align": "start"
+                    }
+                  },
+                  {
+                    "type": "label",
+                    "id": "choiceHint",
+                    "text": "Checkboxes show both dot and check indicators. Radios include the default dot and explicit check styles.",
+                    "multiline": true,
+                    "wordWrap": true,
+                    "style": {
+                      "align": "start",
+                      "fg": "#64748b"
+                    }
+                  },
+                  {
+                    "type": "checkbox",
+                    "id": "dotStyleBox",
+                    "text": "Dot-style checkbox",
+                    "checked": true,
+                    "style": {
+                      "indicatorStyle": "dot"
+                    }
+                  },
+                  {
+                    "type": "checkbox",
+                    "id": "checkStyleBox",
+                    "text": "Check-style checkbox",
+                    "checked": true,
+                    "style": {
+                      "indicatorStyle": "check"
+                    }
+                  },
+                  {
+                    "type": "checkbox",
+                    "id": "disabledRule",
+                    "text": "Disabled selected rule",
+                    "checked": true,
+                    "enabled": false,
+                    "style": {
+                      "indicatorStyle": "check"
+                    }
+                  },
+                  {
+                    "type": "radio",
+                    "id": "radioDotA",
+                    "group": "notify-mode",
+                    "text": "Notify immediately",
+                    "checked": true
+                  },
+                  {
+                    "type": "radio",
+                    "id": "radioDotB",
+                    "group": "notify-mode",
+                    "text": "Notify later"
+                  },
+                  {
+                    "type": "radio",
+                    "id": "radioCheckA",
+                    "group": "approve-mode",
+                    "text": "Approve with check style",
+                    "checked": true,
+                    "style": {
+                      "indicatorStyle": "check"
+                    }
+                  },
+                  {
+                    "type": "radio",
+                    "id": "radioCheckB",
+                    "group": "approve-mode",
+                    "text": "Escalate with check style",
+                    "style": {
+                      "indicatorStyle": "check"
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "panel",
+                "id": "dataCard",
+                "layout": {
+                  "type": "col",
+                  "gap": 12,
+                  "pad": [18, 18, 18, 18]
+                },
+                "style": {
+                  "bg": "#ffffff",
+                  "border": "#d6deea",
+                  "borderW": 1,
+                  "radius": 16
+                },
+                "children": [
+                  {
+                    "type": "label",
+                    "id": "dataTitle",
+                    "text": "Progress and selection",
+                    "style": {
+                      "size": 18,
+                      "weight": "bold",
+                      "align": "start"
+                    }
+                  },
+                  {
+                    "type": "label",
+                    "id": "dataHint",
+                    "text": "Two progress bars, one combo box, and one list box cover the selection and data-display widgets.",
+                    "multiline": true,
+                    "wordWrap": true,
+                    "style": {
+                      "align": "start",
+                      "fg": "#64748b"
+                    }
+                  },
+                  {
+                    "type": "progress",
+                    "id": "uploadProgress",
+                    "value": 72,
+                    "style": {
+                      "showPct": true
+                    }
+                  },
+                  {
+                    "type": "progress",
+                    "id": "syncProgress",
+                    "value": 38,
+                    "style": {
+                      "showPct": true
+                    }
+                  },
+                  {
+                    "type": "select",
+                    "id": "citySelect",
+                    "placeholder": "Select a city",
+                    "items": [
+                      {
+                        "value": "bj",
+                        "text": "Beijing"
+                      },
+                      {
+                        "value": "sh",
+                        "text": "Shanghai",
+                        "selected": true
+                      },
+                      {
+                        "value": "hz",
+                        "text": "Hangzhou"
+                      },
+                      {
+                        "value": "cd",
+                        "text": "Chengdu"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "listbox",
+                    "id": "cityList",
+                    "items": [
+                      {
+                        "value": "alpha",
+                        "text": "Alpha rollout"
+                      },
+                      {
+                        "value": "beta",
+                        "text": "Beta rollout",
+                        "selected": true
+                      },
+                      {
+                        "value": "release",
+                        "text": "Release rollout"
+                      },
+                      {
+                        "value": "hold",
+                        "text": "Hold rollout",
+                        "disabled": true
+                      }
+                    ]
+                  }
+                ]
+              },              {
+                "type": "panel",
+                "id": "fileCard",
+                "layout": {
+                  "type": "col",
+                  "gap": 12,
+                  "pad": [18, 18, 18, 18]
+                },
+                "style": {
+                  "bg": "#ffffff",
+                  "border": "#d6deea",
+                  "borderW": 1,
+                  "radius": 16
+                },
+                "children": [
+                  {
+                    "type": "label",
+                    "id": "fileTitle",
+                    "text": "File pickers",
+                    "style": {
+                      "size": 18,
+                      "weight": "bold",
+                      "align": "start"
+                    }
+                  },
+                  {
+                    "type": "label",
+                    "id": "fileHint",
+                    "text": "Open, save, folder, and multi-select file pickers are all present in one section.",
+                    "multiline": true,
+                    "wordWrap": true,
+                    "style": {
+                      "align": "start",
+                      "fg": "#64748b"
+                    }
+                  },
+                  {
+                    "type": "file",
+                    "id": "openFile",
+                    "value": "README.md",
+                    "buttonText": "Open file",
+                    "dialogTitle": "Select a source file",
+                    "accept": ["*.md", "*.txt", "*.go"]
+                  },
+                  {
+                    "type": "file",
+                    "id": "saveFile",
+                    "dialog": "save",
+                    "buttonText": "Save report",
+                    "dialogTitle": "Export the API report",
+                    "defaultExt": "txt",
+                    "filters": [
+                      {
+                        "name": "Text Files",
+                        "pattern": "*.txt"
+                      },
+                      {
+                        "name": "Markdown",
+                        "pattern": "*.md"
+                      },
+                      {
+                        "name": "All Files",
+                        "pattern": "*.*"
+                      }
+                    ],
+                    "placeholder": "Choose an output path"
+                  },
+                  {
+                    "type": "file",
+                    "id": "folderPick",
+                    "dialog": "folder",
+                    "buttonText": "Pick folder",
+                    "dialogTitle": "Select a workspace folder",
+                    "placeholder": "No folder selected"
+                  },
+                  {
+                    "type": "file",
+                    "id": "multiFiles",
+                    "multiple": true,
+                    "buttonText": "Pick files",
+                    "dialogTitle": "Select multiple project files",
+                    "accept": ["*.go", "*.json", "*.md"],
+                    "valueSep": " | ",
+                    "placeholder": "No files selected"
+                  }
+                ]
+              },
+              {
+                "type": "panel",
+                "id": "mediaCard",
+                "layout": {
+                  "type": "col",
+                  "gap": 12,
+                  "pad": [18, 18, 18, 18]
+                },
+                "style": {
+                  "bg": "#ffffff",
+                  "border": "#d6deea",
+                  "borderW": 1,
+                  "radius": 16
+                },
+                "children": [
+                  {
+                    "type": "label",
+                    "id": "mediaTitle",
+                    "text": "Images",
+                    "style": {
+                      "size": 18,
+                      "weight": "bold",
+                      "align": "start"
+                    }
+                  },
+                  {
+                    "type": "label",
+                    "id": "mediaHint",
+                    "text": "A static PNG preview and an animated GIF prove that both image controls work from the same JSON document.",
+                    "multiline": true,
+                    "wordWrap": true,
+                    "style": {
+                      "align": "start",
+                      "fg": "#64748b"
+                    }
+                  },
+                  {
+                    "type": "panel",
+                    "id": "mediaGrid",
+                    "layout": {
+                      "type": "grid",
+                      "cols": 2,
+                      "gap": 12
+                    },
+                    "children": [
+                      {
+                        "type": "image",
+                        "id": "previewImage",
+                        "src": "assets/preview.png",
+                        "fit": "contain"
+                      },
+                      {
+                        "type": "animimg",
+                        "id": "spinnerImage",
+                        "src": "assets/spinner.gif",
+                        "autoplay": true,
+                        "fit": "contain"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "panel",
+                "id": "scrollCard",
+                "layout": {
+                  "type": "col",
+                  "gap": 12,
+                  "pad": [18, 18, 18, 18]
+                },
+                "style": {
+                  "bg": "#ffffff",
+                  "border": "#d6deea",
+                  "borderW": 1,
+                  "radius": 16
+                },
+                "children": [
+                  {
+                    "type": "label",
+                    "id": "scrollTitle",
+                    "text": "ScrollView",
+                    "style": {
+                      "size": 18,
+                      "weight": "bold",
+                      "align": "start"
+                    }
+                  },
+                  {
+                    "type": "label",
+                    "id": "scrollHint",
+                    "text": "The outer document uses a vertical ScrollView, and this card contains a horizontal ScrollView for Add, Remove, SetContent, and scrolling APIs.",
+                    "multiline": true,
+                    "wordWrap": true,
+                    "style": {
+                      "align": "start",
+                      "fg": "#64748b"
+                    }
+                  },
+                  {
+                    "type": "scrollview",
+                    "id": "miniScroll",
+                    "layout": {
+                      "type": "row",
+                      "gap": 12,
+                      "pad": [8, 8, 8, 8]
+                    },
+                    "verticalScroll": false,
+                    "horizontalScroll": {
+                      "bind": "demo.showHorizontalScroll",
+                      "default": true
+                    },
+                    "style": {
+                      "bg": "#f8fafc",
+                      "border": "#d6deea",
+                      "borderW": 1,
+                      "radius": 14
+                    },
+                    "children": [
+                      {
+                        "type": "button",
+                        "id": "miniScrollBtn1",
+                        "text": "Card A"
+                      },
+                      {
+                        "type": "button",
+                        "id": "miniScrollBtn2",
+                        "text": "Card B"
+                      },
+                      {
+                        "type": "button",
+                        "id": "miniScrollBtn3",
+                        "text": "Card C"
+                      },
+                      {
+                        "type": "button",
+                        "id": "miniScrollBtn4",
+                        "text": "Card D"
+                      },
+                      {
+                        "type": "button",
+                        "id": "miniScrollBtn5",
+                        "text": "Card E"
+                      },
+                      {
+                        "type": "button",
+                        "id": "miniScrollBtn6",
+                        "text": "Card F"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "panel",
+                "id": "panelCard",
+                "layout": {
+                  "type": "col",
+                  "gap": 12,
+                  "pad": [18, 18, 18, 18]
+                },
+                "style": {
+                  "bg": "#ffffff",
+                  "border": "#d6deea",
+                  "borderW": 1,
+                  "radius": 16
+                },
+                "children": [
+                  {
+                    "type": "label",
+                    "id": "panelTitle",
+                    "text": "Panel and modal hooks",
+                    "style": {
+                      "size": 18,
+                      "weight": "bold",
+                      "align": "start"
+                    }
+                  },
+                  {
+                    "type": "label",
+                    "id": "panelHint",
+                    "text": "Click the panel below to exercise the panel click callback. The modal above is used for backdrop, blur, and dismiss APIs.",
+                    "multiline": true,
+                    "wordWrap": true,
+                    "style": {
+                      "align": "start",
+                      "fg": "#64748b"
+                    }
+                  },
+                  {
+                    "type": "panel",
+                    "id": "interactivePanel",
+                    "layout": {
+                      "type": "col",
+                      "gap": 8,
+                      "pad": [14, 14, 14, 14]
+                    },
+                    "style": {
+                      "bg": "#f8fafc",
+                      "border": "#cdd8e6",
+                      "borderW": 1,
+                      "radius": 14
+                    },
+                    "children": [
+                      {
+                        "type": "label",
+                        "id": "panelInfo",
+                        "text": "Click this surface to update the status area. The function test also exercises Panel.Add, Panel.Remove, and Panel.SetLayout on runtime-created content.",
+                        "multiline": true,
+                        "wordWrap": true,
+                        "style": {
+                          "align": "start",
+                          "fg": "#475569"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },          {
+            "type": "panel",
+            "id": "resultCard",
+            "style": {
+              "bg": "#ffffff",
+              "border": "#d6deea",
+              "borderW": 1,
+              "radius": 18
+            },
+            "frame": {
+              "y": 108,
+              "r": 20,
+              "w": 340,
+              "b": 20
+            },
+            "children": [
+              {
+                "type": "label",
+                "id": "resultsTitle",
+                "text": "API report",
+                "style": {
+                  "size": 18,
+                  "weight": "bold",
+                  "align": "start"
+                },
+                "frame": {
+                  "x": 16,
+                  "y": 16,
+                  "w": 200,
+                  "h": 24
+                }
+              },
+              {
+                "type": "label",
+                "id": "statusCaption",
+                "text": "Status",
+                "style": {
+                  "size": 12,
+                  "align": "start",
+                  "fg": "#64748b"
+                },
+                "frame": {
+                  "x": 16,
+                  "y": 48,
+                  "w": 120,
+                  "h": 18
+                }
+              },
+              {
+                "type": "label",
+                "id": "statusValue",
+                "text": {
+                  "bind": "demo.lastAction",
+                  "default": "Ready"
+                },
+                "multiline": true,
+                "wordWrap": true,
+                "style": {
+                  "align": "start",
+                  "fg": "#334155"
+                },
+                "frame": {
+                  "x": 16,
+                  "y": 68,
+                  "r": 16,
+                  "h": 42
+                }
+              },
+              {
+                "type": "label",
+                "id": "resultsHint",
+                "text": "The button writes the full PASS / FAIL detail report to a local txt file. The UI only shows the latest summary and file path.",
+                "multiline": true,
+                "wordWrap": true,
+                "style": {
+                  "align": "start",
+                  "fg": "#64748b"
+                },
+                "frame": {
+                  "x": 16,
+                  "y": 118,
+                  "r": 16,
+                  "h": 42
+                }
+              },
+              {
+                "type": "label",
+                "id": "reportSummaryCaption",
+                "text": "Last summary",
+                "style": {
+                  "size": 12,
+                  "align": "start",
+                  "fg": "#64748b"
+                },
+                "frame": {
+                  "x": 16,
+                  "y": 174,
+                  "r": 16,
+                  "h": 18
+                }
+              },
+              {
+                "type": "label",
+                "id": "reportSummaryValue",
+                "text": {
+                  "bind": "demo.reportSummary",
+                  "default": "No API check has been run yet."
+                },
+                "multiline": true,
+                "wordWrap": true,
+                "style": {
+                  "align": "start",
+                  "fg": "#334155"
+                },
+                "frame": {
+                  "x": 16,
+                  "y": 194,
+                  "r": 16,
+                  "h": 44
+                }
+              },
+              {
+                "type": "label",
+                "id": "reportPathCaption",
+                "text": "Report file",
+                "style": {
+                  "size": 12,
+                  "align": "start",
+                  "fg": "#64748b"
+                },
+                "frame": {
+                  "x": 16,
+                  "y": 246,
+                  "r": 16,
+                  "h": 18
+                }
+              },
+              {
+                "type": "label",
+                "id": "reportPathValue",
+                "text": {
+                  "bind": "demo.reportPath",
+                  "default": "output\\latest-api-check.txt"
+                },
+                "multiline": true,
+                "wordWrap": true,
+                "style": {
+                  "align": "start",
+                  "fg": "#334155"
+                },
+                "frame": {
+                  "x": 16,
+                  "y": 266,
+                  "r": 16,
+                  "h": 120
+                }
+              }
+            ]
+          },
+          {
+            "type": "modal",
+            "id": "helpModal",
+            "visible": {
+              "bind": "demo.modalVisible",
+              "default": false
+            },
+            "backdrop": {
+              "color": "#0f172a",
+              "opacity": 96,
+              "blur": 8,
+              "dismissOnClick": true
+            },
+            "frame": {
+              "x": 0,
+              "y": 0,
+              "r": 0,
+              "b": 0
+            },
+            "children": [
+              {
+                "type": "panel",
+                "id": "modalSurface",
+                "style": {
+                  "bg": "#ffffff",
+                  "border": "#d6deea",
+                  "borderW": 1,
+                  "radius": 18
+                },
+                "frame": {
+                  "x": "50%-220",
+                  "y": "50%-144",
+                  "w": 440,
+                  "h": 288
+                },
+                "children": [
+                  {
+                    "type": "label",
+                    "id": "modalTitle",
+                    "text": "Native modal panel",
+                    "style": {
+                      "size": 20,
+                      "weight": "bold",
+                      "align": "start"
+                    },
+                    "frame": {
+                      "x": 20,
+                      "y": 20,
+                      "w": 260,
+                      "h": 26
+                    }
+                  },
+                  {
+                    "type": "label",
+                    "id": "modalBody",
+                    "text": "This modal is still declared by JSON. Visibility is bound through the store, while the host wires actions and API tests at runtime.",
+                    "multiline": true,
+                    "wordWrap": true,
+                    "style": {
+                      "align": "start",
+                      "fg": "#475569"
+                    },
+                    "frame": {
+                      "x": 20,
+                      "y": 58,
+                      "w": 392,
+                      "h": 90
+                    }
+                  },
+                  {
+                    "type": "label",
+                    "id": "modalStatus",
+                    "text": "Backdrop click will dismiss the modal.",
+                    "style": {
+                      "align": "start",
+                      "fg": "#64748b"
+                    },
+                    "frame": {
+                      "x": 20,
+                      "y": 166,
+                      "w": 260,
+                      "h": 20
+                    }
+                  },
+                  {
+                    "type": "button",
+                    "id": "closeModalBtn",
+                    "text": "Close modal",
+                    "frame": {
+                      "x": 292,
+                      "y": 220,
+                      "w": 128,
+                      "h": 40
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "aux",
+      "title": "WinUI JSON Aux",
+      "w": 480,
+      "h": 320,
+      "root": {
+        "type": "panel",
+        "id": "auxRoot",
+        "layout": "abs",
+        "style": {
+          "bg": "#f8fafc"
+        },
+        "children": [
+          {
+            "type": "label",
+            "id": "auxLabel",
+            "text": "A second window exists so the demo can exercise jsonui Window.Attach, Window.Detach, and document window lookup helpers.",
+            "multiline": true,
+            "wordWrap": true,
+            "style": {
+              "align": "start",
+              "fg": "#334155"
+            },
+            "frame": {
+              "x": 20,
+              "y": 20,
+              "r": 20,
+              "h": 60
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

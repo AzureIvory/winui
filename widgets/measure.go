@@ -78,7 +78,7 @@ func measureFlexNatural(children []Widget, axis Axis, gap int32, padding Insets,
 		if child == nil {
 			continue
 		}
-		size := preferredSizeOf(child)
+		size := measureWidgetNatural(child)
 		childMain := size.Width
 		childCross := size.Height
 		if axis == AxisVertical {
@@ -130,7 +130,7 @@ func measureGridNatural(children []Widget, layout GridLayout) core.Size {
 		if child == nil {
 			continue
 		}
-		size := preferredSizeOf(child)
+		size := measureWidgetNatural(child)
 		row := index / columns
 		col := index % columns
 		for len(rowHeights) <= row {
@@ -173,7 +173,7 @@ func measureFormNatural(children []Widget, layout FormLayout) core.Size {
 		if child == nil {
 			continue
 		}
-		size := preferredSizeOf(child)
+		size := measureWidgetNatural(child)
 		if index%2 == 0 {
 			if size.Width > labelWidth {
 				labelWidth = size.Width
@@ -208,7 +208,7 @@ func measureAbsoluteNatural(children []Widget) core.Size {
 		if child == nil {
 			continue
 		}
-		size := preferredSizeOf(child)
+		size := measureWidgetNatural(child)
 		bounds := child.Bounds()
 		x := bounds.X
 		y := bounds.Y

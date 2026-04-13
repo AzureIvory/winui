@@ -4,6 +4,22 @@ Only keep behavior here that changes how future edits should be reasoned about.
 
 ## 2026-04-13
 
+### Full JSON demo and ScrollView DSL support
+
+- `widgets/jsonui` now supports `type: "scrollview"`, so nested scroll containers can be declared directly in JSON documents
+- `cmd/demo_json_full` is the canonical high-coverage native demo for every currently JSON-declarable public widget, palette switching, and runtime API checks
+- the full demo keeps its action logic in host Go code while JSON continues to describe structure, styles, bindings, and window metadata
+- container layouts now measure nested panels and scroll views by natural size instead of treating them as zero-sized unless they had an explicit preferred size
+- the full demo writes detailed API check output to `cmd/demo_json_full/output/latest-api-check.txt`, while the right-side summary panel only shows status and the saved report path
+- `ScrollView` now paints lightweight overlay scrollbars and applies clip rectangles on both GDI and Direct2D paint paths, so scrolled content stays inside the viewport
+- JSON buttons with `iconPos: "top"` now receive a taller default preferred height so the icon and label can remain vertically centered without collapsing
+
+### Check-style indicators use tinted selection
+
+- `indicatorStyle: "check"` now renders with a faint tint derived from each control's own `indicator` color instead of a fixed solid fill
+- checkbox and explicit check-style radio button rendering are unified around the same line-based check mark
+- when `check` is left white, the rendered check mark falls back to the `indicator` color so the mark stays readable on the faint tint
+
 ### Direct2D color fonts
 
 - the Direct2D text path now enables color font rendering for controls and labels that go through `Canvas.DrawText`

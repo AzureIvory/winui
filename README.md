@@ -19,9 +19,10 @@ It targets native desktop tools that need explicit control over window lifecycle
 - JSON text inputs with `readOnly`, `multiline`, wrapping, and scroll flags
 - Declarative multiline `label` with width-constrained auto-height measurement
 - Declarative `modal` / backdrop support with Direct2D-only blur tint
+- Declarative `scrollview` for JSON-authored nested scrolling surfaces
 - Runtime lookup helpers such as `Window.FindWidget`, `Document.FindWidget`, and `widgets.FindByID`
 - Single-window and multi-window helpers
-- Demo apps in `cmd/demo` and `cmd/demo_json`
+- Demo apps in `cmd/demo`, `cmd/demo_json`, and `cmd/demo_json_full`
 
 ## Packages
 
@@ -31,6 +32,7 @@ It targets native desktop tools that need explicit control over window lifecycle
 - `widgets/jsonui/`: JSON schema loader, bindings, expressions, multi-window helpers
 - `cmd/demo/`: manual widget regression demo
 - `cmd/demo_json/`: manual JSON UI regression demo
+- `cmd/demo_json_full/`: full-surface JSON UI demo with palette switching and API checks
 
 ## Quick Start
 
@@ -195,6 +197,7 @@ JSON UI:
 ```powershell
 go run ./cmd/demo
 go run ./cmd/demo_json
+go run ./cmd/demo_json_full
 ```
 
 ## Validation
@@ -204,6 +207,7 @@ go test ./...
 go vet ./...
 go run ./cmd/demo
 go run ./cmd/demo_json
+go run ./cmd/demo_json_full
 ```
 
 GitHub Actions mirrors the Windows validation path in `.github/workflows/ci.yml` with `gofmt`, `go test ./...`, and `go vet ./...` under both `CGO_ENABLED=0` and `CGO_ENABLED=1`.

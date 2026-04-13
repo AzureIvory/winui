@@ -39,7 +39,7 @@ func (AbsoluteLayout) Apply(parent Rect, children []Widget) {
 		if !ok {
 			continue
 		}
-		size := preferredSizeOf(child)
+		size := measureWidgetNatural(child)
 		width := size.Width
 		height := size.Height
 		if data.HasWidth {
@@ -329,7 +329,7 @@ func (l GridLayout) Apply(parent Rect, children []Widget) {
 			rowCount = row + data.RowSpan
 		}
 
-		size := preferredSizeOf(child)
+		size := measureWidgetNatural(child)
 		items = append(items, gridItem{
 			widget: child,
 			data:   data,
@@ -419,7 +419,7 @@ func (l FormLayout) Apply(parent Rect, children []Widget) {
 			if children[index] == nil {
 				continue
 			}
-			width := max32(0, preferredSizeOf(children[index]).Width)
+			width := max32(0, measureWidgetNatural(children[index]).Width)
 			if width > labelWidth {
 				labelWidth = width
 			}
@@ -587,7 +587,7 @@ func applyFlexLayout(parent Rect, children []Widget, opts flexOptions) {
 		if child == nil {
 			continue
 		}
-		size := preferredSizeOf(child)
+		size := measureWidgetNatural(child)
 		if opts.axis == AxisVertical {
 			size = preferredSizeForWidth(child, availableCross)
 		}
@@ -693,7 +693,7 @@ func preferredSizeForWidth(widget Widget, width int32) core.Size {
 			return sized.preferredSizeForWidth(width)
 		}
 	}
-	return preferredSizeOf(widget)
+	return measureWidgetNatural(widget)
 }
 
 // gridItem 表示网格布局中的单个排版项。

@@ -617,6 +617,40 @@ int winui_d2d_draw_bitmap(WinUID2DRenderer* renderer, uintptr_t hbitmap, int32_t
 	return 1;
 }
 
+int winui_d2d_push_clip_rect(WinUID2DRenderer* renderer, int32_t left, int32_t top, int32_t right, int32_t bottom, char* err, size_t err_len) {
+	HRESULT hr;
+	D2D1_RECT_F clip;
+
+	winui_clear_error(err, err_len);
+
+	if (renderer == NULL) {
+		winui_set_error(err, err_len, "PushAxisAlignedClip", E_POINTER);
+		return 0;
+	}
+
+	hr = winui_ensure_target(renderer);
+	if (FAILED(hr)) {
+		winui_set_error(err, err_len, "PushAxisAlignedClip", hr);
+		return 0;
+	}
+
+	clip = winui_rect(left, top, right, bottom);
+	ID2D1DCRenderTarget_PushAxisAlignedClip(renderer->target, &clip, D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
+	return 1;
+}
+
+int winui_d2d_pop_clip_rect(WinUID2DRenderer* renderer, char* err, size_t err_len) {
+	winui_clear_error(err, err_len);
+
+	if (renderer == NULL || renderer->target == NULL) {
+		winui_set_error(err, err_len, "PopAxisAlignedClip", E_POINTER);
+		return 0;
+	}
+
+	ID2D1DCRenderTarget_PopAxisAlignedClip(renderer->target);
+	return 1;
+}
+
 int winui_d2d_flush(WinUID2DRenderer* renderer, char* err, size_t err_len) {
 	HRESULT hr;
 

@@ -2,7 +2,11 @@
 
 package widgets
 
-import "github.com/AzureIvory/winui/core"
+import (
+	"math"
+
+	"github.com/AzureIvory/winui/core"
+)
 
 // CheckBox 表示可切换状态的多选框控件。
 // CheckBox 表示可切换状态的多选框控件。
@@ -207,7 +211,16 @@ func (c *CheckBox) Paint(ctx *PaintCtx) {
 
 	_ = ctx.FillRoundRect(boxRect, ctx.DP(style.CornerRadius), background)
 	if c.Checked {
-		_ = ctx.FillRoundRect(boxRect, ctx.DP(style.CornerRadius), style.IndicatorColor)
+		if resolveChoiceIndicatorStyle(style, false) == ChoiceIndicatorCheck {
+			borderColor = style.IndicatorColor
+			_ = ctx.FillRoundRect(
+				boxRect,
+				ctx.DP(style.CornerRadius),
+				choiceIndicatorCheckFill(background, style.IndicatorColor),
+			)
+		} else {
+			_ = ctx.FillRoundRect(boxRect, ctx.DP(style.CornerRadius), style.IndicatorColor)
+		}
 		drawChoiceMark(ctx, boxRect, style, false)
 	}
 	_ = ctx.StrokeRoundRect(boxRect, ctx.DP(style.CornerRadius), borderColor, 1)
@@ -614,7 +627,12 @@ func (r *RadioButton) Paint(ctx *PaintCtx) {
 	_ = ctx.FillRoundRect(boxRect, radius, background)
 	if r.Checked {
 		if resolveChoiceIndicatorStyle(style, true) == ChoiceIndicatorCheck {
-			_ = ctx.FillRoundRect(boxRect, radius, style.IndicatorColor)
+			borderColor = style.IndicatorColor
+			_ = ctx.FillRoundRect(
+				boxRect,
+				radius,
+				choiceIndicatorCheckFill(background, style.IndicatorColor),
+			)
 		}
 		drawChoiceMark(ctx, boxRect, style, true)
 	}
@@ -850,7 +868,7 @@ func resolveChoiceIndicatorStyle(style ChoiceStyle, isRadio bool) ChoiceIndicato
 func drawChoiceMark(ctx *PaintCtx, boxRect Rect, style ChoiceStyle, isRadio bool) {
 	switch resolveChoiceIndicatorStyle(style, isRadio) {
 	case ChoiceIndicatorCheck:
-		drawChoiceCheck(ctx, boxRect, style.CheckColor)
+		drawChoiceCheck(ctx, boxRect, resolveChoiceCheckMarkColor(style))
 	default:
 		color := style.CheckColor
 		if isRadio {
@@ -881,35 +899,42 @@ func drawChoiceCheck(ctx *PaintCtx, boxRect Rect, color core.Color) {
 		return
 	}
 
-	segments := []Rect{
-		{
-			X: boxRect.X + boxRect.W/5,
-			Y: boxRect.Y + boxRect.H/2,
-			W: max32(1, boxRect.W/6),
-			H: max32(1, boxRect.H/4),
-		},
-		{
-			X: boxRect.X + boxRect.W/3,
-			Y: boxRect.Y + boxRect.H/2 + boxRect.H/6,
-			W: max32(1, boxRect.W/6),
-			H: max32(1, boxRect.H/5),
-		},
-		{
-			X: boxRect.X + boxRect.W/2,
-			Y: boxRect.Y + boxRect.H/3,
-			W: max32(1, boxRect.W/6),
-			H: max32(1, boxRect.H/2),
-		},
-		{
-			X: boxRect.X + boxRect.W*2/3,
-			Y: boxRect.Y + boxRect.H/5,
-			W: max32(1, boxRect.W/6),
-			H: max32(1, boxRect.H/2),
-		},
+	canvas := ctx.Canvas()
+	if canvas == nil {
+		return
 	}
-	for _, segment := range segments {
-		_ = ctx.FillRect(segment, color)
+
+	stroke := max32(2, min32(boxRect.W, boxRect.H)/8)
+	start := core.Point{
+		X: boxRect.X + boxRect.W/5,
+		Y: boxRect.Y + boxRect.H*11/20,
 	}
+	mid := core.Point{
+		X: boxRect.X + boxRect.W*9/20,
+		Y: boxRect.Y + boxRect.H*7/10,
+	}
+	end := core.Point{
+		X: boxRect.X + boxRect.W*4/5,
+		Y: boxRect.Y + boxRect.H*3/10,
+	}
+
+	for _, quad := range [][]core.Point{
+		choiceStrokeQuad(start, mid, stroke),
+		choiceStrokeQuad(mid, end, stroke),
+	} {
+		if len(quad) == 0 {
+			continue
+		}
+		_ = canvas.FillPolygon(quad, color)
+	}
+
+	joint := Rect{
+		X: mid.X - stroke/2,
+		Y: mid.Y - stroke/2,
+		W: max32(1, stroke),
+		H: max32(1, stroke),
+	}
+	_ = ctx.FillRoundRect(joint, max32(1, stroke/2), color)
 }
 
 // mergeChoiceStyle 把多选框或单选按钮样式覆盖合并到基础样式中。
@@ -961,4 +986,72 @@ func mergeChoiceStyle(base, override ChoiceStyle) ChoiceStyle {
 		base.IndicatorGapDP = override.IndicatorGapDP
 	}
 	return base
+}
+
+func choiceIndicatorCheckFill(background, indicator core.Color) core.Color {
+	return blendChoiceColor(background, indicator, 40)
+}
+
+func resolveChoiceCheckMarkColor(style ChoiceStyle) core.Color {
+	if style.CheckColor == 0 || isChoiceNearWhite(style.CheckColor) {
+		return style.IndicatorColor
+	}
+	return style.CheckColor
+}
+
+func blendChoiceColor(background, indicator core.Color, alpha byte) core.Color {
+	bgR, bgG, bgB := choiceColorChannels(background)
+	fgR, fgG, fgB := choiceColorChannels(indicator)
+
+	return core.RGB(
+		blendChoiceChannel(bgR, fgR, alpha),
+		blendChoiceChannel(bgG, fgG, alpha),
+		blendChoiceChannel(bgB, fgB, alpha),
+	)
+}
+
+func blendChoiceChannel(background, indicator, alpha byte) byte {
+	const scale = 255
+
+	value := int(background)*(scale-int(alpha)) + int(indicator)*int(alpha)
+	return byte((value + scale/2) / scale)
+}
+
+func choiceColorChannels(color core.Color) (byte, byte, byte) {
+	return byte(color), byte(color >> 8), byte(color >> 16)
+}
+
+func isChoiceNearWhite(color core.Color) bool {
+	r, g, b := choiceColorChannels(color)
+	return r >= 240 && g >= 240 && b >= 240
+}
+
+func choiceStrokeQuad(from, to core.Point, thickness int32) []core.Point {
+	if thickness <= 0 {
+		return nil
+	}
+
+	dx := float64(to.X - from.X)
+	dy := float64(to.Y - from.Y)
+	length := math.Hypot(dx, dy)
+	if length == 0 {
+		return nil
+	}
+
+	offsetX := dy / length * float64(thickness) / 2
+	offsetY := -dx / length * float64(thickness) / 2
+
+	return []core.Point{
+		choiceStrokePoint(float64(from.X)+offsetX, float64(from.Y)+offsetY),
+		choiceStrokePoint(float64(to.X)+offsetX, float64(to.Y)+offsetY),
+		choiceStrokePoint(float64(to.X)-offsetX, float64(to.Y)-offsetY),
+		choiceStrokePoint(float64(from.X)-offsetX, float64(from.Y)-offsetY),
+	}
+}
+
+func choiceStrokePoint(x, y float64) core.Point {
+	return core.Point{
+		X: int32(math.Round(x)),
+		Y: int32(math.Round(y)),
+	}
 }

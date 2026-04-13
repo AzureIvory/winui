@@ -1,0 +1,365 @@
+=== Widget API Check ===
+
+## Panel
+[PASS] Panel.Add - children=2
+[PASS] Panel.AddAll - children=3
+[PASS] Panel.Bounds - (38,2410,944,28)
+[PASS] Panel.Children - count=1
+[PASS] Panel.Enabled - true
+[PASS] Panel.HitTest - inside=true
+[PASS] Panel.ID - interactivePanel
+[PASS] Panel.Layout - widgets.ColumnLayout
+[PASS] Panel.LayoutData - <nil>
+[PASS] Panel.OnEvent - click dispatched
+[PASS] Panel.Paint - paint(nil)
+[PASS] Panel.Remove - panel-remove-temp
+[PASS] Panel.SetBounds - -> (24,24,260,96)
+[PASS] Panel.SetEnabled - -> false
+[PASS] Panel.SetLayout - ColumnLayout
+[PASS] Panel.SetLayoutData - demo-layout-marker
+[PASS] Panel.SetOnClick - callback invoked
+[PASS] Panel.SetStyle - bg=0x00fafafa
+[PASS] Panel.SetVisible - -> false
+[PASS] Panel.Visible - true
+
+## Modal
+[PASS] Modal.Add - children=2
+[PASS] Modal.AddAll - children=3
+[PASS] Modal.BackdropColor - 0x002a170f
+[PASS] Modal.BackdropOpacity - 96
+[PASS] Modal.BlurRadiusDP - 8
+[PASS] Modal.Bounds - (0,0,1380,940)
+[PASS] Modal.Children - count=1
+[PASS] Modal.Close - closed
+[PASS] Modal.DismissOnBackdrop - true
+[PASS] Modal.Enabled - true
+[FAIL] Modal.HitTest - hit test returned false
+[PASS] Modal.ID - helpModal
+[PASS] Modal.Layout - jsonui.absoluteLayout
+[PASS] Modal.LayoutData - jsonui.absoluteLayoutData
+[PASS] Modal.OnEvent - handled=false
+[PASS] Modal.Paint - paint(nil)
+[PASS] Modal.Remove - panel-remove-temp
+[PASS] Modal.SetBackdropColor - updated
+[PASS] Modal.SetBackdropOpacity - 72
+[PASS] Modal.SetBlurRadiusDP - 4
+[PASS] Modal.SetBounds - -> (0,0,440,320)
+[PASS] Modal.SetDismissOnBackdrop - -> false
+[PASS] Modal.SetEnabled - -> false
+[PASS] Modal.SetLayout - ColumnLayout
+[PASS] Modal.SetLayoutData - demo-layout-marker
+[PASS] Modal.SetOnClick - callback invoked
+[PASS] Modal.SetOnDismiss - callback invoked
+[PASS] Modal.SetStyle - bg=0x00fafafa
+[PASS] Modal.SetVisible - -> true
+[PASS] Modal.Visible - false
+
+## Label
+[PASS] Label.Bounds - (38,2410,944,40)
+[PASS] Label.Enabled - true
+[PASS] Label.HitTest - inside=true
+[PASS] Label.ID - panelInfo
+[PASS] Label.LayoutData - <nil>
+[PASS] Label.Multiline - true
+[PASS] Label.OnEvent - handled=false
+[PASS] Label.Paint - paint(nil)
+[PASS] Label.SetBounds - -> (20,20,260,72)
+[PASS] Label.SetEnabled - -> false
+[PASS] Label.SetLayoutData - demo-layout-marker
+[PASS] Label.SetMultiline - -> false
+[PASS] Label.SetStyle - updated
+[PASS] Label.SetText - Label.SetText
+[PASS] Label.SetVisible - -> false
+[PASS] Label.SetWordWrap - -> false
+[PASS] Label.Visible - true
+[PASS] Label.WordWrap - true
+
+## Button
+[PASS] Button.Bounds - (38,326,466,68)
+[PASS] Button.Close - closed
+[PASS] Button.Enabled - true
+[PASS] Button.HitTest - inside=true
+[PASS] Button.ID - saveBtn
+[PASS] Button.Kind - 2
+[PASS] Button.LayoutData - <nil>
+[PASS] Button.OnEvent - handled=false
+[PASS] Button.Paint - paint(nil)
+[PASS] Button.SetBounds - -> (20,20,132,40)
+[PASS] Button.SetEnabled - -> false
+[PASS] Button.SetIcon - palette.ico
+[PASS] Button.SetKind - BtnTop
+[PASS] Button.SetLayoutData - demo-layout-marker
+[PASS] Button.SetOnClick - callback invoked
+[PASS] Button.SetStyle - updated
+[PASS] Button.SetText - Button.SetText
+[PASS] Button.SetVisible - -> false
+[PASS] Button.Visible - true
+
+## EditBox
+[PASS] EditBox.AcceptReturn - true
+[PASS] EditBox.Bounds - (38,642,944,96)
+[PASS] EditBox.Close - closed
+[PASS] EditBox.Enabled - true
+[PASS] EditBox.HitTest - inside=true
+[PASS] EditBox.HorizontalScroll - false
+[PASS] EditBox.ID - notesBox
+[PASS] EditBox.LayoutData - <nil>
+[PASS] EditBox.LineCount - 3
+[PASS] EditBox.Multiline - true
+[PASS] EditBox.OnEvent - handled=false
+[PASS] EditBox.Paint - paint(nil)
+[PASS] EditBox.Password - false
+[PASS] EditBox.ScrollToCaret - called
+[PASS] EditBox.SetAcceptReturn - -> false
+[PASS] EditBox.SetBounds - -> (20,20,320,110)
+[PASS] EditBox.SetEnabled - -> false
+[PASS] EditBox.SetHorizontalScroll - -> true
+[PASS] EditBox.SetLayoutData - demo-layout-marker
+[PASS] EditBox.SetMultiline - -> false
+[PASS] EditBox.SetOnChange - callback assigned
+[PASS] EditBox.SetOnSubmit - callback assigned
+[PASS] EditBox.SetPassword - -> true
+[PASS] EditBox.SetPlaceholder - placeholder
+[PASS] EditBox.SetReadOnly - -> false
+[PASS] EditBox.SetStyle - updated
+[PASS] EditBox.SetText - 3 lines
+[PASS] EditBox.SetVerticalScroll - -> false
+[PASS] EditBox.SetVisible - -> false
+[PASS] EditBox.SetWordWrap - -> true
+[PASS] EditBox.TextValue - JSON declares structure and bindings. The host runtime still owns mutations, actions, and API checks.
+[PASS] EditBox.VerticalScroll - true
+[PASS] EditBox.Visible - true
+[PASS] EditBox.WordWrap - false
+
+## CheckBox
+[PASS] CheckBox.Bounds - (38,882,944,28)
+[PASS] CheckBox.Close - closed
+[PASS] CheckBox.Enabled - true
+[PASS] CheckBox.HitTest - inside=true
+[PASS] CheckBox.ID - checkStyleBox
+[PASS] CheckBox.IsChecked - true
+[PASS] CheckBox.LayoutData - <nil>
+[PASS] CheckBox.OnEvent - handled=false
+[PASS] CheckBox.Paint - paint(nil)
+[PASS] CheckBox.SetBounds - -> (20,20,220,28)
+[PASS] CheckBox.SetChecked - -> false
+[PASS] CheckBox.SetEnabled - -> false
+[PASS] CheckBox.SetLayoutData - demo-layout-marker
+[PASS] CheckBox.SetOnChange - callback invoked
+[PASS] CheckBox.SetStyle - updated
+[PASS] CheckBox.SetText - CheckBox.SetText
+[PASS] CheckBox.SetVisible - -> false
+[PASS] CheckBox.Visible - true
+
+## RadioButton
+[PASS] RadioButton.Bounds - (38,1042,944,28)
+[PASS] RadioButton.Close - closed
+[PASS] RadioButton.Enabled - true
+[PASS] RadioButton.HitTest - inside=true
+[PASS] RadioButton.ID - radioCheckA
+[PASS] RadioButton.IsChecked - true
+[PASS] RadioButton.LayoutData - <nil>
+[PASS] RadioButton.OnEvent - handled=false
+[PASS] RadioButton.Paint - paint(nil)
+[PASS] RadioButton.SetBounds - -> (20,20,220,28)
+[PASS] RadioButton.SetChecked - checked
+[PASS] RadioButton.SetEnabled - -> false
+[PASS] RadioButton.SetGroup - function-tests
+[PASS] RadioButton.SetLayoutData - demo-layout-marker
+[PASS] RadioButton.SetOnChange - callback invoked
+[PASS] RadioButton.SetStyle - updated
+[PASS] RadioButton.SetText - RadioButton.SetText
+[PASS] RadioButton.SetVisible - -> false
+[PASS] RadioButton.Visible - true
+
+## ComboBox
+[PASS] ComboBox.Bounds - (38,1286,944,36)
+[PASS] ComboBox.Close - closed
+[PASS] ComboBox.Enabled - true
+[PASS] ComboBox.HitTest - inside=true
+[PASS] ComboBox.ID - citySelect
+[PASS] ComboBox.Items - 4
+[PASS] ComboBox.LayoutData - <nil>
+[PASS] ComboBox.OnEvent - handled=false
+[PASS] ComboBox.Paint - paint(nil)
+[FAIL] ComboBox.PaintOverlay - missing invoker
+[PASS] ComboBox.SelectedIndex - 1
+[PASS] ComboBox.SelectedItem - sh
+[PASS] ComboBox.SetBounds - -> (20,20,220,36)
+[PASS] ComboBox.SetEnabled - -> false
+[PASS] ComboBox.SetItems - 2 items
+[PASS] ComboBox.SetLayoutData - demo-layout-marker
+[PASS] ComboBox.SetOnChange - callback assigned
+[PASS] ComboBox.SetPlaceholder - ComboBox.SetPlaceholder
+[PASS] ComboBox.SetSelected - index=1
+[PASS] ComboBox.SetStyle - updated
+[PASS] ComboBox.SetVisible - -> false
+[PASS] ComboBox.Visible - true
+
+## ListBox
+[PASS] ListBox.Bounds - (38,1334,944,160)
+[PASS] ListBox.ClearSelection - cleared
+[PASS] ListBox.Enabled - true
+[PASS] ListBox.HitTest - inside=true
+[PASS] ListBox.ID - cityList
+[PASS] ListBox.Items - 4
+[PASS] ListBox.LayoutData - <nil>
+[PASS] ListBox.OnEvent - handled=false
+[PASS] ListBox.Paint - paint(nil)
+[PASS] ListBox.SelectedIndex - 1
+[PASS] ListBox.SelectedItem - beta
+[PASS] ListBox.SetBounds - -> (20,20,220,160)
+[PASS] ListBox.SetEnabled - -> false
+[PASS] ListBox.SetItems - 3 items
+[PASS] ListBox.SetLayoutData - demo-layout-marker
+[PASS] ListBox.SetOnActivate - callback assigned
+[PASS] ListBox.SetOnChange - callback assigned
+[PASS] ListBox.SetOnRightClick - callback assigned
+[PASS] ListBox.SetSelected - index=1
+[PASS] ListBox.SetStyle - updated
+[PASS] ListBox.SetVisible - -> false
+[PASS] ListBox.Visible - true
+
+## FilePicker
+[PASS] FilePicker.Add - children=3
+[PASS] FilePicker.AddAll - children=4
+[PASS] FilePicker.Bounds - (38,1598,944,36)
+[PASS] FilePicker.Children - count=2
+[PASS] FilePicker.DialogOptions - open
+[PASS] FilePicker.Enabled - true
+[PASS] FilePicker.HitTest - inside=true
+[PASS] FilePicker.ID - openFile
+[PASS] FilePicker.Layout - widgets.RowLayout
+[PASS] FilePicker.LayoutData - <nil>
+[PASS] FilePicker.OnEvent - handled=false
+[PASS] FilePicker.Paint - paint(nil)
+[PASS] FilePicker.Paths - README.md
+[PASS] FilePicker.Remove - panel-remove-temp
+[PASS] FilePicker.SetBounds - -> (20,20,360,36)
+[PASS] FilePicker.SetButtonStyle - applied
+[PASS] FilePicker.SetButtonText - updated
+[PASS] FilePicker.SetDialogOptions - save
+[PASS] FilePicker.SetEnabled - -> false
+[PASS] FilePicker.SetFieldStyle - applied
+[PASS] FilePicker.SetLayout - ColumnLayout
+[PASS] FilePicker.SetLayoutData - demo-layout-marker
+[PASS] FilePicker.SetOnChange - callback assigned
+[PASS] FilePicker.SetOnClick - callback invoked
+[PASS] FilePicker.SetPaths - README.md,go.mod
+[PASS] FilePicker.SetPlaceholder - updated
+[PASS] FilePicker.SetSeparator - " | "
+[PASS] FilePicker.SetStyle - bg=0x00fafafa
+[PASS] FilePicker.SetVisible - -> false
+[PASS] FilePicker.Visible - true
+
+## Image
+[PASS] Image.Bitmap - true
+[PASS] Image.Bounds - (38,1882,514,120)
+[PASS] Image.Close - closed and restored
+[PASS] Image.Enabled - true
+[PASS] Image.HitTest - inside=true
+[PASS] Image.ID - previewImage
+[PASS] Image.LayoutData - <nil>
+[PASS] Image.LoadBytes - 128x96
+[PASS] Image.NaturalSize - 128x96
+[PASS] Image.OnEvent - handled=false
+[PASS] Image.Paint - paint(nil)
+[PASS] Image.SetBitmap - non-owned bitmap
+[PASS] Image.SetBitmapOwned - owned bitmap
+[PASS] Image.SetBounds - -> (20,20,160,120)
+[PASS] Image.SetEnabled - -> false
+[PASS] Image.SetLayoutData - demo-layout-marker
+[PASS] Image.SetOpacity - 180
+[PASS] Image.SetScaleMode - ImageScaleCenter
+[PASS] Image.SetVisible - -> false
+[PASS] Image.Visible - true
+
+## AnimatedImage
+[PASS] AnimatedImage.Bounds - (741,1882,241,120)
+[PASS] AnimatedImage.Close - closed and restored
+[PASS] AnimatedImage.CurrentFrame - 0
+[PASS] AnimatedImage.Enabled - true
+[PASS] AnimatedImage.HitTest - inside=true
+[PASS] AnimatedImage.ID - spinnerImage
+[PASS] AnimatedImage.LayoutData - <nil>
+[PASS] AnimatedImage.LoadGIF - 215x80
+[PASS] AnimatedImage.NaturalSize - 215x80
+[PASS] AnimatedImage.OnEvent - handled=false
+[PASS] AnimatedImage.Paint - paint(nil)
+[PASS] AnimatedImage.SetBounds - -> (20,20,96,96)
+[PASS] AnimatedImage.SetEnabled - -> false
+[PASS] AnimatedImage.SetFrames - frames=2
+[PASS] AnimatedImage.SetFramesOwned - frames=2
+[PASS] AnimatedImage.SetLayoutData - demo-layout-marker
+[PASS] AnimatedImage.SetOpacity - 190
+[PASS] AnimatedImage.SetPlaying - false -> true
+[PASS] AnimatedImage.SetScaleMode - ImageScaleCenter
+[PASS] AnimatedImage.SetVisible - -> false
+[PASS] AnimatedImage.Visible - true
+
+## ProgressBar
+[PASS] ProgressBar.Bounds - (38,1214,944,24)
+[PASS] ProgressBar.Enabled - true
+[PASS] ProgressBar.HitTest - inside=true
+[PASS] ProgressBar.ID - uploadProgress
+[PASS] ProgressBar.LayoutData - <nil>
+[PASS] ProgressBar.OnEvent - handled=false
+[PASS] ProgressBar.Paint - paint(nil)
+[PASS] ProgressBar.SetBounds - -> (20,20,240,24)
+[PASS] ProgressBar.SetEnabled - -> false
+[PASS] ProgressBar.SetLayoutData - demo-layout-marker
+[PASS] ProgressBar.SetStyle - updated
+[PASS] ProgressBar.SetValue - 61
+[PASS] ProgressBar.SetVisible - -> false
+[PASS] ProgressBar.Value - 72
+[PASS] ProgressBar.Visible - true
+
+## ScrollView
+[PASS] ScrollView.Add - children=1
+[PASS] ScrollView.Bounds - (38,2126,944,200)
+[PASS] ScrollView.Children - 1
+[PASS] ScrollView.Content - *widgets.Panel
+[PASS] ScrollView.Enabled - true
+[PASS] ScrollView.HitTest - inside=true
+[PASS] ScrollView.HorizontalScroll - true
+[PASS] ScrollView.ID - miniScroll
+[PASS] ScrollView.LayoutData - <nil>
+[PASS] ScrollView.OnEvent - handled=false
+[PASS] ScrollView.Paint - paint(nil)
+[PASS] ScrollView.Remove - scroll-remove-temp
+[PASS] ScrollView.ScrollBy - 20,0
+[PASS] ScrollView.ScrollOffset - 20,0
+[PASS] ScrollView.ScrollTo - 10,0
+[PASS] ScrollView.SetBounds - -> (20,20,280,80)
+[PASS] ScrollView.SetContent - replacement panel
+[PASS] ScrollView.SetEnabled - -> false
+[PASS] ScrollView.SetHorizontalScroll - -> false
+[PASS] ScrollView.SetLayoutData - demo-layout-marker
+[PASS] ScrollView.SetScrollOffset - 36,0
+[PASS] ScrollView.SetStyle - updated
+[PASS] ScrollView.SetVerticalScroll - -> true
+[PASS] ScrollView.SetVisible - -> false
+[PASS] ScrollView.SetWheelStep - 32
+[PASS] ScrollView.VerticalScroll - false
+[PASS] ScrollView.Visible - true
+
+## Document
+[PASS] Document.FindWidget - saveBtn
+[PASS] Document.NewApps - hosted=2
+[PASS] Document.PrimaryWindow - main
+[PASS] Document.SetData - Document.SetData
+[PASS] Document.Window - aux
+
+## Window
+[PASS] Window.App - attached
+[PASS] Window.ApplyOptions - WinUI JSON Full Demo 1380x940
+[PASS] Window.Attach - aux
+[PASS] Window.Data - *jsonui.Store
+[PASS] Window.Detach - detached
+[PASS] Window.FindWidget - saveBtn
+[PASS] Window.RefreshBindings - Window.RefreshBindings
+[FAIL] Window.ReloadResources - missing invoker
+[PASS] Window.Scene - attached
+[PASS] Window.SetData - Window.SetData
+
+PASS=327 FAIL=3

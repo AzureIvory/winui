@@ -12,6 +12,7 @@
 - `widgets/jsonui/`: declarative JSON loader, bindings, expressions, multi-window helpers
 - `cmd/demo/`: manual regression entry point
 - `cmd/demo_json/`: manual JSON UI regression entry point
+- `cmd/demo_json_full/`: full-surface JSON UI regression entry point
 
 ## Rules
 
@@ -45,6 +46,7 @@ go test ./...
 go vet ./...
 go run ./cmd/demo
 go run ./cmd/demo_json
+go run ./cmd/demo_json_full
 ```
 
 GitHub Actions mirrors the build checks on Windows in `.github/workflows/ci.yml` with both `CGO_ENABLED=0` and `CGO_ENABLED=1`.
@@ -53,10 +55,10 @@ Recommended:
 
 - Use both demos after layout, painting, hit testing, or input-routing changes
 - Think about both `cgo` enabled and disabled render paths
-- After JSON UI changes, verify that `cmd/demo_json/demo.ui.json` still loads
+- After JSON UI changes, verify that both `cmd/demo_json/demo.ui.json` and `cmd/demo_json_full/demo.ui.json` still load
 - If you touch DPI-sensitive layout code, verify that JSON absolute expressions still reflow on resize and DPI changes
 - If you touch `widgets/jsonui/expr.go`, verify precedence, parentheses, percent semantics, and whitespace-insensitive parsing
-- If you touch `sysapi/` or `widgets.FilePicker`, manually verify open, save, folder, and multi-select flows in `cmd/demo_json`
+- If you touch `sysapi/` or `widgets.FilePicker`, manually verify open, save, folder, and multi-select flows in `cmd/demo_json` and `cmd/demo_json_full`
 - If you touch binding code, verify title, text, value, visibility, selection, and frame refresh behavior
 - If you touch JSON runtime helpers or action dispatch, verify `Window.FindWidget`, `Document.FindWidget`, `ActionContext.Window`, `MountWindow`, `ReplaceWindow`, and `Detach` behavior
 - If you touch modal / overlay behavior, verify backdrop hit testing, card hit testing, and Direct2D fallback behavior together

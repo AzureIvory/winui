@@ -197,3 +197,88 @@ func TestDocumentNewAppsBuildsOneAppPerWindow(t *testing.T) {
 		}
 	}
 }
+
+func TestLoadDocumentStringBuildsScrollView(t *testing.T) {
+	store := NewStore(map[string]any{
+		"scroll": map[string]any{
+			"vertical":   false,
+			"horizontal": true,
+		},
+	})
+
+	doc, err := LoadDocumentString(`{
+  "wins": [
+    {
+      "id": "main",
+      "root": {
+        "type": "panel",
+        "layout": "abs",
+        "children": [
+          {
+            "type": "scrollview",
+            "id": "scroller",
+            "layout": "col",
+            "verticalScroll": { "bind": "scroll.vertical" },
+            "horizontalScroll": { "bind": "scroll.horizontal" },
+            "style": {
+              "bg": "#ffffff",
+              "border": "#cbd5e1",
+              "radius": 12,
+              "borderW": 1
+            },
+            "frame": { "x": 20, "y": 20, "w": 240, "h": 180 },
+            "children": [
+              { "type": "label", "id": "insideLabel", "text": "Inside scroll" },
+              { "type": "button", "id": "insideButton", "text": "Run" }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}`, LoadOptions{Data: store})
+	if err != nil {
+		t.Fatalf("LoadDocumentString returned error: %v", err)
+	}
+
+	win := doc.PrimaryWindow()
+	if win == nil {
+		t.Fatal("PrimaryWindow() returned nil")
+	}
+
+	widget := win.FindWidget("scroller")
+	scroller, ok := widget.(*widgets.ScrollView)
+	if !ok {
+		t.Fatalf("scroller type = %T, want *widgets.ScrollView", widget)
+	}
+	if scroller.VerticalScroll() {
+		t.Fatal("scroller.VerticalScroll() = true, want false")
+	}
+	if !scroller.HorizontalScroll() {
+		t.Fatal("scroller.HorizontalScroll() = false, want true")
+	}
+	if scroller.Style.Background == 0 || scroller.Style.BorderColor == 0 {
+		t.Fatal("scrollview style was not populated from JSON")
+	}
+
+	content, ok := scroller.Content().(*widgets.Panel)
+	if !ok {
+		t.Fatalf("scroller.Content() type = %T, want *widgets.Panel", scroller.Content())
+	}
+	children := content.Children()
+	if len(children) != 2 {
+		t.Fatalf("len(scroll content children) = %d, want 2", len(children))
+	}
+
+	store.Patch(map[string]any{
+		"scroll.vertical":   true,
+		"scroll.horizontal": false,
+	})
+
+	if !scroller.VerticalScroll() {
+		t.Fatal("updated scroller.VerticalScroll() = false, want true")
+	}
+	if scroller.HorizontalScroll() {
+		t.Fatal("updated scroller.HorizontalScroll() = true, want false")
+	}
+}

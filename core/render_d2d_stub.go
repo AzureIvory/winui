@@ -73,3 +73,11 @@ func (r *d2dRenderer) drawIcon(*Icon, Rect) error {
 func (r *d2dRenderer) drawBitmap(*Bitmap, Rect, byte) error {
 	return errors.New("Direct2D backend unavailable: cgo is disabled")
 }
+
+func (r *d2dRenderer) pushClipRect(Rect) error {
+	return errors.New("Direct2D backend unavailable: cgo is disabled")
+}
+
+func (r *d2dRenderer) popClipRect() error {
+	return errors.New("Direct2D backend unavailable: cgo is disabled")
+}

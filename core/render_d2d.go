@@ -27,6 +27,8 @@ int winui_d2d_draw_text(WinUID2DRenderer* renderer, const uint16_t* text, const 
 int winui_d2d_measure_text(WinUID2DRenderer* renderer, const uint16_t* text, const uint16_t* font_family, float font_size, int32_t font_weight, int32_t* width, int32_t* height, char* err, size_t err_len);
 int winui_d2d_draw_icon(WinUID2DRenderer* renderer, uintptr_t hicon, int32_t left, int32_t top, int32_t right, int32_t bottom, char* err, size_t err_len);
 int winui_d2d_draw_bitmap(WinUID2DRenderer* renderer, uintptr_t hbitmap, int32_t left, int32_t top, int32_t right, int32_t bottom, uint8_t alpha, char* err, size_t err_len);
+int winui_d2d_push_clip_rect(WinUID2DRenderer* renderer, int32_t left, int32_t top, int32_t right, int32_t bottom, char* err, size_t err_len);
+int winui_d2d_pop_clip_rect(WinUID2DRenderer* renderer, char* err, size_t err_len);
 int winui_d2d_flush(WinUID2DRenderer* renderer, char* err, size_t err_len);
 */
 import "C"
@@ -329,4 +331,27 @@ func utf16z(value string) ([]uint16, error) {
 		return nil, err
 	}
 	return out, nil
+}
+
+func (r *d2dRenderer) pushClipRect(rect Rect) error {
+	if rect.Empty() {
+		return nil
+	}
+	return r.call(func(errBuf *[512]C.char) C.int {
+		return C.winui_d2d_push_clip_rect(
+			r.ptr,
+			C.int32_t(rect.X),
+			C.int32_t(rect.Y),
+			C.int32_t(rect.X+rect.W),
+			C.int32_t(rect.Y+rect.H),
+			&errBuf[0],
+			C.size_t(len(errBuf)),
+		)
+	})
+}
+
+func (r *d2dRenderer) popClipRect() error {
+	return r.call(func(errBuf *[512]C.char) C.int {
+		return C.winui_d2d_pop_clip_rect(r.ptr, &errBuf[0], C.size_t(len(errBuf)))
+	})
 }

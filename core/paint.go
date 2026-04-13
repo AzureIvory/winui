@@ -587,22 +587,46 @@ func (c *Canvas) Bounds() Rect {
 
 // PushClipRect limits subsequent drawing to rect until the returned restore function is called.
 func (c *Canvas) PushClipRect(rect Rect) func() {
-	if c == nil || c.hdc == 0 || rect.Empty() {
+	if c == nil || rect.Empty() {
 		return func() {}
 	}
-	saved, _, _ := procSaveDC.Call(uintptr(c.hdc))
-	if int32(saved) == 0 {
+
+	var restoreD2D func()
+	if c.d2d != nil {
+		if err := c.d2d.pushClipRect(rect); err == nil {
+			restoreD2D = func() {
+				_ = c.d2d.popClipRect()
+			}
+		}
+	}
+
+	var restoreGDI func()
+	if c.hdc != 0 {
+		saved, _, _ := procSaveDC.Call(uintptr(c.hdc))
+		if int32(saved) != 0 {
+			procIntersectClipRect.Call(
+				uintptr(c.hdc),
+				uintptr(rect.X),
+				uintptr(rect.Y),
+				uintptr(rect.X+rect.W),
+				uintptr(rect.Y+rect.H),
+			)
+			restoreGDI = func() {
+				procRestoreDC.Call(uintptr(c.hdc), ^uintptr(0))
+			}
+		}
+	}
+
+	if restoreD2D == nil && restoreGDI == nil {
 		return func() {}
 	}
-	procIntersectClipRect.Call(
-		uintptr(c.hdc),
-		uintptr(rect.X),
-		uintptr(rect.Y),
-		uintptr(rect.X+rect.W),
-		uintptr(rect.Y+rect.H),
-	)
 	return func() {
-		procRestoreDC.Call(uintptr(c.hdc), ^uintptr(0))
+		if restoreD2D != nil {
+			restoreD2D()
+		}
+		if restoreGDI != nil {
+			restoreGDI()
+		}
 	}
 }
 

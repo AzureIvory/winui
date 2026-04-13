@@ -268,6 +268,8 @@ func (b *builder) buildNode(window *Window, spec nodeSpec, parentLayout string) 
 		widget, err = b.buildSelect(window, spec)
 	case "listbox":
 		widget, err = b.buildListBox(window, spec)
+	case "scrollview":
+		widget, err = b.buildScrollView(window, spec)
 	case "file":
 		widget, err = b.buildFilePicker(window, spec)
 	case "image":
@@ -359,7 +361,7 @@ func (b *builder) buildButton(window *Window, spec nodeSpec) (widgets.Widget, er
 		return nil, err
 	}
 	button.SetStyle(style)
-	widgets.SetPreferredSize(button, core.Size{Width: 120, Height: 36})
+	preferred := core.Size{Width: 120, Height: 36}
 	if err := b.configureButtonIcon(window, button, spec); err != nil {
 		return nil, err
 	}
@@ -369,9 +371,11 @@ func (b *builder) buildButton(window *Window, spec nodeSpec) (widgets.Widget, er
 		button.SetKind(widgets.BtnLeft)
 	case "top":
 		button.SetKind(widgets.BtnTop)
+		preferred.Height = 68
 	default:
 		return nil, fmt.Errorf("unsupported iconPos %q", spec.IconPos)
 	}
+	widgets.SetPreferredSize(button, preferred)
 	b.applyCommonState(window, button, spec)
 	if textSource.Binding != "" {
 		b.addBinding(window, []string{textSource.Binding}, func(ctx *bindingContext) {
@@ -721,6 +725,54 @@ func (b *builder) buildListBox(window *Window, spec nodeSpec) (widgets.Widget, e
 		})
 	}
 	return list, nil
+}
+
+func (b *builder) buildScrollView(window *Window, spec nodeSpec) (widgets.Widget, error) {
+	scroll := widgets.NewScrollView(nodeID(spec))
+	layout, layoutKind, err := buildLayout(window, spec.Layout)
+	if err != nil {
+		return nil, err
+	}
+	if style, err := parsePanelStyle(spec.Style); err != nil {
+		return nil, err
+	} else {
+		scroll.SetStyle(style)
+	}
+
+	verticalScrollSource, err := parseBoolSource(spec.VerticalScroll)
+	if err != nil {
+		return nil, err
+	}
+	horizontalScrollSource, err := parseBoolSource(spec.HorizontalScroll)
+	if err != nil {
+		return nil, err
+	}
+	scroll.SetVerticalScroll(resolveBoolSourceOrDefault(verticalScrollSource, b.opts.Data, true))
+	scroll.SetHorizontalScroll(resolveBoolSourceOrDefault(horizontalScrollSource, b.opts.Data, false))
+	widgets.SetPreferredSize(scroll, core.Size{Width: 280, Height: 200})
+	b.applyCommonState(window, scroll, spec)
+	if verticalScrollSource.Binding != "" {
+		b.addBinding(window, []string{verticalScrollSource.Binding}, func(ctx *bindingContext) {
+			scroll.SetVerticalScroll(resolveBoolSourceOrDefault(verticalScrollSource, ctx.data, true))
+		})
+	}
+	if horizontalScrollSource.Binding != "" {
+		b.addBinding(window, []string{horizontalScrollSource.Binding}, func(ctx *bindingContext) {
+			scroll.SetHorizontalScroll(resolveBoolSourceOrDefault(horizontalScrollSource, ctx.data, false))
+		})
+	}
+
+	content := widgets.NewPanel("")
+	content.SetLayout(layout)
+	for _, child := range spec.Children {
+		built, err := b.buildNode(window, child, layoutKind)
+		if err != nil {
+			return nil, err
+		}
+		content.Add(built)
+	}
+	scroll.SetContent(content)
+	return scroll, nil
 }
 
 func (b *builder) buildFilePicker(window *Window, spec nodeSpec) (widgets.Widget, error) {

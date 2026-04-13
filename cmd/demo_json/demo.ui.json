@@ -227,7 +227,7 @@
               "focusBorder": "#0ea5e9",
               "indicator": "#0ea5e9",
               "check": "#ffffff",
-              "indicatorStyle": "dot",
+              "indicatorStyle": "check",
               "hoverBg": "#f0f9ff",
               "disabledBg": "#f3f4f6",
               "disabledBorder": "#d1d5db",

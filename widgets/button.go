@@ -517,17 +517,26 @@ func (b *Button) drawTopIconButton(ctx *PaintCtx, rect Rect, style ButtonStyle, 
 	}
 	iconSize = max32(iconSize, ctx.DP(12))
 
+	contentH := iconSize + gap + labelH
+	startY := rect.Y + pad
+	if centered := rect.Y + (rect.H-contentH)/2; centered > startY {
+		startY = centered
+	}
+	if startY+contentH > rect.Y+rect.H-pad {
+		startY = max32(rect.Y+pad, rect.Y+rect.H-pad-contentH)
+	}
+
 	iconRect := Rect{
 		X: rect.X + (rect.W-iconSize)/2,
-		Y: rect.Y + pad,
+		Y: startY,
 		W: iconSize,
 		H: iconSize,
 	}
 	textRect := Rect{
 		X: rect.X + pad,
-		Y: iconRect.Y + iconRect.H + gap,
+		Y: startY + iconSize + gap,
 		W: max32(0, rect.W-pad*2),
-		H: max32(0, rect.Y+rect.H-pad-(iconRect.Y+iconRect.H+gap)),
+		H: max32(labelH, rect.Y+rect.H-pad-(startY+iconSize+gap)),
 	}
 
 	if b.Down {

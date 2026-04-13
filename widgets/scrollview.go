@@ -276,6 +276,7 @@ func (s *ScrollView) Paint(ctx *PaintCtx) {
 		s.content.Paint(ctx)
 		restore()
 	}
+	s.paintScrollbars(ctx)
 	if s.Style.BorderColor != 0 {
 		width := s.Style.BorderWidth
 		if width <= 0 {
@@ -430,4 +431,143 @@ func (s *ScrollView) handleWheel(evt Event) bool {
 		return true
 	}
 	return false
+}
+
+func (s *ScrollView) paintScrollbars(ctx *PaintCtx) {
+	if ctx == nil {
+		return
+	}
+	vTrack, vThumb, hTrack, hThumb := s.scrollbarRects(ctx.DP)
+	trackColor, thumbColor := s.scrollbarColors()
+	radius := int32(0)
+	if vTrack.W > 0 {
+		radius = max32(1, vTrack.W/2)
+	}
+	if vTrack.W > 0 && vTrack.H > 0 {
+		_ = ctx.FillRoundRect(vTrack, radius, trackColor)
+	}
+	if vThumb.W > 0 && vThumb.H > 0 {
+		_ = ctx.FillRoundRect(vThumb, radius, thumbColor)
+	}
+	if hTrack.H > 0 {
+		radius = max32(1, hTrack.H/2)
+	}
+	if hTrack.W > 0 && hTrack.H > 0 {
+		_ = ctx.FillRoundRect(hTrack, radius, trackColor)
+	}
+	if hThumb.W > 0 && hThumb.H > 0 {
+		_ = ctx.FillRoundRect(hThumb, radius, thumbColor)
+	}
+}
+
+func (s *ScrollView) scrollbarRects(scale func(int32) int32) (Rect, Rect, Rect, Rect) {
+	if s == nil || scale == nil {
+		return Rect{}, Rect{}, Rect{}, Rect{}
+	}
+	s.layoutContent()
+	viewport := s.viewportRect()
+	if viewport.Empty() {
+		return Rect{}, Rect{}, Rect{}, Rect{}
+	}
+
+	thickness := max32(6, scale(8))
+	margin := max32(2, scale(4))
+	minThumb := max32(18, scale(24))
+
+	showV := s.verticalScroll && s.maxOffsetY > 0
+	showH := s.horizontalScroll && s.maxOffsetX > 0
+
+	var verticalTrack Rect
+	if showV {
+		verticalTrack = Rect{
+			X: viewport.X + viewport.W - margin - thickness,
+			Y: viewport.Y + margin,
+			W: thickness,
+			H: max32(0, viewport.H-margin*2),
+		}
+		if showH {
+			verticalTrack.H = max32(0, verticalTrack.H-thickness-margin)
+		}
+	}
+
+	var horizontalTrack Rect
+	if showH {
+		horizontalTrack = Rect{
+			X: viewport.X + margin,
+			Y: viewport.Y + viewport.H - margin - thickness,
+			W: max32(0, viewport.W-margin*2),
+			H: thickness,
+		}
+		if showV {
+			horizontalTrack.W = max32(0, horizontalTrack.W-thickness-margin)
+		}
+	}
+
+	verticalThumb := scrollbarThumbRect(verticalTrack, minThumb, viewport.H+s.maxOffsetY, viewport.H, s.offsetY, s.maxOffsetY, true)
+	horizontalThumb := scrollbarThumbRect(horizontalTrack, minThumb, viewport.W+s.maxOffsetX, viewport.W, s.offsetX, s.maxOffsetX, false)
+	return verticalTrack, verticalThumb, horizontalTrack, horizontalThumb
+}
+
+func scrollbarThumbRect(track Rect, minThumb, contentSize, viewportSize, offset, maxOffset int32, vertical bool) Rect {
+	if track.Empty() || contentSize <= 0 || viewportSize <= 0 {
+		return Rect{}
+	}
+	trackSize := track.W
+	if vertical {
+		trackSize = track.H
+	}
+	if trackSize <= 0 {
+		return Rect{}
+	}
+	thumbSize := trackSize
+	if contentSize > viewportSize {
+		thumbSize = trackSize * viewportSize / contentSize
+	}
+	if thumbSize < minThumb {
+		thumbSize = minThumb
+	}
+	if thumbSize > trackSize {
+		thumbSize = trackSize
+	}
+	travel := max32(0, trackSize-thumbSize)
+	pos := int32(0)
+	if maxOffset > 0 && travel > 0 {
+		pos = travel * clampValue(offset, 0, maxOffset) / maxOffset
+	}
+	if vertical {
+		return Rect{X: track.X, Y: track.Y + pos, W: track.W, H: thumbSize}
+	}
+	return Rect{X: track.X + pos, Y: track.Y, W: thumbSize, H: track.H}
+}
+
+func (s *ScrollView) scrollbarColors() (core.Color, core.Color) {
+	background := s.Style.Background
+	if background == 0 {
+		background = core.RGB(255, 255, 255)
+	}
+	border := s.Style.BorderColor
+	if border == 0 {
+		border = core.RGB(203, 213, 225)
+	}
+	return blendScrollColor(background, border, 28), blendScrollColor(background, border, 112)
+}
+
+func blendScrollColor(background, foreground core.Color, alpha byte) core.Color {
+	bgR, bgG, bgB := scrollColorChannels(background)
+	fgR, fgG, fgB := scrollColorChannels(foreground)
+	return core.RGB(
+		blendScrollChannel(bgR, fgR, alpha),
+		blendScrollChannel(bgG, fgG, alpha),
+		blendScrollChannel(bgB, fgB, alpha),
+	)
+}
+
+func blendScrollChannel(background, foreground, alpha byte) byte {
+	const scale = 255
+	value := int(background)*(scale-int(alpha)) + int(foreground)*int(alpha)
+	return byte((value + scale/2) / scale)
+}
+
+func scrollColorChannels(color core.Color) (byte, byte, byte) {
+	return byte(color), byte(color >> 8), byte(color >> 16)
 }
