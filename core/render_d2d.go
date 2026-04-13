@@ -42,7 +42,7 @@ import (
 )
 
 const (
-	d2dDrawTextOptionsClip            uint32 = 0x00000001
+	d2dDrawTextOptionsClip            uint32 = 0x00000002
 	d2dDrawTextOptionsEnableColorFont uint32 = 0x00000004
 )
 
