@@ -536,9 +536,26 @@ func DecodeGIF(data []byte) ([]AnimatedFrame, error) {
 	}
 
 	canvas := image.NewRGBA(image.Rect(0, 0, all.Config.Width, all.Config.Height))
+	restore := image.NewRGBA(canvas.Bounds())
+	lastBounds := image.Rectangle{}
 	frames := make([]AnimatedFrame, 0, len(all.Image))
 	for idx, frame := range all.Image {
+		if idx > 0 {
+			switch gifDisposalAt(all, idx-1) {
+			case gif.DisposalBackground:
+				draw.Draw(canvas, lastBounds, image.Transparent, image.Point{}, draw.Src)
+			case gif.DisposalPrevious:
+				draw.Draw(canvas, canvas.Bounds(), restore, image.Point{}, draw.Src)
+			}
+		}
+		if frame.Bounds().Eq(canvas.Bounds()) {
+			draw.Draw(canvas, canvas.Bounds(), image.Transparent, image.Point{}, draw.Src)
+		}
+		if gifDisposalAt(all, idx) == gif.DisposalPrevious {
+			draw.Draw(restore, restore.Bounds(), canvas, image.Point{}, draw.Src)
+		}
 		draw.Draw(canvas, frame.Bounds(), frame, frame.Bounds().Min, draw.Over)
+		lastBounds = frame.Bounds()
 
 		rgba := image.NewRGBA(canvas.Bounds())
 		copy(rgba.Pix, canvas.Pix)
@@ -567,6 +584,13 @@ func DecodeGIF(data []byte) ([]AnimatedFrame, error) {
 		})
 	}
 	return frames, nil
+}
+
+func gifDisposalAt(all *gif.GIF, index int) byte {
+	if all == nil || index < 0 || index >= len(all.Disposal) {
+		return gif.DisposalNone
+	}
+	return all.Disposal[index]
 }
 
 // Handle 返回画布底层的原生句柄。
@@ -908,9 +932,7 @@ func (c *Canvas) DrawIcon(icon *Icon, rect Rect) error {
 		return nil
 	}
 	if c.d2d != nil {
-		if err := c.d2d.flush(); err != nil {
-			return err
-		}
+		return c.d2d.drawIcon(icon, rect)
 	}
 	return c.drawIconGDI(icon, rect)
 }
