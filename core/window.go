@@ -266,7 +266,84 @@ func (a *App) SetTitle(title string) {
 	})
 }
 
-// SetIcon updates the window icon handles used by the current app window.
+func iconHandle(icon *Icon) windows.Handle {
+	if icon == nil {
+		return 0
+	}
+	return icon.Handle()
+}
+
+func (a *App) windowImageBaseSizeDP() int32 {
+	if a == nil || a.opts.WindowImageSizeDP <= 0 {
+		return 16
+	}
+	return a.opts.WindowImageSizeDP
+}
+
+func (a *App) resolveWindowImageIcons() (small *Icon, big *Icon, err error) {
+	if a == nil {
+		return nil, nil, nil
+	}
+	if a.opts.WindowImage == nil {
+		return a.opts.Icon, a.opts.Icon, nil
+	}
+
+	baseDP := a.windowImageBaseSizeDP()
+	smallSize := a.DP(baseDP)
+	bigSize := a.DP(baseDP * 2)
+	if smallSize < 16 {
+		smallSize = 16
+	}
+	if bigSize < smallSize {
+		bigSize = smallSize
+	}
+
+	small, err = a.opts.WindowImage.IconFor(smallSize)
+	if err != nil {
+		return nil, nil, err
+	}
+	big, err = a.opts.WindowImage.IconFor(bigSize)
+	if err != nil {
+		return nil, nil, err
+	}
+	return small, big, nil
+}
+
+func (a *App) applyResolvedWindowIcons(small *Icon, big *Icon) {
+	if a == nil || a.hwnd == 0 || a.closed.Load() {
+		return
+	}
+	procSendMessageW.Call(uintptr(a.hwnd), wmSetIcon, iconSmall, uintptr(iconHandle(small)))
+	procSendMessageW.Call(uintptr(a.hwnd), wmSetIcon, iconBig, uintptr(iconHandle(big)))
+}
+
+func (a *App) applyWindowImage() {
+	small, big, err := a.resolveWindowImageIcons()
+	if err != nil {
+		return
+	}
+	a.applyResolvedWindowIcons(small, big)
+}
+
+// SetWindowImage 设置窗口图片资源，并在内部生成 HICON。
+func (a *App) SetWindowImage(img *Image) {
+	if a == nil || a.hwnd == 0 || a.closed.Load() {
+		return
+	}
+	a.opts.WindowImage = img
+	a.opts.Icon = nil
+
+	apply := func() {
+		a.applyWindowImage()
+	}
+	if a.IsUIThread() {
+		apply()
+		return
+	}
+	_ = a.Post(apply)
+}
+
+// SetIcon 保留旧的 HICON 设置路径。
 func (a *App) SetIcon(icon *Icon) {
 	if a == nil || a.hwnd == 0 || a.closed.Load() {
 		return
@@ -372,13 +449,18 @@ func (a *App) createWindow() error {
 		return err
 	}
 
+	smallIcon, bigIcon, err := a.resolveWindowImageIcons()
+	if err != nil {
+		return err
+	}
+
 	wc := wndClassEx{
 		CbSize:        uint32(unsafe.Sizeof(wndClassEx{})),
 		LpfnWndProc:   globalWndProc,
 		HInstance:     windows.Handle(hInst),
 		HCursor:       cursor,
-		HIcon:         a.opts.Icon.Handle(),
-		HIconSm:       a.opts.Icon.Handle(),
+		HIcon:         iconHandle(bigIcon),
+		HIconSm:       iconHandle(smallIcon),
 		LpszClassName: classNamePtr,
 	}
 
@@ -444,10 +526,7 @@ func (a *App) createWindow() error {
 	a.refreshWindowDPI()
 	a.initRenderer()
 
-	if a.opts.Icon != nil && a.opts.Icon.handle != 0 {
-		procSendMessageW.Call(hwnd, wmSetIcon, iconSmall, uintptr(a.opts.Icon.handle))
-		procSendMessageW.Call(hwnd, wmSetIcon, iconBig, uintptr(a.opts.Icon.handle))
-	}
+	a.applyResolvedWindowIcons(smallIcon, bigIcon)
 
 	if a.opts.OnCreate != nil {
 		if err := a.opts.OnCreate(a); err != nil {

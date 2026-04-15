@@ -10,6 +10,7 @@ It targets native desktop tools that need explicit control over window lifecycle
 - Clear `core` / `widgets` / `sysapi` split
 - `RenderModeAuto`: prefer Direct2D, fall back to GDI
 - Direct2D text rendering keeps Windows color fonts such as emoji when `cgo` is enabled
+- Window and button image resources accept PNG / JPG / JPEG / GIF (GIF uses the first frame only); window images still become native `HICON` internally
 - Retained widget scene tree with themes and layouts
 - Reusable built-in controls
 - Native open / save / folder dialogs in `sysapi`
@@ -26,7 +27,7 @@ It targets native desktop tools that need explicit control over window lifecycle
 
 ## Packages
 
-- `core/`: window lifecycle, paint, DPI, input, timer, icon, font
+- `core/`: window lifecycle, paint, DPI, input, timer, image, icon, font
 - `sysapi/`: Windows system API helpers, including native file dialogs
 - `widgets/`: scene tree, event routing, layout, theme, controls
 - `widgets/jsonui/`: JSON schema loader, bindings, expressions, multi-window helpers
@@ -136,8 +137,12 @@ store.Set("page.title", "Updated Title")
 - Widget ids must stay unique within each declared window
 - Bool fields fall back to widget semantics when omitted or when a bound value is missing: `visible` / `enabled` stay `true`, while `checked`, `multiple`, and `autoplay` stay `false`
 - `input` / `textarea` support `readOnly`, `multiline`, `wordWrap`, `acceptReturn`, `verticalScroll`, and `horizontalScroll`
-- `.ico` assets are loaded at screen-DPI-scaled size by default and can be overridden with `LoadOptions.IconSizeDP`, per-window `iconSizeDP`, or per-node `iconSizeDP`
-- JSON icon declarations also accept `iconPolicy: "auto" | "fixed"` for DPI reload behavior
+- `window.image`, `button.image`, and `image` controls accept static PNG / JPG / JPEG / GIF input; GIF uses the first frame only
+- `LoadOptions.ImageSizeDP`, per-window `imageSizeDP`, per-node `imageSizeDP`, and `style.imageSize` control the image slot size
+- Image rendering keeps the original aspect ratio and fits with contain semantics instead of stretching to a square
+- Images are cached by target pixel size and quality; Direct2D bitmaps are preferred, with GDI as fallback when needed
+- Use `animimg` when you need animated GIF playback
+- The loader does not guarantee BMP, SVG, WEBP, AVIF, or ico-specific loading semantics
 - `label` supports `multiline` and `wordWrap`, including auto-measured height when width is constrained
 - `modal` supports `backdrop.color`, `backdrop.opacity`, `backdrop.blur`, `backdrop.dismissOnClick`, and `onDismiss`
 - `frame` supports `x`, `y`, `r`, `b`, `w`, `h`

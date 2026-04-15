@@ -42,8 +42,8 @@ type demoUI struct {
 	// btnReset 保存重置按钮。
 	btnReset *widgets.Button
 
-	// stepIcon 保存推进按钮使用的图标资源。
-	stepIcon *core.Icon
+	// stepImage 保存推进按钮使用的图片资源。
+	stepImage *core.Image
 }
 
 // buildDemoUI 初始化演示界面。
@@ -84,9 +84,9 @@ func resizeDemoUI(_ *core.App, _ *widgets.Scene, size core.Size) {
 
 // destroyDemoUI 清理演示资源。
 func destroyDemoUI(_ *core.App, _ *widgets.Scene) {
-	if ui.stepIcon != nil {
-		_ = ui.stepIcon.Close()
-		ui.stepIcon = nil
+	if ui.stepImage != nil {
+		_ = ui.stepImage.Close()
+		ui.stepImage = nil
 	}
 }
 
@@ -229,14 +229,14 @@ func (d *demoUI) initSelectors() {
 
 // initButtons 初始化演示按钮。
 func (d *demoUI) initButtons() {
-	d.stepIcon = demoBadge(
+	d.stepImage = demoBadge(
 		color.RGBA{R: 37, G: 99, B: 235, A: 255},
 		color.RGBA{R: 191, G: 219, B: 254, A: 255},
 	)
 
 	d.btnStep = widgets.NewButton("step", "Advance", widgets.ModeCustom)
 	d.btnStep.SetKind(widgets.BtnLeft)
-	d.btnStep.SetIcon(d.stepIcon)
+	d.btnStep.SetImage(d.stepImage)
 	d.btnStep.SetStyle(widgets.ButtonStyle{
 		TextColor:    core.RGB(30, 64, 175),
 		DownText:     core.RGB(30, 64, 175),
@@ -245,7 +245,7 @@ func (d *demoUI) initButtons() {
 		Pressed:      core.RGB(191, 219, 254),
 		Border:       core.RGB(96, 165, 250),
 		CornerRadius: 10,
-		IconSizeDP:   18,
+		ImageSizeDP:  18,
 		GapDP:        10,
 		PadDP:        14,
 	})

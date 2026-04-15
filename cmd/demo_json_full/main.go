@@ -50,7 +50,8 @@ func main() {
 				size := app.ClientSize()
 				window.Root.SetBounds(widgets.Rect{W: size.Width, H: size.Height})
 			}
-			controller.setStatus("UI ready")
+			controller.ensureSpinnerPlaying()
+			controller.setStatus(controller.tr("status.uiReady", "UI ready"))
 			return nil
 		},
 		OnResize: func(_ *core.App, _ *widgets.Scene, size core.Size) {

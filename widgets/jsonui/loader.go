@@ -19,17 +19,16 @@ type documentSpec struct {
 }
 
 type windowSpec struct {
-	ID         string          `json:"id"`
-	Title      json.RawMessage `json:"title"`
-	Icon       string          `json:"icon"`
-	IconSizeDP json.RawMessage `json:"iconSizeDP"`
-	IconPolicy string          `json:"iconPolicy"`
-	W          json.RawMessage `json:"w"`
-	H          json.RawMessage `json:"h"`
-	MinW       json.RawMessage `json:"minW"`
-	MinH       json.RawMessage `json:"minH"`
-	BG         string          `json:"bg"`
-	Root       *nodeSpec       `json:"root"`
+	ID          string          `json:"id"`
+	Title       json.RawMessage `json:"title"`
+	Image       string          `json:"image"`
+	ImageSizeDP json.RawMessage `json:"imageSizeDP"`
+	W           json.RawMessage `json:"w"`
+	H           json.RawMessage `json:"h"`
+	MinW        json.RawMessage `json:"minW"`
+	MinH        json.RawMessage `json:"minH"`
+	BG          string          `json:"bg"`
+	Root        *nodeSpec       `json:"root"`
 }
 
 type nodeSpec struct {
@@ -59,10 +58,9 @@ type nodeSpec struct {
 	Src        string          `json:"src"`
 	Fit        string          `json:"fit"`
 	Autoplay   json.RawMessage `json:"autoplay"`
-	Icon       string          `json:"icon"`
-	IconPos    string          `json:"iconPos"`
-	IconSizeDP json.RawMessage `json:"iconSizeDP"`
-	IconPolicy string          `json:"iconPolicy"`
+	Image       string          `json:"image"`
+	ImagePos    string          `json:"imagePos"`
+	ImageSizeDP json.RawMessage `json:"imageSizeDP"`
 
 	Dialog      string          `json:"dialog"`
 	Multiple    json.RawMessage `json:"multiple"`
@@ -185,7 +183,7 @@ func (b *builder) buildWindow(spec windowSpec) (*Window, error) {
 			ID: spec.ID,
 		},
 	}
-	if err := b.configureWindowIcon(window, spec); err != nil {
+	if err := b.configureWindowImage(window, spec); err != nil {
 		return nil, err
 	}
 	if spec.BG != "" {
@@ -361,11 +359,13 @@ func (b *builder) buildButton(window *Window, spec nodeSpec) (widgets.Widget, er
 		return nil, err
 	}
 	button.SetStyle(style)
+
 	preferred := core.Size{Width: 120, Height: 36}
-	if err := b.configureButtonIcon(window, button, spec); err != nil {
+	if err := b.configureButtonImage(window, button, spec); err != nil {
 		return nil, err
 	}
-	switch strings.ToLower(strings.TrimSpace(spec.IconPos)) {
+
+	switch strings.ToLower(strings.TrimSpace(spec.ImagePos)) {
 	case "", "auto":
 	case "left":
 		button.SetKind(widgets.BtnLeft)
@@ -373,10 +373,12 @@ func (b *builder) buildButton(window *Window, spec nodeSpec) (widgets.Widget, er
 		button.SetKind(widgets.BtnTop)
 		preferred.Height = 68
 	default:
-		return nil, fmt.Errorf("unsupported iconPos %q", spec.IconPos)
+		return nil, fmt.Errorf("unsupported imagePos %q", spec.ImagePos)
 	}
+
 	widgets.SetPreferredSize(button, preferred)
 	b.applyCommonState(window, button, spec)
+
 	if textSource.Binding != "" {
 		b.addBinding(window, []string{textSource.Binding}, func(ctx *bindingContext) {
 			button.SetText(resolveStringSource(textSource, ctx.data))

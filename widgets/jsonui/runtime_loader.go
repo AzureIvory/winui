@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/AzureIvory/winui/core"
@@ -151,96 +150,116 @@ func (b *builder) applyLabelOptions(window *Window, label *widgets.Label, spec n
 	return nil
 }
 
-func (b *builder) configureWindowIcon(window *Window, spec windowSpec) error {
-	path, sizeDP, policy, err := b.windowIconConfig(spec)
+func (b *builder) configureWindowImage(window *Window, spec windowSpec) error {
+	path, sizeDP, err := b.windowImageConfig(spec)
 	if err != nil || path == "" {
 		return err
 	}
-	icon, err := b.loadICO(path, sizeDP, policy, resourceReloadContext{})
+	img, err := b.loadImage(path)
 	if err != nil {
-		return fmt.Errorf("window %q icon: %w", spec.ID, err)
+		return fmt.Errorf("window %q image: %w", spec.ID, err)
 	}
-	window.Meta.Icon = icon
-	window.Meta.IconPath = path
-	window.Meta.IconSizeDP = sizeDP
-	window.Meta.IconPolicy = policy
-	window.addResourceReloader(policy, func(ctx resourceReloadContext) error {
-		reloaded, err := b.loadICO(path, sizeDP, policy, ctx)
-		if err != nil {
-			return fmt.Errorf("window %q icon: %w", window.ID, err)
+
+	window.Meta.Image = img
+	window.Meta.ImagePath = path
+	window.Meta.ImageSizeDP = sizeDP
+
+	window.addResourceReloader(func(ctx resourceReloadContext) error {
+		switch ctx.Reason {
+		case ReloadReasonDPIChanged:
+			if ctx.App != nil && window.Meta.Image != nil {
+				ctx.App.SetWindowImage(window.Meta.Image)
+			}
+			return nil
+		default:
+			reloaded, err := b.loadImage(path)
+			if err != nil {
+				return fmt.Errorf("window %q image: %w", window.ID, err)
+			}
+			old := window.Meta.Image
+			window.Meta.Image = reloaded
+			window.Meta.ImagePath = path
+			window.Meta.ImageSizeDP = sizeDP
+			if ctx.App != nil {
+				ctx.App.SetWindowImage(reloaded)
+			}
+			if old != nil && old != reloaded {
+				_ = old.Close()
+			}
+			return nil
 		}
-		old := window.Meta.Icon
-		window.Meta.Icon = reloaded
-		window.Meta.IconPath = path
-		window.Meta.IconSizeDP = sizeDP
-		window.Meta.IconPolicy = policy
-		if ctx.App != nil {
-			ctx.App.SetIcon(reloaded)
-		}
-		if old != nil && old != reloaded {
-			_ = old.Close()
-		}
-		return nil
 	})
 	return nil
 }
 
-func (b *builder) configureButtonIcon(window *Window, button *widgets.Button, spec nodeSpec) error {
-	path, sizeDP, policy, err := b.nodeIconConfig(spec)
+func (b *builder) configureButtonImage(window *Window, button *widgets.Button, spec nodeSpec) error {
+	path, sizeDP, err := b.nodeImageConfig(spec)
 	if err != nil || path == "" {
 		return err
 	}
-	icon, err := b.loadICO(path, sizeDP, policy, resourceReloadContext{})
+	img, err := b.loadImage(path)
 	if err != nil {
 		return err
 	}
-	button.SetIcon(icon)
-	window.addResourceReloader(policy, func(ctx resourceReloadContext) error {
-		reloaded, err := b.loadICO(path, sizeDP, policy, ctx)
-		if err != nil {
-			return err
+
+	button.SetImage(img)
+	if sizeDP > 0 {
+		style := button.Style
+		style.ImageSizeDP = sizeDP
+		button.SetStyle(style)
+	}
+
+	window.addResourceReloader(func(ctx resourceReloadContext) error {
+		switch ctx.Reason {
+		case ReloadReasonDPIChanged:
+			if scene := window.Scene(); scene != nil {
+				scene.Invalidate(button)
+			}
+			return nil
+		default:
+			reloaded, err := b.loadImage(path)
+			if err != nil {
+				return err
+			}
+			old := button.Image
+			button.SetImage(reloaded)
+			if sizeDP > 0 {
+				style := button.Style
+				style.ImageSizeDP = sizeDP
+				button.SetStyle(style)
+			}
+			if old != nil && old != reloaded {
+				_ = old.Close()
+			}
+			return nil
 		}
-		old := button.Icon
-		button.SetIcon(reloaded)
-		if old != nil && old != reloaded {
-			_ = old.Close()
-		}
-		return nil
 	})
 	return nil
 }
 
-func (b *builder) windowIconConfig(spec windowSpec) (string, int32, iconPolicy, error) {
-	if strings.TrimSpace(spec.Icon) == "" {
-		return "", 0, iconPolicyAuto, nil
+func (b *builder) windowImageConfig(spec windowSpec) (string, int32, error) {
+	if strings.TrimSpace(spec.Image) == "" {
+		return "", 0, nil
 	}
-	sizeDP, err := b.resolveIconSize(spec.IconSizeDP)
+	sizeDP, err := b.resolveImageSize(spec.ImageSizeDP)
 	if err != nil {
-		return "", 0, iconPolicyAuto, err
+		return "", 0, err
 	}
-	policy, err := parseIconPolicy(strings.ToLower(strings.TrimSpace(spec.IconPolicy)))
-	if err != nil {
-		return "", 0, iconPolicyAuto, err
-	}
-	return spec.Icon, sizeDP, policy, nil
+	return spec.Image, sizeDP, nil
 }
 
-func (b *builder) nodeIconConfig(spec nodeSpec) (string, int32, iconPolicy, error) {
-	if strings.TrimSpace(spec.Icon) == "" {
-		return "", 0, iconPolicyAuto, nil
+func (b *builder) nodeImageConfig(spec nodeSpec) (string, int32, error) {
+	if strings.TrimSpace(spec.Image) == "" {
+		return "", 0, nil
 	}
-	sizeDP, err := b.resolveIconSize(spec.IconSizeDP)
+	sizeDP, err := b.resolveImageSize(spec.ImageSizeDP)
 	if err != nil {
-		return "", 0, iconPolicyAuto, err
+		return "", 0, err
 	}
-	policy, err := parseIconPolicy(strings.ToLower(strings.TrimSpace(spec.IconPolicy)))
-	if err != nil {
-		return "", 0, iconPolicyAuto, err
-	}
-	return spec.Icon, sizeDP, policy, nil
+	return spec.Image, sizeDP, nil
 }
 
-func (b *builder) resolveIconSize(raw json.RawMessage) (int32, error) {
+func (b *builder) resolveImageSize(raw json.RawMessage) (int32, error) {
 	source, err := parseIntSource(raw)
 	if err != nil {
 		return 0, err
@@ -248,22 +267,15 @@ func (b *builder) resolveIconSize(raw json.RawMessage) (int32, error) {
 	if source.Has {
 		return resolveIntSource(source, b.opts.Data), nil
 	}
-	return b.opts.IconSizeDP, nil
+	return b.opts.ImageSizeDP, nil
 }
 
-func (b *builder) loadICO(src string, sizeDP int32, policy iconPolicy, ctx resourceReloadContext) (*core.Icon, error) {
-	if strings.ToLower(filepath.Ext(src)) != ".ico" {
-		return nil, fmt.Errorf("icon %q must be a local .ico file", src)
-	}
+func (b *builder) loadImage(src string) (*core.Image, error) {
 	data, err := os.ReadFile(b.resolveAssetPath(src))
 	if err != nil {
 		return nil, err
 	}
-	scale := ctx.Scale
-	if scale <= 0 {
-		scale = resourceReloadScale(ctx.App)
-	}
-	return core.LoadIconFromICO(data, resolveIconLoadSize(sizeDP, scale, policy))
+	return core.LoadImageBytes(data)
 }
 
 func modalAbsoluteLayoutData(window *Window) absoluteLayoutData {

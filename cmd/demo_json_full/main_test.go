@@ -116,12 +116,12 @@ func TestDemoWindowLaysOutShowcaseCardsWithVisibleHeights(t *testing.T) {
 		t.Fatalf("saveBtn.Bounds().H = %d, want > 0", got)
 	}
 
-	iconTopBtn, ok := window.FindWidget("iconTopBtn").(*widgets.Button)
+	imageTopBtn, ok := window.FindWidget("imageTopBtn").(*widgets.Button)
 	if !ok {
-		t.Fatalf("iconTopBtn type = %T, want *widgets.Button", window.FindWidget("iconTopBtn"))
+		t.Fatalf("imageTopBtn type = %T, want *widgets.Button", window.FindWidget("imageTopBtn"))
 	}
-	if got := iconTopBtn.Bounds().H; got <= 56 {
-		t.Fatalf("iconTopBtn.Bounds().H = %d, want > 56 for top-icon layout", got)
+	if got := imageTopBtn.Bounds().H; got <= 56 {
+		t.Fatalf("imageTopBtn.Bounds().H = %d, want > 56 for top-image layout", got)
 	}
 }
 
@@ -164,6 +164,74 @@ func TestDemoRadioGroupsStartExclusiveAndTogglePeers(t *testing.T) {
 	}
 	if !radioCheckB.IsChecked() {
 		t.Fatal("radioCheckB should be checked after click")
+	}
+}
+
+func TestDemoHeaderSubtitleDoesNotOverlapHeaderButtons(t *testing.T) {
+	_, window := loadDemoControllerForTest(t)
+	if window.Root == nil {
+		t.Fatal("window.Root is nil")
+	}
+	window.Root.SetBounds(widgets.Rect{W: 1380, H: 940})
+
+	subtitle, ok := window.FindWidget("subtitleLabel").(*widgets.Label)
+	if !ok {
+		t.Fatalf("subtitleLabel type = %T, want *widgets.Label", window.FindWidget("subtitleLabel"))
+	}
+	togglePalette, ok := window.FindWidget("togglePaletteBtn").(*widgets.Button)
+	if !ok {
+		t.Fatalf("togglePaletteBtn type = %T, want *widgets.Button", window.FindWidget("togglePaletteBtn"))
+	}
+	if subtitle.Bounds().X+subtitle.Bounds().W > togglePalette.Bounds().X {
+		t.Fatalf(
+			"subtitleLabel right edge (%d) overlaps togglePaletteBtn left edge (%d)",
+			subtitle.Bounds().X+subtitle.Bounds().W,
+			togglePalette.Bounds().X,
+		)
+	}
+}
+
+func TestDemoLanguageToggleSwitchesBetweenEnglishAndChinese(t *testing.T) {
+	controller, window := loadDemoControllerForTest(t)
+
+	runAllButton, ok := window.FindWidget("runAllBtn").(*widgets.Button)
+	if !ok {
+		t.Fatalf("runAllBtn type = %T, want *widgets.Button", window.FindWidget("runAllBtn"))
+	}
+	langButton, ok := window.FindWidget("languageToggleBtn").(*widgets.Button)
+	if !ok {
+		t.Fatalf("languageToggleBtn type = %T, want *widgets.Button", window.FindWidget("languageToggleBtn"))
+	}
+
+	if runAllButton.Text != "Run widget API tests" {
+		t.Fatalf("runAllBtn default text = %q, want %q", runAllButton.Text, "Run widget API tests")
+	}
+	if langButton.Text != "中文" {
+		t.Fatalf("languageToggleBtn default text = %q, want %q", langButton.Text, "中文")
+	}
+
+	controller.mustButton("languageToggleBtn").OnEvent(widgets.Event{
+		Type:   widgets.EventClick,
+		Source: langButton,
+	})
+
+	if runAllButton.Text != "测试所有控件函数" {
+		t.Fatalf("runAllBtn Chinese text = %q, want %q", runAllButton.Text, "测试所有控件函数")
+	}
+	if langButton.Text != "English" {
+		t.Fatalf("languageToggleBtn Chinese text = %q, want %q", langButton.Text, "English")
+	}
+
+	controller.mustButton("languageToggleBtn").OnEvent(widgets.Event{
+		Type:   widgets.EventClick,
+		Source: langButton,
+	})
+
+	if runAllButton.Text != "Run widget API tests" {
+		t.Fatalf("runAllBtn toggled back text = %q, want %q", runAllButton.Text, "Run widget API tests")
+	}
+	if langButton.Text != "中文" {
+		t.Fatalf("languageToggleBtn toggled back text = %q, want %q", langButton.Text, "中文")
 	}
 }
 

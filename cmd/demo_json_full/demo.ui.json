@@ -6,9 +6,8 @@
         "bind": "demo.windowTitle",
         "default": "WinUI JSON Full Demo"
       },
-      "icon": "assets/app.ico",
-      "iconSizeDP": 32,
-      "iconPolicy": "auto",
+      "image": "assets/app.png",
+      "imageSizeDP": 32,
       "w": 1380,
       "h": 940,
       "minW": 1280,
@@ -67,33 +66,44 @@
                 "frame": {
                   "x": 20,
                   "y": 42,
-                  "w": 600,
+                  "r": 640,
                   "h": 18
                 }
               },
               {
                 "type": "button",
                 "id": "togglePaletteBtn",
-                "text": "\u5207\u6362\u989c\u8272",
-                "icon": "assets/palette.ico",
-                "iconPos": "left",
+                "text": "Switch palette",
+                "image": "assets/palette.png",
+                "imagePos": "left",
                 "frame": {
-                  "r": 332,
+                  "r": 464,
                   "y": 16,
-                  "w": 140,
+                  "w": 148,
+                  "h": 40
+                }
+              },
+              {
+                "type": "button",
+                "id": "languageToggleBtn",
+                "text": "\u4e2d\u6587",
+                "frame": {
+                  "r": 356,
+                  "y": 16,
+                  "w": 96,
                   "h": 40
                 }
               },
               {
                 "type": "button",
                 "id": "runAllBtn",
-                "text": "\u6d4b\u8bd5\u6240\u6709\u63a7\u4ef6\u51fd\u6570",
-                "icon": "assets/save.ico",
-                "iconPos": "left",
+                "text": "Run widget API tests",
+                "image": "assets/save.png",
+                "imagePos": "left",
                 "frame": {
                   "r": 148,
                   "y": 16,
-                  "w": 172,
+                  "w": 196,
                   "h": 40
                 }
               },
@@ -216,7 +226,7 @@
                   {
                     "type": "label",
                     "id": "buttonsHint",
-                    "text": "Primary, icon-left, icon-top, ghost, and disabled states are all included in one section.",
+                    "text": "Primary, image-left, image-top, ghost, and disabled states are all included in one section.",
                     "multiline": true,
                     "wordWrap": true,
                     "style": {
@@ -237,15 +247,15 @@
                         "type": "button",
                         "id": "saveBtn",
                         "text": "Save changes",
-                        "icon": "assets/save.ico",
-                        "iconPos": "left"
+                        "image": "assets/save.png",
+                        "imagePos": "left"
                       },
                       {
                         "type": "button",
-                        "id": "iconTopBtn",
-                        "text": "Top icon",
-                        "icon": "assets/palette.ico",
-                        "iconPos": "top"
+                        "id": "imageTopBtn",
+                        "text": "Top image",
+                        "image": "assets/palette.png",
+                        "imagePos": "top"
                       },
                       {
                         "type": "button",

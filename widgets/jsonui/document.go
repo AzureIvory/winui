@@ -26,17 +26,16 @@ type ActionContext struct {
 
 // WindowMeta stores window-level metadata declared in JSON.
 type WindowMeta struct {
-	ID         string
-	Title      string
-	Icon       *core.Icon
-	IconPath   string
-	IconSizeDP int32
-	IconPolicy iconPolicy
-	Width      int32
-	Height     int32
-	MinWidth   int32
-	MinHeight  int32
-	Background core.Color
+	ID          string
+	Title       string
+	Image       *core.Image
+	ImagePath   string
+	ImageSizeDP int32
+	Width       int32
+	Height      int32
+	MinWidth    int32
+	MinHeight   int32
+	Background  core.Color
 }
 
 // LoadOptions controls how a JSON UI document is built.
@@ -47,7 +46,7 @@ type LoadOptions struct {
 	DefaultMode    widgets.ControlMode
 	Data           DataSource
 	Theme          *widgets.Theme
-	IconSizeDP     int32
+	ImageSizeDP    int32
 }
 
 // Window is one built top-level window from a JSON UI document.
@@ -75,8 +74,11 @@ func (w *Window) ApplyOptions(opts *core.Options) {
 	if w.Meta.Title != "" {
 		opts.Title = w.Meta.Title
 	}
-	if w.Meta.Icon != nil {
-		opts.Icon = w.Meta.Icon
+	if w.Meta.Image != nil {
+		opts.WindowImage = w.Meta.Image
+	}
+	if w.Meta.ImageSizeDP > 0 {
+		opts.WindowImageSizeDP = w.Meta.ImageSizeDP
 	}
 	if w.Meta.Width > 0 {
 		opts.Width = w.Meta.Width
@@ -237,11 +239,11 @@ func (w *Window) registerWidget(widget widgets.Widget) error {
 	return nil
 }
 
-func (w *Window) addResourceReloader(policy iconPolicy, reload func(resourceReloadContext) error) {
+func (w *Window) addResourceReloader(reload func(resourceReloadContext) error) {
 	if w == nil || reload == nil {
 		return
 	}
-	w.reloaders = append(w.reloaders, resourceReloader{policy: normalizeIconPolicy(policy), reload: reload})
+	w.reloaders = append(w.reloaders, resourceReloader{reload: reload})
 }
 
 // RefreshBindings reapplies all matching bindings against the current data source.

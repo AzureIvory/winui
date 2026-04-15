@@ -26,8 +26,8 @@
 - Treat JSON UI frame values as logical DP units, not raw device pixels
 - Keep JSON frame expressions compatible with the arithmetic parser: `+`, `-`, `*`, `/`, `()`, `%`, and only `winW`, `winH`, `parentW`, `parentH`
 - Keep per-window JSON widget ids unique; the loader indexes them for runtime lookup
-- Keep JSON icon loading DPI-aware through logical DP sizing instead of fixed pixel constants
-- Keep icon reload policy in runtime hooks such as `Window.ReloadResources(...)`; do not declare callback names in JSON
+- Keep JSON image loading DPI-aware through logical DP sizing instead of fixed pixel constants, and keep image slots using contain-style aspect ratio preservation
+- Keep image reload policy in runtime hooks such as `Window.ReloadResources(...)`; do not declare callback names in JSON
 - Keep hot-reload APIs coarse-grained: whole-window mount / replace / detach, with data reuse but without promising transient widget-state migration
 - Keep JSON style fields aligned with existing widget style structs instead of inventing a parallel rendering layer
 - Keep data mutation in the host through `jsonui.DataSource`; JSON only declares binding relationships

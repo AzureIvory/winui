@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/AzureIvory/winui/core"
+	"github.com/AzureIvory/winui/sysapi"
 	"github.com/AzureIvory/winui/widgets"
 	"github.com/AzureIvory/winui/widgets/jsonui"
 )
@@ -17,11 +18,14 @@ type demoController struct {
 	store     *jsonui.Store
 	doc       *jsonui.Document
 	window    *jsonui.Window
+	lang      *demoLang
+	locale    string
 	useAlt    bool
 }
 
 type demoPalette struct {
 	name          string
+	nameKey       string
 	page          widgets.PanelStyle
 	card          widgets.PanelStyle
 	cardMuted     widgets.PanelStyle
@@ -57,11 +61,15 @@ func newDemoController(baseDir string, store *jsonui.Store, doc *jsonui.Document
 		store:     store,
 		doc:       doc,
 		window:    window,
+		locale:    "en",
+	}
+	if lang, err := loadDemoLang(filepath.Join(controller.assetsDir, "lang.json")); err == nil {
+		controller.lang = lang
 	}
 	controller.bindCallbacks()
 	controller.applyPalette(oceanPalette())
-	controller.setStatus("Ready")
-	controller.setReportSummary(defaultReportSummary())
+	controller.applyLanguage("en")
+	controller.setStatus(controller.tr("status.ready", "Ready"))
 	controller.setReportPath(defaultReportPath())
 	return controller
 }
@@ -87,6 +95,31 @@ func (c *demoController) setStatus(text string) {
 	c.store.Set("demo.lastAction", text)
 }
 
+func (c *demoController) tr(path string, fallback string) string {
+	if c == nil {
+		return fallback
+	}
+	if c.lang == nil {
+		return fallback
+	}
+	return c.lang.text(c.locale, path, fallback)
+}
+
+func (c *demoController) trf(path string, fallback string, args ...any) string {
+	return fmt.Sprintf(c.tr(path, fallback), args...)
+}
+
+func (c *demoController) toggleLanguage() {
+	if c == nil {
+		return
+	}
+	if normalizeDemoLocale(c.locale) == "en" {
+		c.applyLanguage("zh")
+		return
+	}
+	c.applyLanguage("en")
+}
+
 func (c *demoController) togglePalette() {
 	if c == nil {
 		return
@@ -97,23 +130,29 @@ func (c *demoController) togglePalette() {
 		palette = graphitePalette()
 	}
 	c.applyPalette(palette)
-	c.store.Set("demo.paletteName", palette.name)
-	c.setStatus(fmt.Sprintf("Palette switched to %s", palette.name))
+	displayName := c.paletteDisplayName(palette)
+	c.store.Set("demo.paletteName", displayName)
+	c.setStatus(c.trf("status.paletteSwitched", "Palette switched to %s", displayName))
 }
+
 func (c *demoController) showModal(visible bool) {
 	if c == nil || c.store == nil {
 		return
 	}
 	c.store.Set("demo.modalVisible", visible)
 	if visible {
-		c.setStatus("Modal opened")
+		c.setStatus(c.tr("status.modalOpened", "Modal opened"))
 		return
 	}
-	c.setStatus("Modal closed")
+	c.setStatus(c.tr("status.modalClosed", "Modal closed"))
 }
+
 func (c *demoController) bindCallbacks() {
 	c.mustButton("togglePaletteBtn").SetOnClick(func() {
 		c.togglePalette()
+	})
+	c.mustButton("languageToggleBtn").SetOnClick(func() {
+		c.toggleLanguage()
 	})
 	c.mustButton("runAllBtn").SetOnClick(func() {
 		c.runFunctionTests()
@@ -126,47 +165,57 @@ func (c *demoController) bindCallbacks() {
 	})
 
 	c.mustPanel("interactivePanel").SetOnClick(func() {
-		c.setStatus("Interactive panel clicked")
+		c.setStatus(c.tr("status.interactivePanelClicked", "Interactive panel clicked"))
 	})
 	c.mustModal("helpModal").SetOnDismiss(func() {
 		c.showModal(false)
 	})
 
 	c.mustEdit("nameInput").SetOnChange(func(value string) {
-		c.setStatus("Name input changed: " + value)
+		c.setStatus(c.trf("status.nameChanged", "Name input changed: %s", value))
 	})
 	c.mustEdit("passwordInput").SetOnSubmit(func(value string) {
-		c.setStatus("Password submitted, rune length: " + fmt.Sprint(len([]rune(value))))
+		c.setStatus(c.trf("status.passwordSubmitted", "Password submitted, rune length: %d", len([]rune(value))))
 	})
 
 	c.mustCheckBox("dotStyleBox").SetOnChange(func(checked bool) {
-		c.setStatus(fmt.Sprintf("dotStyleBox changed to %v", checked))
+		c.setStatus(c.trf(
+			"status.choiceChanged",
+			"%s changed to %s",
+			c.mustCheckBox("dotStyleBox").Text,
+			c.checkedLabel(checked),
+		))
 	})
 	c.mustCheckBox("checkStyleBox").SetOnChange(func(checked bool) {
-		c.setStatus(fmt.Sprintf("checkStyleBox changed to %v", checked))
+		c.setStatus(c.trf(
+			"status.choiceChanged",
+			"%s changed to %s",
+			c.mustCheckBox("checkStyleBox").Text,
+			c.checkedLabel(checked),
+		))
 	})
 	c.mustRadio("radioDotA").SetOnChange(func(checked bool) {
 		if checked {
-			c.setStatus("radioDotA selected")
+			c.setStatus(c.trf("status.radioSelected", "%s selected", c.mustRadio("radioDotA").Text))
 		}
 	})
 	c.mustRadio("radioCheckA").SetOnChange(func(checked bool) {
 		if checked {
-			c.setStatus("radioCheckA selected")
+			c.setStatus(c.trf("status.radioSelected", "%s selected", c.mustRadio("radioCheckA").Text))
 		}
 	})
 
 	c.mustCombo("citySelect").SetOnChange(func(index int, item widgets.ListItem) {
-		c.setStatus(fmt.Sprintf("ComboBox selected: %d / %s", index, item.Value))
+		c.setStatus(c.trf("status.comboSelected", "%s selected: %d / %s", c.tr("i18n.data.comboLabel", "City combo box"), index, item.Value))
 	})
 	c.mustListBox("cityList").SetOnChange(func(index int, item widgets.ListItem) {
-		c.setStatus(fmt.Sprintf("ListBox changed: %d / %s", index, item.Value))
+		c.setStatus(c.trf("status.listChanged", "%s changed: %d / %s", c.tr("i18n.data.listLabel", "Rollout list"), index, item.Value))
 	})
 	c.mustListBox("cityList").SetOnActivate(func(index int, item widgets.ListItem) {
-		c.setStatus(fmt.Sprintf("ListBox activated: %d / %s", index, item.Value))
+		c.setStatus(c.trf("status.listActivated", "%s activated: %d / %s", c.tr("i18n.data.listLabel", "Rollout list"), index, item.Value))
 	})
 	c.mustListBox("cityList").SetOnRightClick(func(index int, item widgets.ListItem, _ core.Point) {
-		c.setStatus(fmt.Sprintf("ListBox right-click: %d / %s", index, item.Value))
+		c.setStatus(c.trf("status.listRightClick", "%s right-click: %d / %s", c.tr("i18n.data.listLabel", "Rollout list"), index, item.Value))
 	})
 
 	for _, id := range []string{"openFile", "saveFile", "folderPick", "multiFiles"} {
@@ -174,13 +223,327 @@ func (c *demoController) bindCallbacks() {
 		picker := c.mustFilePicker(pickerID)
 		picker.SetOnChange(func(paths []string) {
 			if len(paths) == 0 {
-				c.setStatus(pickerID + " cleared")
+				c.setStatus(c.trf("status.pickerCleared", "%s cleared", pickerID))
 				return
 			}
-			c.setStatus(fmt.Sprintf("%s selected %d path(s)", pickerID, len(paths)))
+			c.setStatus(c.trf("status.pickerSelected", "%s selected %d path(s)", pickerID, len(paths)))
 		})
 	}
 }
+
+func (c *demoController) ensureSpinnerPlaying() {
+	if c == nil {
+		return
+	}
+	spinner := c.mustAnimated("spinnerImage")
+	spinner.SetPlaying(false)
+	spinner.SetPlaying(true)
+}
+
+func (c *demoController) checkedLabel(checked bool) string {
+	if checked {
+		return c.tr("common.checked", "checked")
+	}
+	return c.tr("common.unchecked", "unchecked")
+}
+
+func (c *demoController) paletteDisplayName(p demoPalette) string {
+	if p.nameKey != "" {
+		return c.tr("paletteNames."+p.nameKey, p.name)
+	}
+	return p.name
+}
+
+func (c *demoController) currentPalette() demoPalette {
+	if c != nil && c.useAlt {
+		return graphitePalette()
+	}
+	return oceanPalette()
+}
+
+func (c *demoController) applyLanguage(locale string) {
+	if c == nil {
+		return
+	}
+	c.locale = normalizeDemoLocale(locale)
+
+	c.setTextOnWindowWidget(c.window, "titleLabel", c.tr("i18n.header.titleLabel", "WinUI JSON Full Demo"))
+	c.setTextOnWindowWidget(c.window, "subtitleLabel", c.tr("i18n.header.subtitleLabel", "One native JSON page that showcases every public control, palette switching, and API checks."))
+	c.setTextOnWindowWidget(c.window, "togglePaletteBtn", c.tr("i18n.header.togglePaletteBtn", "Switch palette"))
+	c.setTextOnWindowWidget(c.window, "runAllBtn", c.tr("i18n.header.runAllBtn", "Run widget API tests"))
+	c.setTextOnWindowWidget(c.window, "languageToggleBtn", c.tr("i18n.header.languageToggleBtn", "中文"))
+	c.setTextOnWindowWidget(c.window, "openModalBtn", c.tr("i18n.header.openModalBtn", "Show modal"))
+
+	c.setTextOnWindowWidget(c.window, "introTitle", c.tr("i18n.intro.title", "Coverage"))
+	c.setTextOnWindowWidget(c.window, "introBody", c.tr("i18n.intro.body", "This page covers Panel, Modal, Label, Button, EditBox, ProgressBar, CheckBox, RadioButton, ComboBox, ListBox, FilePicker, Image, AnimatedImage, and ScrollView."))
+
+	c.setTextOnWindowWidget(c.window, "buttonsTitle", c.tr("i18n.buttons.title", "Buttons"))
+	c.setTextOnWindowWidget(c.window, "buttonsHint", c.tr("i18n.buttons.hint", "Primary, image-left, image-top, ghost, and disabled states are all included in one section."))
+	c.setTextOnWindowWidget(c.window, "saveBtn", c.tr("i18n.buttons.saveBtn", "Save changes"))
+	c.setTextOnWindowWidget(c.window, "imageTopBtn", c.tr("i18n.buttons.imageTopBtn", "Top image"))
+	c.setTextOnWindowWidget(c.window, "ghostBtn", c.tr("i18n.buttons.ghostBtn", "Ghost action"))
+	c.setTextOnWindowWidget(c.window, "disabledBtn", c.tr("i18n.buttons.disabledBtn", "Disabled action"))
+
+	c.setTextOnWindowWidget(c.window, "inputTitle", c.tr("i18n.inputs.title", "Inputs"))
+	c.setTextOnWindowWidget(c.window, "inputHint", c.tr("i18n.inputs.hint", "Single-line, password, and read-only multiline input states are all present here."))
+	c.mustEdit("nameInput").SetPlaceholder(c.tr("i18n.inputs.namePlaceholder", "Project name"))
+	c.mustEdit("passwordInput").SetPlaceholder(c.tr("i18n.inputs.passwordPlaceholder", "Type a secret"))
+	c.mustEdit("notesBox").SetPlaceholder(c.tr("i18n.inputs.notesPlaceholder", "Notes"))
+	c.mustEdit("notesBox").SetText(c.tr("i18n.inputs.notesValue", "JSON declares structure and bindings. The host runtime still owns mutations, actions, and API checks."))
+
+	c.setTextOnWindowWidget(c.window, "choiceTitle", c.tr("i18n.choices.title", "Checks and radios"))
+	c.setTextOnWindowWidget(c.window, "choiceHint", c.tr("i18n.choices.hint", "Checkboxes show both dot and check indicators. Radios include the default dot and explicit check styles."))
+	c.setTextOnWindowWidget(c.window, "dotStyleBox", c.tr("i18n.choices.dotStyleBox", "Dot-style checkbox"))
+	c.setTextOnWindowWidget(c.window, "checkStyleBox", c.tr("i18n.choices.checkStyleBox", "Check-style checkbox"))
+	c.setTextOnWindowWidget(c.window, "disabledRule", c.tr("i18n.choices.disabledRule", "Disabled selected rule"))
+	c.setTextOnWindowWidget(c.window, "radioDotA", c.tr("i18n.choices.radioDotA", "Notify immediately"))
+	c.setTextOnWindowWidget(c.window, "radioDotB", c.tr("i18n.choices.radioDotB", "Notify later"))
+	c.setTextOnWindowWidget(c.window, "radioCheckA", c.tr("i18n.choices.radioCheckA", "Approve with check style"))
+	c.setTextOnWindowWidget(c.window, "radioCheckB", c.tr("i18n.choices.radioCheckB", "Escalate with check style"))
+
+	c.setTextOnWindowWidget(c.window, "dataTitle", c.tr("i18n.data.title", "Progress and selection"))
+	c.setTextOnWindowWidget(c.window, "dataHint", c.tr("i18n.data.hint", "Two progress bars, one combo box, and one list box cover the selection and data-display widgets."))
+	c.localizeSelectionWidgets()
+
+	c.setTextOnWindowWidget(c.window, "fileTitle", c.tr("i18n.files.title", "File pickers"))
+	c.setTextOnWindowWidget(c.window, "fileHint", c.tr("i18n.files.hint", "Open, save, folder, and multi-select file pickers are all present in one section."))
+	c.localizeFilePickers()
+
+	c.setTextOnWindowWidget(c.window, "mediaTitle", c.tr("i18n.media.title", "Images"))
+	c.setTextOnWindowWidget(c.window, "mediaHint", c.tr("i18n.media.hint", "A static PNG preview and an animated GIF prove that both image controls work from the same JSON document."))
+
+	c.setTextOnWindowWidget(c.window, "scrollTitle", c.tr("i18n.scroll.title", "ScrollView"))
+	c.setTextOnWindowWidget(c.window, "scrollHint", c.tr("i18n.scroll.hint", "The outer document uses a vertical ScrollView, and this card contains a horizontal ScrollView for Add, Remove, SetContent, and scrolling APIs."))
+	scrollButtonIDs := []string{"miniScrollBtn1", "miniScrollBtn2", "miniScrollBtn3", "miniScrollBtn4", "miniScrollBtn5", "miniScrollBtn6"}
+	scrollButtonFallbacks := []string{"Card A", "Card B", "Card C", "Card D", "Card E", "Card F"}
+	scrollTexts := c.langStringSlice("i18n.scroll.buttons", scrollButtonFallbacks)
+	for idx, id := range scrollButtonIDs {
+		if idx < len(scrollTexts) {
+			c.setTextOnWindowWidget(c.window, id, scrollTexts[idx])
+		}
+	}
+
+	c.setTextOnWindowWidget(c.window, "panelTitle", c.tr("i18n.panel.title", "Panel and modal hooks"))
+	c.setTextOnWindowWidget(c.window, "panelHint", c.tr("i18n.panel.hint", "Click the panel below to exercise the panel click callback. The modal above is used for backdrop, blur, and dismiss APIs."))
+	c.setTextOnWindowWidget(c.window, "panelInfo", c.tr("i18n.panel.info", "Click this surface to update the status area. The function test also exercises Panel.Add, Panel.Remove, and Panel.SetLayout on runtime-created content."))
+
+	c.setTextOnWindowWidget(c.window, "resultsTitle", c.tr("i18n.results.title", "API report"))
+	c.setTextOnWindowWidget(c.window, "statusCaption", c.tr("i18n.results.statusCaption", "Status"))
+	c.setTextOnWindowWidget(c.window, "resultsHint", c.tr("i18n.results.hint", "The button writes the full PASS / FAIL detail report to a local txt file. The UI only shows the latest summary and file path."))
+	c.setTextOnWindowWidget(c.window, "reportSummaryCaption", c.tr("i18n.results.reportSummaryCaption", "Last summary"))
+	c.setTextOnWindowWidget(c.window, "reportPathCaption", c.tr("i18n.results.reportPathCaption", "Report file"))
+
+	c.setTextOnWindowWidget(c.window, "modalTitle", c.tr("i18n.modal.title", "Native modal panel"))
+	c.setTextOnWindowWidget(c.window, "modalBody", c.tr("i18n.modal.body", "This modal is still declared by JSON. Visibility is bound through the store, while the host wires actions and API tests at runtime."))
+	c.setTextOnWindowWidget(c.window, "modalStatus", c.tr("i18n.modal.status", "Backdrop click will dismiss the modal."))
+	c.setTextOnWindowWidget(c.window, "closeModalBtn", c.tr("i18n.modal.closeButton", "Close modal"))
+
+	if aux := c.doc.Window("aux"); aux != nil {
+		aux.Meta.Title = c.tr("auxWindowTitle", "WinUI JSON Aux")
+		if app := aux.App(); app != nil {
+			app.SetTitle(aux.Meta.Title)
+		}
+	}
+	if auxLabel := c.doc.FindWidget("aux", "auxLabel"); auxLabel != nil {
+		if label, ok := auxLabel.(*widgets.Label); ok {
+			label.SetText(c.tr("i18n.aux.body", "A second window exists so the demo can exercise jsonui Window.Attach, Window.Detach, and document window lookup helpers."))
+		}
+	}
+
+	if c.store != nil {
+		c.store.Set("demo.windowTitle", c.tr("windowTitle", "WinUI JSON Full Demo"))
+		c.store.Set("demo.paletteName", c.paletteDisplayName(c.currentPalette()))
+		if raw, ok := c.store.Get("demo.report"); !ok || fmt.Sprint(raw) == "" {
+			c.setReportSummary(c.tr("report.noRun", defaultReportSummary()))
+		}
+	}
+
+	c.setStatus(c.tr("status.ready", "Ready"))
+}
+
+func (c *demoController) setTextOnWindowWidget(window *jsonui.Window, id string, text string) {
+	if window == nil || id == "" {
+		return
+	}
+	widget := window.FindWidget(id)
+	switch typed := widget.(type) {
+	case *widgets.Label:
+		typed.SetText(text)
+	case *widgets.Button:
+		typed.SetText(text)
+	case *widgets.CheckBox:
+		typed.SetText(text)
+	case *widgets.RadioButton:
+		typed.SetText(text)
+	}
+}
+
+func (c *demoController) langStringSlice(path string, fallback []string) []string {
+	if c == nil || c.lang == nil {
+		return append([]string(nil), fallback...)
+	}
+	raw, ok := c.lang.value(c.locale, path)
+	if !ok {
+		return append([]string(nil), fallback...)
+	}
+	nodes, ok := raw.([]any)
+	if !ok {
+		return append([]string(nil), fallback...)
+	}
+	values := make([]string, 0, len(nodes))
+	for _, node := range nodes {
+		if text, ok := node.(string); ok {
+			values = append(values, text)
+		}
+	}
+	if len(values) == 0 {
+		return append([]string(nil), fallback...)
+	}
+	return values
+}
+
+func (c *demoController) localizeSelectionWidgets() {
+	combo := c.mustCombo("citySelect")
+	comboSelectedValue := ""
+	if item, ok := combo.SelectedItem(); ok {
+		comboSelectedValue = item.Value
+	}
+	combo.SetPlaceholder(c.tr("i18n.data.comboPlaceholder", "Select a city"))
+	comboItems := combo.Items()
+	if c.lang != nil {
+		comboItems = c.lang.listItems(c.locale, "i18n.data.comboItems", comboItems)
+	}
+	combo.SetItems(comboItems)
+	_ = setComboSelectionByValue(combo, comboSelectedValue)
+
+	list := c.mustListBox("cityList")
+	listSelectedValue := ""
+	if item, ok := list.SelectedItem(); ok {
+		listSelectedValue = item.Value
+	}
+	listItems := list.Items()
+	if c.lang != nil {
+		listItems = c.lang.listItems(c.locale, "i18n.data.listItems", listItems)
+	}
+	list.SetItems(listItems)
+	_ = setListSelectionByValue(list, listSelectedValue)
+}
+
+func (c *demoController) localizeFilePickers() {
+	c.localizeFilePicker(
+		c.mustFilePicker("openFile"),
+		"i18n.files.openFile",
+		sysapi.DialogOpen,
+		false,
+		"",
+		[]sysapi.FileFilter{{Name: "Source Files", Pattern: "*.md;*.txt;*.go"}},
+		"No file selected",
+		"Open file",
+		"Select a source file",
+	)
+	c.localizeFilePicker(
+		c.mustFilePicker("saveFile"),
+		"i18n.files.saveFile",
+		sysapi.DialogSave,
+		false,
+		"txt",
+		[]sysapi.FileFilter{
+			{Name: "Text Files", Pattern: "*.txt"},
+			{Name: "Markdown", Pattern: "*.md"},
+			{Name: "All Files", Pattern: "*.*"},
+		},
+		"Choose an output path",
+		"Save report",
+		"Export the API report",
+	)
+	c.localizeFilePicker(
+		c.mustFilePicker("folderPick"),
+		"i18n.files.folderPick",
+		sysapi.DialogFolder,
+		false,
+		"",
+		nil,
+		"No folder selected",
+		"Pick folder",
+		"Select a workspace folder",
+	)
+	multi := c.mustFilePicker("multiFiles")
+	multi.SetSeparator(" | ")
+	c.localizeFilePicker(
+		multi,
+		"i18n.files.multiFiles",
+		sysapi.DialogOpen,
+		true,
+		"",
+		[]sysapi.FileFilter{{Name: "Project Files", Pattern: "*.go;*.json;*.md"}},
+		"No files selected",
+		"Pick files",
+		"Select multiple project files",
+	)
+}
+
+func (c *demoController) localizeFilePicker(
+	picker *widgets.FilePicker,
+	basePath string,
+	mode sysapi.DialogMode,
+	multiple bool,
+	defaultExt string,
+	fallbackFilters []sysapi.FileFilter,
+	fallbackPlaceholder string,
+	fallbackButton string,
+	fallbackDialogTitle string,
+) {
+	if picker == nil {
+		return
+	}
+	buttonText := c.tr(basePath+".buttonText", fallbackButton)
+	dialogTitle := c.tr(basePath+".dialogTitle", fallbackDialogTitle)
+	placeholder := c.tr(basePath+".placeholder", fallbackPlaceholder)
+
+	options := picker.DialogOptions()
+	options.Mode = mode
+	options.MultiSelect = multiple
+	options.DefaultExtension = defaultExt
+	options.Title = dialogTitle
+	options.ButtonLabel = buttonText
+	if c.lang != nil {
+		options.Filters = c.lang.fileFilters(c.locale, basePath+".filters", fallbackFilters)
+	} else {
+		options.Filters = append([]sysapi.FileFilter(nil), fallbackFilters...)
+	}
+	picker.SetDialogOptions(options)
+	picker.SetButtonText(buttonText)
+	picker.SetPlaceholder(placeholder)
+}
+
+func setComboSelectionByValue(combo *widgets.ComboBox, value string) bool {
+	if combo == nil || value == "" {
+		return false
+	}
+	items := combo.Items()
+	for idx, item := range items {
+		if item.Value == value {
+			combo.SetSelected(idx)
+			return true
+		}
+	}
+	return false
+}
+
+func setListSelectionByValue(list *widgets.ListBox, value string) bool {
+	if list == nil || value == "" {
+		return false
+	}
+	items := list.Items()
+	for idx, item := range items {
+		if item.Value == value {
+			list.SetSelected(idx)
+			return true
+		}
+	}
+	return false
+}
+
 func (c *demoController) applyPalette(p demoPalette) {
 	c.mustPanel("pageRoot").SetStyle(p.page)
 	for _, id := range []string{
@@ -207,11 +570,12 @@ func (c *demoController) applyPalette(p demoPalette) {
 	c.mustPanel("modalSurface").SetStyle(p.modalSurface)
 
 	c.mustButton("togglePaletteBtn").SetStyle(p.buttonNeutral)
+	c.mustButton("languageToggleBtn").SetStyle(p.buttonNeutral)
 	c.mustButton("runAllBtn").SetStyle(p.buttonPrimary)
 	c.mustButton("openModalBtn").SetStyle(p.buttonGhost)
 	c.mustButton("closeModalBtn").SetStyle(p.buttonNeutral)
 	c.mustButton("saveBtn").SetStyle(p.buttonPrimary)
-	c.mustButton("iconTopBtn").SetStyle(p.buttonNeutral)
+	c.mustButton("imageTopBtn").SetStyle(p.buttonNeutral)
 	c.mustButton("ghostBtn").SetStyle(p.buttonGhost)
 	c.mustButton("disabledBtn").SetStyle(p.buttonNeutral)
 	for _, id := range []string{
@@ -294,6 +658,9 @@ func (c *demoController) applyPalette(p demoPalette) {
 		}
 		c.mustAuxLabel(id).SetStyle(p.body)
 	}
+	if c.store != nil {
+		c.store.Set("demo.paletteName", c.paletteDisplayName(p))
+	}
 }
 
 func oceanPalette() demoPalette {
@@ -303,6 +670,7 @@ func oceanPalette() demoPalette {
 	pageBg := core.RGB(244, 247, 251)
 	return demoPalette{
 		name:          "Ocean Blue",
+		nameKey:       "ocean",
 		page:          widgets.PanelStyle{Background: pageBg},
 		card:          widgets.PanelStyle{Background: core.RGB(255, 255, 255), BorderColor: panelBorder, BorderWidth: 1, CornerRadius: 18},
 		cardMuted:     widgets.PanelStyle{Background: core.RGB(248, 250, 252), BorderColor: core.RGB(205, 216, 230), BorderWidth: 1, CornerRadius: 16},
@@ -338,6 +706,7 @@ func graphitePalette() demoPalette {
 	pageBg := core.RGB(236, 239, 242)
 	return demoPalette{
 		name:          "Graphite Gray",
+		nameKey:       "graphite",
 		page:          widgets.PanelStyle{Background: pageBg},
 		card:          widgets.PanelStyle{Background: core.RGB(250, 251, 252), BorderColor: border, BorderWidth: 1, CornerRadius: 18},
 		cardMuted:     widgets.PanelStyle{Background: core.RGB(242, 244, 246), BorderColor: core.RGB(214, 218, 224), BorderWidth: 1, CornerRadius: 16},
@@ -395,7 +764,7 @@ func makeButtonStyle(bg, border, hover, pressed, fg, downFG core.Color) widgets.
 		Disabled:     core.RGB(229, 231, 235),
 		Border:       border,
 		CornerRadius: 12,
-		IconSizeDP:   18,
+		ImageSizeDP:  18,
 		TextInsetDP:  18,
 		GapDP:        8,
 		PadDP:        12,

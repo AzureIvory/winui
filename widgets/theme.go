@@ -48,8 +48,8 @@ type ButtonStyle struct {
 	Border core.Color
 	// CornerRadius 指定圆角半径。
 	CornerRadius int32
-	// IconSizeDP 指定图标尺寸。
-	IconSizeDP int32
+	// ImageSizeDP 指定按钮图片槽位尺寸。
+	ImageSizeDP int32
 	// TextInsetDP 指定文本区域参考高度。
 	TextInsetDP int32
 	// GapDP 指定图标和文字之间的间距。

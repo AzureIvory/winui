@@ -26,8 +26,10 @@ type Button struct {
 	native nativeControlState
 	// Text 保存按钮显示文本。
 	Text string
-	// Icon 保存按钮显示图标。
+	// Icon 保留旧的 HICON 路径。
 	Icon *core.Icon
+	// Image 保存按钮通用图片资源。
+	Image *core.Image
 	// Hover 记录按钮是否处于悬停状态。
 	Hover bool
 	// Down 记录按钮是否处于按下状态。
@@ -85,13 +87,24 @@ func (b *Button) SetText(text string) {
 	})
 }
 
-// SetIcon 更新按钮图标。
+// SetIcon 保留旧的 HICON 更新路径。
 func (b *Button) SetIcon(icon *core.Icon) {
 	b.runOnUI(func() {
 		if b.Icon == icon {
 			return
 		}
 		b.Icon = icon
+		b.invalidate(b)
+	})
+}
+
+// SetImage 更新按钮图片。
+func (b *Button) SetImage(img *core.Image) {
+	b.runOnUI(func() {
+		if b.Image == img {
+			return
+		}
+		b.Image = img
 		b.invalidate(b)
 	})
 }
@@ -222,20 +235,21 @@ func (b *Button) Paint(ctx *PaintCtx) {
 		_ = ctx.StrokeRoundRect(bounds, radius, borderColor, 1)
 	}
 
+	hasGraphic := b.Image != nil || b.Icon != nil
 	kind := b.Kind()
-	if kind == BtnAuto && b.Icon != nil && b.Text != "" {
+	if kind == BtnAuto && hasGraphic && b.Text != "" {
 		kind = BtnTop
 	}
 
 	switch {
-	case b.Icon == nil:
+	case !hasGraphic:
 		b.drawButtonText(ctx, bounds, style, textColor)
 	case b.Text == "":
-		b.drawCenteredIcon(ctx, bounds, style, kind)
+		b.drawCenteredGraphic(ctx, bounds, style, kind)
 	case kind == BtnLeft:
-		b.drawLeftIconButton(ctx, bounds, style, textColor)
+		b.drawLeftGraphicButton(ctx, bounds, style, textColor)
 	default:
-		b.drawTopIconButton(ctx, bounds, style, textColor)
+		b.drawTopGraphicButton(ctx, bounds, style, textColor)
 	}
 }
 
@@ -391,8 +405,8 @@ func (b *Button) resolveStyle(ctx *PaintCtx) ButtonStyle {
 	if b.Style.CornerRadius != 0 {
 		style.CornerRadius = b.Style.CornerRadius
 	}
-	if b.Style.IconSizeDP != 0 {
-		style.IconSizeDP = b.Style.IconSizeDP
+	if b.Style.ImageSizeDP != 0 {
+		style.ImageSizeDP = b.Style.ImageSizeDP
 	}
 	if b.Style.TextInsetDP != 0 {
 		style.TextInsetDP = b.Style.TextInsetDP
@@ -425,31 +439,23 @@ func (b *Button) drawButtonText(ctx *PaintCtx, rect Rect, style ButtonStyle, col
 	)
 }
 
-// drawCenteredIcon 在按钮中心绘制图标。
-func (b *Button) drawCenteredIcon(ctx *PaintCtx, rect Rect, style ButtonStyle, kind BtnKind) {
-	if b.Icon == nil {
-		return
-	}
-	iconSize := buttonIconSize(ctx, rect, style, kind)
-	iconRect := Rect{
-		X: rect.X + (rect.W-iconSize)/2,
-		Y: rect.Y + (rect.H-iconSize)/2,
-		W: iconSize,
-		H: iconSize,
+// drawCenteredGraphic 在按钮中心绘制图片或图标。
+func (b *Button) drawCenteredGraphic(ctx *PaintCtx, rect Rect, style ButtonStyle, kind BtnKind) {
+	boxSize := buttonImageBoxSize(ctx, rect, style, kind)
+	slot := Rect{
+		X: rect.X + (rect.W-boxSize)/2,
+		Y: rect.Y + (rect.H-boxSize)/2,
+		W: boxSize,
+		H: boxSize,
 	}
 	if b.Down {
-		iconRect = offsetRect(iconRect, 1, 1)
+		slot = offsetRect(slot, 1, 1)
 	}
-	_ = ctx.DrawIcon(b.Icon, iconRect)
+	_ = b.drawGraphic(ctx, slot)
 }
 
-// drawLeftIconButton 绘制左图标右文本布局的按钮。
-func (b *Button) drawLeftIconButton(ctx *PaintCtx, rect Rect, style ButtonStyle, textColor core.Color) {
-	if b.Icon == nil {
-		b.drawButtonText(ctx, rect, style, textColor)
-		return
-	}
-
+// drawLeftGraphicButton 绘制左图右字按钮。
+func (b *Button) drawLeftGraphicButton(ctx *PaintCtx, rect Rect, style ButtonStyle, textColor core.Color) {
 	pad := ctx.DP(style.PadDP)
 	if pad <= 0 {
 		pad = ctx.DP(12)
@@ -458,27 +464,27 @@ func (b *Button) drawLeftIconButton(ctx *PaintCtx, rect Rect, style ButtonStyle,
 	if gap <= 0 {
 		gap = ctx.DP(8)
 	}
-	iconSize := buttonIconSize(ctx, rect, style, BtnLeft)
+	boxSize := buttonImageBoxSize(ctx, rect, style, BtnLeft)
 
-	iconRect := Rect{
+	slot := Rect{
 		X: rect.X + pad,
-		Y: rect.Y + (rect.H-iconSize)/2,
-		W: iconSize,
-		H: iconSize,
+		Y: rect.Y + (rect.H-boxSize)/2,
+		W: boxSize,
+		H: boxSize,
 	}
 	textRect := Rect{
-		X: iconRect.X + iconRect.W + gap,
+		X: slot.X + slot.W + gap,
 		Y: rect.Y,
-		W: max32(0, rect.W-pad*2-iconSize-gap),
+		W: max32(0, rect.W-pad*2-boxSize-gap),
 		H: rect.H,
 	}
 
 	if b.Down {
-		iconRect = offsetRect(iconRect, 1, 1)
+		slot = offsetRect(slot, 1, 1)
 		textRect = offsetRect(textRect, 1, 1)
 	}
 
-	_ = ctx.DrawIcon(b.Icon, iconRect)
+	_ = b.drawGraphic(ctx, slot)
 	_ = ctx.DrawText(
 		b.Text,
 		textRect,
@@ -490,13 +496,8 @@ func (b *Button) drawLeftIconButton(ctx *PaintCtx, rect Rect, style ButtonStyle,
 	)
 }
 
-// drawTopIconButton 绘制上图标下文本布局的按钮。
-func (b *Button) drawTopIconButton(ctx *PaintCtx, rect Rect, style ButtonStyle, textColor core.Color) {
-	if b.Icon == nil {
-		b.drawButtonText(ctx, rect, style, textColor)
-		return
-	}
-
+// drawTopGraphicButton 绘制上图下字按钮。
+func (b *Button) drawTopGraphicButton(ctx *PaintCtx, rect Rect, style ButtonStyle, textColor core.Color) {
 	pad := ctx.DP(style.PadDP)
 	if pad <= 0 {
 		pad = ctx.DP(8)
@@ -510,14 +511,14 @@ func (b *Button) drawTopIconButton(ctx *PaintCtx, rect Rect, style ButtonStyle, 
 		labelH = ctx.DP(18)
 	}
 
-	iconSize := buttonIconSize(ctx, rect, style, BtnTop)
-	maxIconSize := rect.H - pad*2 - labelH - gap
-	if maxIconSize > 0 {
-		iconSize = min32(iconSize, maxIconSize)
+	boxSize := buttonImageBoxSize(ctx, rect, style, BtnTop)
+	maxBoxSize := rect.H - pad*2 - labelH - gap
+	if maxBoxSize > 0 {
+		boxSize = min32(boxSize, maxBoxSize)
 	}
-	iconSize = max32(iconSize, ctx.DP(12))
+	boxSize = max32(boxSize, ctx.DP(12))
 
-	contentH := iconSize + gap + labelH
+	contentH := boxSize + gap + labelH
 	startY := rect.Y + pad
 	if centered := rect.Y + (rect.H-contentH)/2; centered > startY {
 		startY = centered
@@ -526,25 +527,25 @@ func (b *Button) drawTopIconButton(ctx *PaintCtx, rect Rect, style ButtonStyle, 
 		startY = max32(rect.Y+pad, rect.Y+rect.H-pad-contentH)
 	}
 
-	iconRect := Rect{
-		X: rect.X + (rect.W-iconSize)/2,
+	slot := Rect{
+		X: rect.X + (rect.W-boxSize)/2,
 		Y: startY,
-		W: iconSize,
-		H: iconSize,
+		W: boxSize,
+		H: boxSize,
 	}
 	textRect := Rect{
 		X: rect.X + pad,
-		Y: startY + iconSize + gap,
+		Y: startY + boxSize + gap,
 		W: max32(0, rect.W-pad*2),
-		H: max32(labelH, rect.Y+rect.H-pad-(startY+iconSize+gap)),
+		H: max32(labelH, rect.Y+rect.H-pad-(startY+boxSize+gap)),
 	}
 
 	if b.Down {
-		iconRect = offsetRect(iconRect, 1, 1)
+		slot = offsetRect(slot, 1, 1)
 		textRect = offsetRect(textRect, 1, 1)
 	}
 
-	_ = ctx.DrawIcon(b.Icon, iconRect)
+	_ = b.drawGraphic(ctx, slot)
 	_ = ctx.DrawText(
 		b.Text,
 		textRect,
@@ -556,13 +557,56 @@ func (b *Button) drawTopIconButton(ctx *PaintCtx, rect Rect, style ButtonStyle, 
 	)
 }
 
-// buttonIconSize 计算按钮图标尺寸。
-func buttonIconSize(ctx *PaintCtx, rect Rect, style ButtonStyle, kind BtnKind) int32 {
+func (b *Button) drawGraphic(ctx *PaintCtx, slot Rect) error {
+	if slot.Empty() {
+		return nil
+	}
+
+	if b.Image != nil {
+		src := b.Image.NaturalSize()
+		fitted := core.FitContain(src, slot.W, slot.H)
+		if fitted.Width <= 0 || fitted.Height <= 0 {
+			return nil
+		}
+
+		quality := chooseButtonImageQuality(src, fitted)
+		bmp, err := b.Image.BitmapFor(fitted.Width, fitted.Height, quality)
+		if err != nil {
+			return err
+		}
+
+		drawRect := Rect{
+			X: slot.X + (slot.W-fitted.Width)/2,
+			Y: slot.Y + (slot.H-fitted.Height)/2,
+			W: fitted.Width,
+			H: fitted.Height,
+		}
+		return ctx.canvas.DrawBitmapAlpha(bmp, drawRect, 255)
+	}
+
+	if b.Icon != nil {
+		return ctx.DrawIcon(b.Icon, slot)
+	}
+	return nil
+}
+
+func chooseButtonImageQuality(src core.Size, dst core.Size) core.ImageScaleQuality {
+	if src.Width <= 0 || src.Height <= 0 || dst.Width <= 0 || dst.Height <= 0 {
+		return core.ImageScaleLinear
+	}
+	if (dst.Width < src.Width || dst.Height < src.Height) && max32(dst.Width, dst.Height) <= 32 {
+		return core.ImageScaleHigh
+	}
+	return core.ImageScaleLinear
+}
+
+// buttonImageBoxSize 计算按钮图片槽位尺寸。
+func buttonImageBoxSize(ctx *PaintCtx, rect Rect, style ButtonStyle, kind BtnKind) int32 {
 	if ctx == nil {
 		return 0
 	}
-	if style.IconSizeDP > 0 {
-		return ctx.DP(style.IconSizeDP)
+	if style.ImageSizeDP > 0 {
+		return ctx.DP(style.ImageSizeDP)
 	}
 	if kind == BtnLeft {
 		return clampValue(rect.H-ctx.DP(20), ctx.DP(14), ctx.DP(18))

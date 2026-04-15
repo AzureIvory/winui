@@ -74,13 +74,28 @@ store.Set("page.title", "Updated Title")
 
 - `id`: 窗口标识，必填
 - `title`: 窗口标题，支持字面量或绑定
-- `icon`: `.ico` 路径，默认按当前屏幕 DPI 把逻辑 `32dp` 缩放后加载，也可以通过 `LoadOptions.IconSizeDP` 覆盖
+- `image`: 窗口图片路径，默认按当前屏幕 DPI 把逻辑 `32dp` 缩放后加载，也可以通过 `LoadOptions.ImageSizeDP` 覆盖
 - `w` / `h`: 初始客户区尺寸
 - `minW` / `minH`: 最小客户区尺寸
 - `bg`: 窗口背景色
 - `root`: 根节点，必填
 
 同一窗口内的 widget `id` 必须唯一。loader 会按窗口建立运行时索引，供 `win.FindWidget(...)` 和 `doc.FindWidget(...)` 使用。
+
+### 图片资源
+
+窗口和按钮统一使用 `image` 语义，而不是旧的 `icon` 语义。
+
+- 窗口字段：`image`、`imageSizeDP`
+- 按钮字段：`image`、`imagePos`、`imageSizeDP`
+- 样式字段：`style.imageSize`
+- `LoadOptions.ImageSizeDP` 可作为窗口和按钮图片尺寸的默认值
+- 支持格式：`png`、`jpg`、`jpeg`、`gif`（只取首帧）
+- 不保证：`bmp`、`svg`、`webp`、`avif`，以及把 `.ico` 作为专用唯一格式的旧语义
+- `window.image` 最终仍会生成 Win32 `HICON`
+- `window.image` 和 `button.image` 只做静态显示；需要播放 GIF 时请使用 `animimg`
+- 图片按原始宽高比以 contain 方式缩放，不会强行拉伸成正方形
+- 图片会按目标像素尺寸和缩放质量缓存；Direct2D bitmaps 优先，必要时回退到 GDI
 
 ## 4. 常用节点类型
 
@@ -267,6 +282,7 @@ JSON 样式不是另一套渲染系统，而是直接映射到现有控件样式
 - `borderW`
 - `pad`
 - `gap`
+- `imageSize`
 - `size`
 - `weight`
 - `align`
@@ -274,6 +290,7 @@ JSON 样式不是另一套渲染系统，而是直接映射到现有控件样式
 - `itemFg`
 - `indicator`
 - `indicatorStyle`
+- `imageSize` 表示按钮图片槽位尺寸，按 contain 方式适配，不会强制拉伸成正方形。
 
 文件选择器支持嵌套按钮样式：
 

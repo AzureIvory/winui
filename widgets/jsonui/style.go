@@ -158,7 +158,7 @@ func parseButtonStyle(raw json.RawMessage) (widgets.ButtonStyle, error) {
 		return style, err
 	}
 	assignInt(styles, "radius", &style.CornerRadius)
-	assignInt(styles, "iconSize", &style.IconSizeDP)
+	assignInt(styles, "imageSize", &style.ImageSizeDP)
 	assignInt(styles, "textInset", &style.TextInsetDP)
 	assignInt(styles, "gap", &style.GapDP)
 	assignInt(styles, "pad", &style.PadDP)

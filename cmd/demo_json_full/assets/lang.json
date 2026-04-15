@@ -52,7 +52,7 @@
         "title": "\u6309\u94ae",
         "hint": "\u4e3b\u6309\u94ae\u3001\u5de6\u4fa7\u56fe\u6807\u3001\u9876\u90e8\u56fe\u6807\u3001ghost \u548c\u7981\u7528\u72b6\u6001\u90fd\u5728\u8fd9\u4e00\u8282\u4e2d\u3002",
         "saveBtn": "\u4fdd\u5b58\u66f4\u6539",
-        "iconTopBtn": "\u9876\u90e8\u56fe\u6807",
+        "imageTopBtn": "\u9876\u90e8\u56fe\u7247",
         "ghostBtn": "\u900f\u660e\u64cd\u4f5c",
         "disabledBtn": "\u7981\u7528\u64cd\u4f5c"
       },
@@ -221,7 +221,7 @@
         "title": "Buttons",
         "hint": "Primary, icon-left, icon-top, ghost, and disabled states are all included in one section.",
         "saveBtn": "Save changes",
-        "iconTopBtn": "Top icon",
+        "imageTopBtn": "Top image",
         "ghostBtn": "Ghost action",
         "disabledBtn": "Disabled action"
       },

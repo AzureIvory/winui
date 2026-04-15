@@ -3,10 +3,11 @@
 package main
 
 import (
-	"encoding/binary"
+	"bytes"
 	"fmt"
 	"image"
 	"image/color"
+	"image/png"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -211,8 +212,8 @@ func ensureDemoAssets(dir string) error {
 		return err
 	}
 	files := map[string][]byte{
-		"app.ico":     buildICO(color.RGBA{R: 52, G: 120, B: 220, A: 255}),
-		"save.ico":    buildICO(color.RGBA{R: 50, G: 168, B: 97, A: 255}),
+		"app.png":     buildPNG(color.RGBA{R: 52, G: 120, B: 220, A: 255}),
+		"save.png":    buildPNG(color.RGBA{R: 50, G: 168, B: 97, A: 255}),
 		"spinner.gif": tinyGIFData(),
 	}
 	for name, data := range files {
@@ -227,54 +228,18 @@ func ensureDemoAssets(dir string) error {
 	return nil
 }
 
-func buildICO(fill color.RGBA) []byte {
+func buildPNG(fill color.RGBA) []byte {
 	img := image.NewRGBA(image.Rect(0, 0, 16, 16))
 	for y := 0; y < 16; y++ {
 		for x := 0; x < 16; x++ {
 			img.SetRGBA(x, y, fill)
 		}
 	}
-	w := img.Bounds().Dx()
-	h := img.Bounds().Dy()
-	maskStride := ((w + 31) / 32) * 4
-	maskSize := maskStride * h
-	bmpSize := 40 + w*h*4 + maskSize
-
-	data := make([]byte, 6+16+bmpSize)
-	binary.LittleEndian.PutUint16(data[2:], 1)
-	binary.LittleEndian.PutUint16(data[4:], 1)
-
-	entry := data[6:22]
-	entry[0] = byte(w)
-	entry[1] = byte(h)
-	binary.LittleEndian.PutUint16(entry[4:], 1)
-	binary.LittleEndian.PutUint16(entry[6:], 32)
-	binary.LittleEndian.PutUint32(entry[8:], uint32(bmpSize))
-	binary.LittleEndian.PutUint32(entry[12:], 22)
-
-	bmp := data[22:]
-	binary.LittleEndian.PutUint32(bmp[0:], 40)
-	binary.LittleEndian.PutUint32(bmp[4:], uint32(w))
-	binary.LittleEndian.PutUint32(bmp[8:], uint32(h*2))
-	binary.LittleEndian.PutUint16(bmp[12:], 1)
-	binary.LittleEndian.PutUint16(bmp[14:], 32)
-	binary.LittleEndian.PutUint32(bmp[20:], uint32(w*h*4))
-
-	pixelOffset := 40
-	index := 0
-	for y := h - 1; y >= 0; y-- {
-		row := img.Pix[y*img.Stride:]
-		for x := 0; x < w; x++ {
-			src := x * 4
-			dst := pixelOffset + index*4
-			data[22+dst] = row[src+2]
-			data[22+dst+1] = row[src+1]
-			data[22+dst+2] = row[src]
-			data[22+dst+3] = row[src+3]
-			index++
-		}
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		return nil
 	}
-	return data
+	return buf.Bytes()
 }
 
 func tinyGIFData() []byte {

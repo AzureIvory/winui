@@ -49,15 +49,15 @@ func (c *demoController) runFunctionTests() string {
 		lines = append(lines, "")
 	}
 
-	summary := fmt.Sprintf("PASS=%d FAIL=%d", passes, failures)
+	summary := c.trf("report.summaryFormat", "PASS=%d FAIL=%d", passes, failures)
 	lines = append(lines, summary)
 	report := strings.Join(lines, "\n")
 	reportPath, err := c.writeFunctionReport(report)
 	if err != nil {
-		c.setReportSummary(summary + " | save failed")
+		c.setReportSummary(c.trf("report.summarySaveFailed", "%s | save failed", summary))
 		c.setReportPath(err.Error())
 		c.store.Set("demo.report", summary)
-		c.setStatus("API check complete, but saving report failed: " + err.Error())
+		c.setStatus(c.trf("status.apiCheckSaveFailed", "API check complete, but saving report failed: %s", err.Error()))
 		return report
 	}
 	uiReportPath := reportPath
@@ -67,7 +67,7 @@ func (c *demoController) runFunctionTests() string {
 	c.setReportSummary(summary)
 	c.setReportPath(uiReportPath)
 	c.store.Set("demo.report", summary)
-	c.setStatus("API check complete: " + summary)
+	c.setStatus(c.trf("status.apiCheckComplete", "API check complete: %s", summary))
 	return report
 }
 
@@ -344,12 +344,8 @@ func currentPanelOnClick(panel panelAPI) func() {
 	}
 }
 
-func loadIconFromAsset(dir string, name string) (*core.Icon, error) {
-	data, err := os.ReadFile(filepath.Join(dir, name))
-	if err != nil {
-		return nil, err
-	}
-	return core.LoadIconFromICO(data, 16)
+func loadImageFromAsset(dir string, name string) (*core.Image, error) {
+	return core.LoadImageFile(filepath.Join(dir, name))
 }
 
 func loadPNGAsset(path string) ([]byte, error) {
@@ -682,7 +678,12 @@ func (c *demoController) buttonInvokers(button *widgets.Button) map[string]metho
 		},
 		"SetIcon": func() (string, error) {
 			original := button.Icon
-			icon, err := loadIconFromAsset(c.assetsDir, "palette.ico")
+			imageResource, err := loadImageFromAsset(c.assetsDir, "palette.png")
+			if err != nil {
+				return "", err
+			}
+			defer imageResource.Close()
+			icon, err := imageResource.IconFor(16)
 			if err != nil {
 				return "", err
 			}
@@ -692,7 +693,21 @@ func (c *demoController) buttonInvokers(button *widgets.Button) map[string]metho
 			if button.Icon != icon {
 				return "", fmt.Errorf("icon pointer did not update")
 			}
-			return "palette.ico", nil
+			return "palette.png", nil
+		},
+		"SetImage": func() (string, error) {
+			original := button.Image
+			imageResource, err := loadImageFromAsset(c.assetsDir, "palette.png")
+			if err != nil {
+				return "", err
+			}
+			defer imageResource.Close()
+			defer button.SetImage(original)
+			button.SetImage(imageResource)
+			if button.Image != imageResource {
+				return "", fmt.Errorf("image pointer did not update")
+			}
+			return "palette.png", nil
 		},
 		"SetOnClick": func() (string, error) {
 			original := button.OnClick

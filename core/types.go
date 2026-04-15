@@ -126,6 +126,10 @@ type Options struct {
 	Cursor CursorID
 	// Icon 指定窗口图标。
 	Icon *Icon
+	// WindowImage 指定通用图片资源，用于生成窗口标题栏图标。
+	WindowImage *Image
+	// WindowImageSizeDP 指定窗口图片的逻辑 DP 基准尺寸。
+	WindowImageSizeDP int32
 	// Background 指定默认背景色。
 	Background Color
 	// DoubleBuffered 控制是否启用 GDI 双缓冲。

@@ -179,6 +179,7 @@ func appWndProc(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr {
 	case wmDPICHanged:
 		info, suggested := dpiChangeFromMessage(wParam, lParam, app.DPI())
 		app.setDPI(info)
+		app.applyWindowImage()
 		if suggested != nil {
 			procSetWindowPos.Call(
 				uintptr(app.hwnd),

@@ -69,6 +69,8 @@
 - `ProgressBar`
 - `ScrollView`
 
+`Button` 支持文本 + 图片内容，图片槽位尺寸由 `ButtonStyle.ImageSizeDP` 控制。
+
 ## 5. JSON UI
 
 声明式 UI 现在统一放在 `widgets/jsonui`。
@@ -87,6 +89,8 @@
 - `widgets.FindByIDAs[T](root, id)`
 - `doc.NewApps(baseOpts)`
 - `jsonui.RunApps(...)`
+
+`widgets/jsonui` 里的窗口和按钮图片统一使用 `image` / `imagePos` / `imageSizeDP` 语义，详情见 `JSONUI.zh-CN.md`。
 
 ## 6. JSON 结构
 
@@ -140,7 +144,7 @@
 - `items`
 - `sel`
 
-甯冨皵瀛楁闇€瑕佷繚鎸佹帶浠惰涔夐粯璁ゅ€硷細`visible` / `enabled` 缂虹渷鏃朵繚鎸?`true`锛`checked` 缂虹渷鏃朵繚鎸?`false`锛孲crollView 缂虹渷涓?`verticalScroll=true` / `horizontalScroll=false`銆?
+布尔字段需要保持控件语义默认值：`visible` / `enabled` 缺省时保持 `true`，`checked` 缺省时保持 `false`，`ScrollView` 缺省时保持 `verticalScroll=true` / `horizontalScroll=false`。
 
 ## 7. 绑定模型
 
@@ -171,7 +175,7 @@ store := jsonui.NewStore(map[string]any{
 store.Set("page.title", "Updated")
 ```
 
-缁戝畾鍚屾牱鍙互鐢ㄥ湪缂栬緫妗嗙殑 `readOnly`銆?`multiline` 绛夊紑鍏充笂锛屾柟渚垮湪瀹夸富灞傚拰灞€閮?imperative 浠ｇ爜涔嬮棿鍒囨崲銆?
+绑定同样可以用于编辑框的 `readOnly`、`multiline` 等开关，方便在宿主层和局部 imperative 代码之间切换。
 
 当前支持的常见绑定目标：
 
@@ -263,8 +267,11 @@ JSON 样式直接映射到现有控件样式结构，而不是再造一套渲染
 - `radius`
 - `pad`
 - `gap`
+- `imageSize`
 - `itemH`
 - `indicatorStyle`
+
+按钮图片槽位按 contain 方式缩放，不会强行拉伸成正方形。
 
 ## 10. 文件对话框控件
 
