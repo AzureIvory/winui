@@ -286,6 +286,8 @@ const (
 	wmSize = 0x0005
 	// wmGetMinMaxInfo 表示窗口查询最小/最大跟踪尺寸消息。
 	wmGetMinMaxInfo = 0x0024
+	// wmSetCursor 表示窗口更新鼠标光标消息。
+	wmSetCursor = 0x0020
 	// wmSetFocus 表示窗口获得焦点消息。
 	wmSetFocus = 0x0007
 	// wmKillFocus 表示窗口失去焦点消息。
@@ -328,6 +330,9 @@ const (
 	wmNcDestroy = 0x0082
 	// wmAppInvoke 表示执行投递回调的自定义消息。
 	wmAppInvoke = wmApp + 0x240
+
+	// hitTestClient 表示光标位于客户区。
+	hitTestClient = 1
 
 	// iconSmall 表示小图标槽位。
 	iconSmall = 0

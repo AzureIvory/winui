@@ -140,6 +140,8 @@
 - `items`
 - `sel`
 
+甯冨皵瀛楁闇€瑕佷繚鎸佹帶浠惰涔夐粯璁ゅ€硷細`visible` / `enabled` 缂虹渷鏃朵繚鎸?`true`锛`checked` 缂虹渷鏃朵繚鎸?`false`锛孲crollView 缂虹渷涓?`verticalScroll=true` / `horizontalScroll=false`銆?
+
 ## 7. 绑定模型
 
 JSON 只声明绑定关系，不在 JSON 文本里做数据增删改查。
@@ -284,6 +286,8 @@ JSON 样式直接映射到现有控件样式结构，而不是再造一套渲染
 ```powershell
 go run ./cmd/demo
 go run ./cmd/demo_json
+go run ./cmd/demo_json_full
 go test ./...
+go test -v ./cmd/demo_json_full
 go vet ./...
 ```

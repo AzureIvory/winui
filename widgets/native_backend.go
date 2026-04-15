@@ -11,40 +11,29 @@ import (
 )
 
 var (
-	// nativeUser32 表示 user32.dll 的延迟加载句柄。
-	nativeUser32 = windows.NewLazySystemDLL("user32.dll")
-	// nativeGdi32 表示 gdi32.dll 的延迟加载句柄。
-	nativeGdi32 = windows.NewLazySystemDLL("gdi32.dll")
+	nativeUser32   = windows.NewLazySystemDLL("user32.dll")
+	nativeGdi32    = windows.NewLazySystemDLL("gdi32.dll")
+	nativeMsftedit = windows.NewLazySystemDLL("Msftedit.dll")
 )
 
 var (
-	// procCreateWindowExW 表示 CreateWindowExW 过程入口。
-	procCreateWindowExW = nativeUser32.NewProc("CreateWindowExW")
-	// procDestroyWindow 表示 DestroyWindow 过程入口。
-	procDestroyWindow = nativeUser32.NewProc("DestroyWindow")
-	// procSetWindowPos 表示 SetWindowPos 过程入口。
-	procSetWindowPos = nativeUser32.NewProc("SetWindowPos")
-	// procShowWindow 表示 ShowWindow 过程入口。
-	procShowWindow = nativeUser32.NewProc("ShowWindow")
-	// procEnableWindow 表示 EnableWindow 过程入口。
-	procEnableWindow = nativeUser32.NewProc("EnableWindow")
-	// procSetWindowTextW 表示 SetWindowTextW 过程入口。
-	procSetWindowTextW = nativeUser32.NewProc("SetWindowTextW")
-	// procGetWindowTextW 表示 GetWindowTextW 过程入口。
-	procGetWindowTextW = nativeUser32.NewProc("GetWindowTextW")
-	// procGetWindowTextLenW 表示 GetWindowTextLengthW 过程入口。
+	procCreateWindowExW   = nativeUser32.NewProc("CreateWindowExW")
+	procDestroyWindow     = nativeUser32.NewProc("DestroyWindow")
+	procSetWindowPos      = nativeUser32.NewProc("SetWindowPos")
+	procShowWindow        = nativeUser32.NewProc("ShowWindow")
+	procEnableWindow      = nativeUser32.NewProc("EnableWindow")
+	procSetWindowTextW    = nativeUser32.NewProc("SetWindowTextW")
+	procGetWindowTextW    = nativeUser32.NewProc("GetWindowTextW")
 	procGetWindowTextLenW = nativeUser32.NewProc("GetWindowTextLengthW")
-	// procSendMessageW 表示 SendMessageW 过程入口。
-	procSendMessageW = nativeUser32.NewProc("SendMessageW")
-	// procSetFocus 表示 SetFocus 过程入口。
-	procSetFocus    = nativeUser32.NewProc("SetFocus")
-	procGetKeyState = nativeUser32.NewProc("GetKeyState")
-	// procSetWindowLongPtrW 表示 SetWindowLongPtrW 过程入口。
+	procSendMessageW      = nativeUser32.NewProc("SendMessageW")
+	procInvalidateRect    = nativeUser32.NewProc("InvalidateRect")
+	procSetFocus          = nativeUser32.NewProc("SetFocus")
+	procGetKeyState       = nativeUser32.NewProc("GetKeyState")
 	procSetWindowLongPtrW = nativeUser32.NewProc("SetWindowLongPtrW")
-	// procCallWindowProcW 表示 CallWindowProcW 过程入口。
-	procCallWindowProcW = nativeUser32.NewProc("CallWindowProcW")
-	// procGetStockObject 表示 GetStockObject 过程入口。
-	procGetStockObject = nativeGdi32.NewProc("GetStockObject")
+	procCallWindowProcW   = nativeUser32.NewProc("CallWindowProcW")
+	procGetStockObject    = nativeGdi32.NewProc("GetStockObject")
+	procLoadCursorW       = nativeUser32.NewProc("LoadCursorW")
+	procSetCursor         = nativeUser32.NewProc("SetCursor")
 )
 
 var (
@@ -88,14 +77,13 @@ const (
 )
 
 const (
-	// nativeEditMultiline ??????????
+	// nativeEditMultiline 表示多行编辑样式。
 	nativeEditMultiline uint32 = 0x0004
-	nativeEditPassword  uint32 = 0x0020
-	// nativeEditAutoVScroll ?????????
+	// nativeEditAutoVScroll 表示自动垂直滚动。
 	nativeEditAutoVScroll uint32 = 0x0040
-	// nativeEditAutoHScroll ??????????????
+	// nativeEditAutoHScroll 表示自动水平滚动。
 	nativeEditAutoHScroll uint32 = 0x0080
-	// nativeEditWantReturn ??????????
+	// nativeEditWantReturn 表示回车写入文本。
 	nativeEditWantReturn uint32 = 0x1000
 )
 
@@ -129,11 +117,26 @@ const (
 )
 
 const (
+	// nativeEditSetPasswordChar 表示切换密码掩码字符。
+	nativeEditSetPasswordChar = 0x00CC
 	// nativeEditSetReadOnly 表示切换编辑框只读状态。
 	nativeEditSetReadOnly = 0x00CF
+	// nativeEditGetSel 表示读取选区。
+	nativeEditGetSel = 0x00B0
+	// nativeEditSetSel 表示设置选区。
+	nativeEditSetSel = 0x00B1
+	// nativeEditScrollCaret 表示将光标滚动到可见区域。
+	nativeEditScrollCaret = 0x00B7
 	// nativeEditSetCueBanner 表示设置编辑框占位提示。
 	nativeEditSetCueBanner = 0x1501
-	nativeEditScrollCaret  = 0x00B7
+	// nativeRichEditSetEventMask 表示配置 RichEdit 事件掩码。
+	nativeRichEditSetEventMask = 0x0445
+	// nativeRichEditSetBackgroundColor 表示设置 RichEdit 背景色。
+	nativeRichEditSetBackgroundColor = 0x0443
+	// nativeRichEditSetCharFormat 表示设置 RichEdit 字符格式。
+	nativeRichEditSetCharFormat = 0x0444
+	// nativeRichEditSetTextMode 表示设置 RichEdit 文本模式。
+	nativeRichEditSetTextMode = 0x045C
 )
 
 const (
@@ -166,10 +169,12 @@ const (
 	nativeButtonClicked uint16 = 0
 	// nativeButtonSetFocus 表示按钮获得焦点通知。
 	nativeButtonSetFocus uint16 = 6
-	// nativeEditChanged 表示编辑框文本变化通知。
-	nativeEditChanged uint16 = 0x0300
 	// nativeEditSetFocus 表示编辑框获得焦点通知。
 	nativeEditSetFocus uint16 = 0x0100
+	// nativeEditKillFocus 表示编辑框失去焦点通知。
+	nativeEditKillFocus uint16 = 0x0200
+	// nativeEditChanged 表示编辑框文本变化通知。
+	nativeEditChanged uint16 = 0x0300
 	// nativeComboSelectionChanged 表示组合框选项变化通知。
 	nativeComboSelectionChanged uint16 = 1
 	// nativeComboSetFocus 表示组合框获得焦点通知。
@@ -186,6 +191,50 @@ const (
 	nativeLongWndProc       uintptr = ^uintptr(3)
 	nativeVirtualKeyControl uintptr = 0x11
 )
+
+const (
+	nativeRichEditClass = "RICHEDIT50W"
+	// nativeRichEditTextModePlainText 表示纯文本模式。
+	nativeRichEditTextModePlainText uintptr = 0x0001
+	// nativeRichEditTextModeMultiLevelUndo 表示启用多级撤销。
+	nativeRichEditTextModeMultiLevelUndo uintptr = 0x0004
+	// nativeRichEditTextModeMultiCodepage 表示允许多代码页。
+	nativeRichEditTextModeMultiCodepage uintptr = 0x0010
+	// nativeRichEditEventMaskChange 表示订阅 EN_CHANGE。
+	nativeRichEditEventMaskChange uintptr = 0x00000001
+	// nativeRichEditSCFDefault 表示默认字符格式。
+	nativeRichEditSCFDefault uintptr = 0
+	// nativeRichEditSCFAll 表示应用到全部文本。
+	nativeRichEditSCFAll uintptr = 4
+	// nativeRichEditCFMColor 表示文本颜色字段有效。
+	nativeRichEditCFMColor uint32 = 0x40000000
+)
+const (
+	nativeWindowSetCursor uint32  = 0x0020
+	nativeEditSetMargins  uint32  = 0x00D3
+	nativeEditLeftMargin  uintptr = 0x0001
+	nativeEditRightMargin uintptr = 0x0002
+	nativeEditSetRectNP   uint32  = 0x00B4
+)
+
+type nativeRect struct {
+	Left   int32
+	Top    int32
+	Right  int32
+	Bottom int32
+}
+
+type nativeCharFormatW struct {
+	CbSize         uint32
+	Mask           uint32
+	Effects        uint32
+	Height         int32
+	Offset         int32
+	TextColor      uint32
+	CharSet        byte
+	PitchAndFamily byte
+	FaceName       [32]uint16
+}
 
 // nativeCommandHandler 表示可处理原生命令通知的内部接口。
 type nativeCommandHandler interface {
@@ -305,6 +354,19 @@ func createNativeControl(scene *Scene, className, text string, style uint32, bou
 	child := windows.Handle(handle)
 	applyNativeDefaultFont(child)
 	return child, nil
+}
+
+func createNativeRichEditControl(scene *Scene, style uint32, bounds Rect, commandID uint16) (windows.Handle, error) {
+	if err := nativeMsftedit.Load(); err != nil {
+		return 0, err
+	}
+	handle, err := createNativeControl(scene, nativeRichEditClass, "", style, bounds, commandID)
+	if err != nil {
+		return 0, err
+	}
+	sendNativeMessage(handle, nativeRichEditSetTextMode, nativeRichEditTextModePlainText|nativeRichEditTextModeMultiLevelUndo|nativeRichEditTextModeMultiCodepage, 0)
+	sendNativeMessage(handle, nativeRichEditSetEventMask, 0, nativeRichEditEventMaskChange)
+	return handle, nil
 }
 
 // destroyNativeControl 销毁给定原生子控件。
@@ -427,6 +489,55 @@ func setNativeReadOnly(handle windows.Handle, readOnly bool) {
 	sendNativeMessage(handle, nativeEditSetReadOnly, value, 0)
 }
 
+func setNativePassword(handle windows.Handle, enabled bool) {
+	if handle == 0 {
+		return
+	}
+	ch := uintptr(0)
+	if enabled {
+		ch = uintptr('•')
+	}
+	sendNativeMessage(handle, nativeEditSetPasswordChar, ch, 0)
+	procInvalidateRect.Call(uintptr(handle), 0, 1)
+}
+
+func setNativeSelection(handle windows.Handle, start, end int) {
+	if handle == 0 {
+		return
+	}
+	sendNativeMessage(handle, nativeEditSetSel, uintptr(start), uintptr(end))
+}
+
+func getNativeSelection(handle windows.Handle) (int, int) {
+	if handle == 0 {
+		return 0, 0
+	}
+	var start uint32
+	var end uint32
+	sendNativeMessage(handle, nativeEditGetSel, uintptr(unsafe.Pointer(&start)), uintptr(unsafe.Pointer(&end)))
+	return int(start), int(end)
+}
+
+func setNativeRichEditBackgroundColor(handle windows.Handle, color core.Color) {
+	if handle == 0 {
+		return
+	}
+	sendNativeMessage(handle, nativeRichEditSetBackgroundColor, 0, uintptr(color))
+}
+
+func setNativeRichEditTextColor(handle windows.Handle, color core.Color) {
+	if handle == 0 {
+		return
+	}
+	cf := nativeCharFormatW{
+		CbSize:    uint32(unsafe.Sizeof(nativeCharFormatW{})),
+		Mask:      nativeRichEditCFMColor,
+		TextColor: uint32(color),
+	}
+	sendNativeMessage(handle, nativeRichEditSetCharFormat, nativeRichEditSCFDefault, uintptr(unsafe.Pointer(&cf)))
+	sendNativeMessage(handle, nativeRichEditSetCharFormat, nativeRichEditSCFAll, uintptr(unsafe.Pointer(&cf)))
+}
+
 // setNativeFocus 将系统焦点切换到给定原生子控件。
 func setNativeFocus(handle windows.Handle) {
 	if handle == 0 {
@@ -472,6 +583,13 @@ func keyHasCtrlState() bool {
 
 // nativeEditProc 处理原生编辑框子类化后的窗口消息。
 func nativeEditProc(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr {
+	if msg == nativeWindowSetCursor {
+		h, _, _ := procLoadCursorW.Call(0, uintptr(core.CursorIBeam))
+		if h != 0 {
+			procSetCursor.Call(h)
+			return 1
+		}
+	}
 	value, ok := nativeEditRegistry.Load(windows.Handle(hwnd))
 	if !ok {
 		return 0
@@ -494,4 +612,22 @@ func nativeEditProc(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr {
 	}
 	result, _, _ := procCallWindowProcW.Call(edit.native.oldWndProc, hwnd, uintptr(msg), wParam, lParam)
 	return result
+}
+func setNativeEditMargins(handle windows.Handle, left, right int32) {
+	if handle == 0 {
+		return
+	}
+	lr := uintptr(uint32(left)&0xFFFF | (uint32(right) & 0xFFFF << 16))
+	sendNativeMessage(
+		handle,
+		nativeEditSetMargins,
+		nativeEditLeftMargin|nativeEditRightMargin,
+		lr,
+	)
+}
+func setNativeEditRect(handle windows.Handle, rc nativeRect) {
+	if handle == 0 {
+		return
+	}
+	sendNativeMessage(handle, nativeEditSetRectNP, 0, uintptr(unsafe.Pointer(&rc)))
 }

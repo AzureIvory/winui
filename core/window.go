@@ -46,6 +46,7 @@ var (
 	procScreenToClient        = user32.NewProc("ScreenToClient")
 	procSystemParametersInfoW = user32.NewProc("SystemParametersInfoW")
 	procSetWindowPos          = user32.NewProc("SetWindowPos")
+	procIsChild               = user32.NewProc("IsChild")
 	procGetModuleHandleW      = kernel32.NewProc("GetModuleHandleW")
 	procGetCurrentThreadID    = kernel32.NewProc("GetCurrentThreadId")
 	procRtlMoveMemory         = kernel32.NewProc("RtlMoveMemory")
@@ -90,6 +91,8 @@ type App struct {
 
 	// closed 标记窗口是否已经关闭。
 	closed atomic.Bool
+	// currentCursor 保存当前应用显式设置的鼠标光标。
+	currentCursor atomic.Uint64
 
 	// postMu 保护投递回调队列。
 	postMu sync.Mutex
@@ -144,13 +147,15 @@ func NewApp(opts Options) (*App, error) {
 		opts.RenderMode = RenderModeAuto
 	}
 
-	return &App{
+	app := &App{
 		opts:         opts,
 		className:    opts.ClassName,
 		ready:        make(chan struct{}),
 		done:         make(chan int, 1),
 		activeTimers: make(map[uintptr]struct{}),
-	}, nil
+	}
+	app.currentCursor.Store(uint64(opts.Cursor))
+	return app, nil
 }
 
 // Init 启动应用的 UI 线程，并在需要时创建原生窗口。
@@ -504,7 +509,21 @@ func (a *App) setCursor(cursor CursorID) {
 	if err != nil {
 		return
 	}
+	a.currentCursor.Store(uint64(cursor))
 	procSetCursor.Call(uintptr(h))
+}
+
+func (a *App) effectiveCursor() CursorID {
+	if a == nil {
+		return CursorArrow
+	}
+	if cursor := CursorID(a.currentCursor.Load()); cursor != 0 {
+		return cursor
+	}
+	if a.opts.Cursor != 0 {
+		return a.opts.Cursor
+	}
+	return CursorArrow
 }
 
 // SetCursor 更新应用使用的光标。
@@ -560,6 +579,14 @@ func (a *App) ReleaseMouse() {
 	_ = a.Post(func() {
 		a.releaseMouse()
 	})
+}
+
+func isChildWindow(parent, child windows.Handle) bool {
+	if parent == 0 || child == 0 {
+		return false
+	}
+	result, _, _ := procIsChild.Call(uintptr(parent), uintptr(child))
+	return result != 0
 }
 
 // updateClientSize 保存应用窗口最新的客户区尺寸。

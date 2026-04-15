@@ -125,6 +125,48 @@ func TestDemoWindowLaysOutShowcaseCardsWithVisibleHeights(t *testing.T) {
 	}
 }
 
+func TestDemoRadioGroupsStartExclusiveAndTogglePeers(t *testing.T) {
+	controller, _ := loadDemoControllerForTest(t)
+
+	radioDotA := controller.mustRadio("radioDotA")
+	radioDotB := controller.mustRadio("radioDotB")
+	radioCheckA := controller.mustRadio("radioCheckA")
+	radioCheckB := controller.mustRadio("radioCheckB")
+
+	if !radioDotA.IsChecked() {
+		t.Fatal("radioDotA should start checked")
+	}
+	if radioDotB.IsChecked() {
+		t.Fatal("radioDotB should start unchecked")
+	}
+	if !radioCheckA.IsChecked() {
+		t.Fatal("radioCheckA should start checked")
+	}
+	if radioCheckB.IsChecked() {
+		t.Fatal("radioCheckB should start unchecked")
+	}
+
+	if handled := radioDotB.OnEvent(widgets.Event{Type: widgets.EventClick, Source: radioDotB}); !handled {
+		t.Fatal("radioDotB click was not handled")
+	}
+	if radioDotA.IsChecked() {
+		t.Fatal("radioDotA should be cleared after selecting radioDotB")
+	}
+	if !radioDotB.IsChecked() {
+		t.Fatal("radioDotB should be checked after click")
+	}
+
+	if handled := radioCheckB.OnEvent(widgets.Event{Type: widgets.EventClick, Source: radioCheckB}); !handled {
+		t.Fatal("radioCheckB click was not handled")
+	}
+	if radioCheckA.IsChecked() {
+		t.Fatal("radioCheckA should be cleared after selecting radioCheckB")
+	}
+	if !radioCheckB.IsChecked() {
+		t.Fatal("radioCheckB should be checked after click")
+	}
+}
+
 func loadDemoControllerForTest(t *testing.T) (*demoController, *jsonui.Window) {
 	t.Helper()
 

@@ -25,10 +25,11 @@ type stringSource struct {
 }
 
 type boolSource struct {
-	Has     bool
-	Literal bool
-	Binding string
-	Default bool
+	Has        bool
+	Literal    bool
+	Binding    string
+	Default    bool
+	HasDefault bool
 }
 
 type intSource struct {
@@ -119,17 +120,20 @@ func parseBoolSource(raw json.RawMessage) (boolSource, error) {
 		return boolSource{}, err
 	} else if ok {
 		defaultValue := false
+		hasDefault := false
 		if len(binding.Default) > 0 {
 			value, err := decodeBoolLiteral(binding.Default)
 			if err != nil {
 				return boolSource{}, err
 			}
 			defaultValue = value
+			hasDefault = true
 		}
 		return boolSource{
-			Has:     true,
-			Binding: binding.Bind,
-			Default: defaultValue,
+			Has:        true,
+			Binding:    binding.Bind,
+			Default:    defaultValue,
+			HasDefault: hasDefault,
 		}, nil
 	}
 	value, err := decodeBoolLiteral(raw)

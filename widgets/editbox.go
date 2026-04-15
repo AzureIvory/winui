@@ -7,6 +7,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/AzureIvory/winui/core"
+	"golang.org/x/sys/windows"
 )
 
 const (
@@ -78,6 +79,7 @@ func (e *EditBox) SetBounds(rect Rect) {
 		e.clampScroll()
 		e.syncNativeBounds()
 		e.invalidate(e)
+		e.syncNativeInsets()
 	})
 }
 
@@ -118,7 +120,8 @@ func (e *EditBox) SetText(text string) {
 func (e *EditBox) TextValue() string {
 	if e.native.valid() {
 		e.Text = e.normalizeText(getNativeText(e.native.handle))
-		e.caret = len([]rune(e.Text))
+		_, end := getNativeSelection(e.native.handle)
+		e.caret = clampInt(end, 0, len([]rune(e.Text)))
 	}
 	return e.Text
 }
@@ -154,7 +157,7 @@ func (e *EditBox) SetPassword(password bool) {
 			return
 		}
 		e.password = password
-		e.recreateNativeControl()
+		e.syncNativePassword()
 		e.invalidate(e)
 	})
 }
@@ -283,7 +286,11 @@ func (e *EditBox) LineCount() int {
 func (e *EditBox) SetStyle(style EditStyle) {
 	e.runOnUI(func() {
 		e.Style = style
+		e.syncNativeBounds()
+		e.syncNativeFont()
+		e.syncNativeTheme()
 		e.invalidate(e)
+		e.syncNativeInsets()
 	})
 }
 
@@ -328,6 +335,13 @@ func (e *EditBox) OnEvent(evt Event) bool {
 	case EventMouseDown:
 		if e.Enabled() {
 			e.caret = e.caretAtPoint(evt.Point)
+			e.ensureNativeControl(e.scene())
+			e.syncNativeBounds()
+			e.syncNativeVisible()
+			if e.native.valid() {
+				setNativeSelection(e.native.handle, e.caret, e.caret)
+				setNativeFocus(e.native.handle)
+			}
 			e.ensureCaretVisible()
 			e.invalidate(e)
 			return true
@@ -340,19 +354,49 @@ func (e *EditBox) OnEvent(evt Event) bool {
 		if !e.Focused {
 			e.Focused = true
 			e.caret = clampInt(e.caret, 0, len([]rune(e.Text)))
+			e.ensureNativeControl(e.scene())
+			e.syncNativeBounds()
+			e.syncNativeVisible()
+			e.syncNativeEnabled()
+			e.syncNativeTheme()
+			e.syncNativeText()
+			e.syncNativeReadOnly()
+			e.syncNativePassword()
+			if e.native.valid() {
+				setNativeSelection(e.native.handle, e.caret, e.caret)
+				setNativeFocus(e.native.handle)
+			}
 			e.ensureCaretVisible()
 			e.invalidate(e)
 		}
 	case EventBlur:
 		if e.Focused {
+			if e.native.valid() {
+				text := e.normalizeText(getNativeText(e.native.handle))
+				if e.Text != text {
+					e.Text = text
+					if e.OnChange != nil {
+						e.OnChange(text)
+					}
+				}
+				_, end := getNativeSelection(e.native.handle)
+				e.caret = clampInt(end, 0, len([]rune(e.Text)))
+			}
 			e.Focused = false
+			e.syncNativeVisible()
 			e.invalidate(e)
 		}
 	case EventMouseWheel:
 		return e.handleWheel(evt)
 	case EventKeyDown:
+		if e.native.valid() && e.Focused {
+			return true
+		}
 		return e.handleKey(evt.Key)
 	case EventChar:
+		if e.native.valid() && e.Focused {
+			return true
+		}
 		return e.handleChar(evt.Rune)
 	}
 	return false
@@ -394,6 +438,10 @@ func (e *EditBox) Paint(ctx *PaintCtx) {
 		H: max32(0, bounds.H-padding*2),
 	}
 	if textRect.Empty() {
+		return
+	}
+
+	if e.native.valid() && e.Focused {
 		return
 	}
 
@@ -476,26 +524,30 @@ func (e *EditBox) Close() error {
 
 // handleNativeCommand 处理原生编辑框发送的命令通知。
 func (e *EditBox) handleNativeCommand(code uint16) bool {
-	if !isNativeMode(e.mode) {
-		return false
-	}
 	switch code {
 	case nativeEditSetFocus:
 		if scene := e.scene(); scene != nil {
-			scene.Blur()
+			if isNativeMode(e.mode) {
+				scene.Blur()
+			} else {
+				scene.setFocus(e)
+			}
 		}
 		return true
 	case nativeEditChanged:
 		text := e.Text
 		if e.native.valid() {
 			text = e.normalizeText(getNativeText(e.native.handle))
+			_, end := getNativeSelection(e.native.handle)
+			e.caret = clampInt(end, 0, len([]rune(text)))
 		}
 		if e.Text == text {
 			return true
 		}
 		e.Text = text
-		e.caret = len([]rune(text))
-		e.invalidate(e)
+		if isNativeMode(e.mode) || !e.Focused {
+			e.invalidate(e)
+		}
 		if e.OnChange != nil {
 			e.OnChange(text)
 		}
@@ -507,25 +559,26 @@ func (e *EditBox) handleNativeCommand(code uint16) bool {
 
 // ensureNativeControl 确保编辑框在原生模式下已创建系统子控件。
 func (e *EditBox) ensureNativeControl(scene *Scene) {
-	if !isNativeMode(e.mode) || scene == nil || scene.app == nil {
+	if scene == nil || scene.app == nil {
 		return
 	}
 	if e.native.valid() {
 		e.syncNativeBounds()
+		e.syncNativeFont()
 		e.syncNativeVisible()
 		e.syncNativeEnabled()
+		e.syncNativeTheme()
 		e.syncNativeText()
 		e.syncNativePlaceholder()
 		e.syncNativeReadOnly()
+		e.syncNativePassword()
 		return
 	}
 	commandID := scene.allocateNativeCommandID()
-	handle, err := createNativeControl(
+	handle, err := createNativeRichEditControl(
 		scene,
-		"EDIT",
-		e.nativeTextValue(),
 		e.nativeEditStyle(),
-		e.Bounds(),
+		e.nativeHostBounds(),
 		commandID,
 	)
 	if err != nil {
@@ -538,9 +591,11 @@ func (e *EditBox) ensureNativeControl(scene *Scene) {
 	e.syncNativeBounds()
 	e.syncNativeVisible()
 	e.syncNativeEnabled()
+	e.syncNativeTheme()
 	e.syncNativeText()
 	e.syncNativePlaceholder()
 	e.syncNativeReadOnly()
+	e.syncNativePassword()
 }
 
 // destroyNativeControl 销毁编辑框对应的原生系统子控件。
@@ -562,15 +617,21 @@ func (e *EditBox) destroyNativeControl(scene *Scene) {
 // syncNativeBounds 同步编辑框原生控件边界。
 func (e *EditBox) syncNativeBounds() {
 	if e.native.valid() {
-		setNativeBounds(e.native.handle, e.Bounds())
+		setNativeBounds(e.native.handle, e.nativeHostBounds())
+		e.syncNativeInsets()
 	}
 }
 
 // syncNativeVisible 同步编辑框原生控件可见性。
 func (e *EditBox) syncNativeVisible() {
-	if e.native.valid() {
-		setNativeVisible(e.native.handle, e.Visible())
+	if !e.native.valid() {
+		return
 	}
+	visible := e.Visible()
+	if !isNativeMode(e.mode) {
+		visible = visible && e.Focused
+	}
+	setNativeVisible(e.native.handle, visible)
 }
 
 // syncNativeEnabled 同步编辑框原生控件启用状态。
@@ -584,13 +645,14 @@ func (e *EditBox) syncNativeEnabled() {
 func (e *EditBox) syncNativeText() {
 	if e.native.valid() {
 		setNativeText(e.native.handle, e.nativeTextValue())
+		setNativeSelection(e.native.handle, e.caret, e.caret)
 	}
 }
 
 // syncNativePlaceholder 同步编辑框原生控件占位提示。
 func (e *EditBox) syncNativePlaceholder() {
 	if e.native.valid() {
-		setNativeCueBanner(e.native.handle, e.Placeholder)
+		// RichEdit 不支持 EM_SETCUEBANNER；自绘模式下占位文本由外层壳负责绘制。
 	}
 }
 
@@ -599,6 +661,79 @@ func (e *EditBox) syncNativeReadOnly() {
 	if e.native.valid() {
 		setNativeReadOnly(e.native.handle, e.ReadOnly)
 	}
+}
+
+func (e *EditBox) syncNativePassword() {
+	if e.native.valid() {
+		setNativePassword(e.native.handle, e.password)
+	}
+}
+
+func (e *EditBox) syncNativeTheme() {
+	if !e.native.valid() {
+		return
+	}
+	e.syncNativeFont()
+	style := e.resolveStyle(&PaintCtx{scene: e.scene()})
+	background := style.Background
+	textColor := style.TextColor
+	if !e.Enabled() {
+		background = style.DisabledBg
+		textColor = style.DisabledText
+	}
+	setNativeRichEditBackgroundColor(e.native.handle, background)
+	setNativeRichEditTextColor(e.native.handle, textColor)
+}
+
+func (e *EditBox) syncNativeInsets() {
+	if !e.native.valid() {
+		return
+	}
+	style := e.resolveStyle(&PaintCtx{scene: e.scene()})
+	padding := style.PaddingDP
+	if scene := e.scene(); scene != nil && scene.app != nil {
+		padding = scene.app.DP(padding)
+	}
+
+	b := e.Bounds()
+	if e.multiline {
+		setNativeEditRect(e.native.handle, nativeRect{
+			Left:   padding,
+			Top:    padding,
+			Right:  max32(padding, b.W-padding),
+			Bottom: max32(padding, b.H-padding),
+		})
+		return
+	}
+
+	setNativeEditMargins(e.native.handle, padding, padding)
+}
+
+func (e *EditBox) nativeHostBounds() Rect {
+	return e.Bounds()
+}
+
+func (e *EditBox) syncNativeFont() {
+	if !e.native.valid() {
+		return
+	}
+	scene := e.scene()
+	if scene == nil {
+		return
+	}
+	style := e.resolveStyle(&PaintCtx{scene: scene})
+	font, err := scene.font(style.Font)
+	if err != nil || font == nil {
+		return
+	}
+	setNativeControlFont(e.native.handle, font.Handle())
+}
+
+func setNativeControlFont(handle windows.Handle, font windows.Handle) {
+	if handle == 0 || font == 0 {
+		return
+	}
+	sendNativeMessage(handle, nativeMessageSetFont, uintptr(font), 1)
 }
 
 // acceptsFocus 返回控件是否可接收键盘焦点。
@@ -847,9 +982,9 @@ func (e *EditBox) recreateNativeControl() {
 }
 
 func (e *EditBox) nativeEditStyle() uint32 {
-	style := nativeWindowChild | nativeWindowVisible | nativeWindowTabStop | nativeWindowBorder
-	if e.password {
-		style |= nativeEditPassword
+	style := nativeWindowChild | nativeWindowTabStop
+	if isNativeMode(e.mode) {
+		style |= nativeWindowVisible | nativeWindowBorder
 	}
 	if !e.multiline {
 		style |= nativeEditAutoHScroll

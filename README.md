@@ -134,6 +134,7 @@ store.Set("page.title", "Updated Title")
 - Host code owns all data mutation through `jsonui.DataSource`
 - Frame values are logical DP by default and scale with DPI
 - Widget ids must stay unique within each declared window
+- Bool fields fall back to widget semantics when omitted or when a bound value is missing: `visible` / `enabled` stay `true`, while `checked`, `multiple`, and `autoplay` stay `false`
 - `input` / `textarea` support `readOnly`, `multiline`, `wordWrap`, `acceptReturn`, `verticalScroll`, and `horizontalScroll`
 - `.ico` assets are loaded at screen-DPI-scaled size by default and can be overridden with `LoadOptions.IconSizeDP`, per-window `iconSizeDP`, or per-node `iconSizeDP`
 - JSON icon declarations also accept `iconPolicy: "auto" | "fixed"` for DPI reload behavior
@@ -204,13 +205,14 @@ go run ./cmd/demo_json_full
 
 ```powershell
 go test ./...
+go test -v ./cmd/demo_json_full
 go vet ./...
 go run ./cmd/demo
 go run ./cmd/demo_json
 go run ./cmd/demo_json_full
 ```
 
-GitHub Actions mirrors the Windows validation path in `.github/workflows/ci.yml` with `gofmt`, `go test ./...`, and `go vet ./...` under both `CGO_ENABLED=0` and `CGO_ENABLED=1`.
+GitHub Actions mirrors the Windows validation path in `.github/workflows/ci.yml` with `gofmt`, a dedicated `go test -v ./cmd/demo_json_full` regression step that uploads `cmd/demo_json_full/output/latest-api-check.txt`, plus `go test ./...` and `go vet ./...` under both `CGO_ENABLED=0` and `CGO_ENABLED=1`.
 
 ## Docs
 

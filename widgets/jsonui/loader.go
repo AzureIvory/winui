@@ -554,7 +554,7 @@ func (b *builder) buildCheckBox(window *Window, spec nodeSpec) (widgets.Widget, 
 		return nil, err
 	}
 	check.SetStyle(style)
-	check.SetChecked(resolveBoolSource(checkedSource, b.opts.Data))
+	check.SetChecked(resolveBoolSourceOrDefault(checkedSource, b.opts.Data, false))
 	widgets.SetPreferredSize(check, core.Size{Width: 160, Height: 28})
 	b.applyCommonState(window, check, spec)
 	if textSource.Binding != "" {
@@ -564,7 +564,7 @@ func (b *builder) buildCheckBox(window *Window, spec nodeSpec) (widgets.Widget, 
 	}
 	if checkedSource.Binding != "" {
 		b.addBinding(window, []string{checkedSource.Binding}, func(ctx *bindingContext) {
-			check.SetChecked(resolveBoolSource(checkedSource, ctx.data))
+			check.SetChecked(resolveBoolSourceOrDefault(checkedSource, ctx.data, false))
 		})
 	}
 	if actionName := strings.TrimSpace(spec.OnChange); actionName != "" {
@@ -596,7 +596,7 @@ func (b *builder) buildRadio(window *Window, spec nodeSpec) (widgets.Widget, err
 		return nil, err
 	}
 	radio.SetStyle(style)
-	radio.SetChecked(resolveBoolSource(checkedSource, b.opts.Data))
+	radio.SetChecked(resolveBoolSourceOrDefault(checkedSource, b.opts.Data, false))
 	widgets.SetPreferredSize(radio, core.Size{Width: 160, Height: 28})
 	b.applyCommonState(window, radio, spec)
 	if textSource.Binding != "" {
@@ -606,7 +606,7 @@ func (b *builder) buildRadio(window *Window, spec nodeSpec) (widgets.Widget, err
 	}
 	if checkedSource.Binding != "" {
 		b.addBinding(window, []string{checkedSource.Binding}, func(ctx *bindingContext) {
-			radio.SetChecked(resolveBoolSource(checkedSource, ctx.data))
+			radio.SetChecked(resolveBoolSourceOrDefault(checkedSource, ctx.data, false))
 		})
 	}
 	if actionName := strings.TrimSpace(spec.OnChange); actionName != "" {
@@ -904,13 +904,13 @@ func (b *builder) buildAnimatedImage(window *Window, spec nodeSpec) (widgets.Wid
 		return nil, err
 	}
 	if autoplaySource.Has {
-		imageWidget.SetPlaying(resolveBoolSource(autoplaySource, b.opts.Data))
+		imageWidget.SetPlaying(resolveBoolSourceOrDefault(autoplaySource, b.opts.Data, false))
 	}
 	widgets.SetPreferredSize(imageWidget, core.Size{Width: 64, Height: 64})
 	b.applyCommonState(window, imageWidget, spec)
 	if autoplaySource.Binding != "" {
 		b.addBinding(window, []string{autoplaySource.Binding}, func(ctx *bindingContext) {
-			imageWidget.SetPlaying(resolveBoolSource(autoplaySource, ctx.data))
+			imageWidget.SetPlaying(resolveBoolSourceOrDefault(autoplaySource, ctx.data, false))
 		})
 	}
 	return imageWidget, nil
@@ -919,20 +919,20 @@ func (b *builder) buildAnimatedImage(window *Window, spec nodeSpec) (widgets.Wid
 func (b *builder) applyCommonState(window *Window, widget widgets.Widget, spec nodeSpec) {
 	visibleSource, _ := parseBoolSource(spec.Visible)
 	if visibleSource.Has {
-		widget.SetVisible(resolveBoolSource(visibleSource, b.opts.Data))
+		widget.SetVisible(resolveBoolSourceOrDefault(visibleSource, b.opts.Data, true))
 	}
 	enabledSource, _ := parseBoolSource(spec.Enabled)
 	if enabledSource.Has {
-		widget.SetEnabled(resolveBoolSource(enabledSource, b.opts.Data))
+		widget.SetEnabled(resolveBoolSourceOrDefault(enabledSource, b.opts.Data, true))
 	}
 	if visibleSource.Binding != "" {
 		b.addBinding(window, []string{visibleSource.Binding}, func(ctx *bindingContext) {
-			widget.SetVisible(resolveBoolSource(visibleSource, ctx.data))
+			widget.SetVisible(resolveBoolSourceOrDefault(visibleSource, ctx.data, true))
 		})
 	}
 	if enabledSource.Binding != "" {
 		b.addBinding(window, []string{enabledSource.Binding}, func(ctx *bindingContext) {
-			widget.SetEnabled(resolveBoolSource(enabledSource, ctx.data))
+			widget.SetEnabled(resolveBoolSourceOrDefault(enabledSource, ctx.data, true))
 		})
 	}
 }
@@ -1111,18 +1111,7 @@ func resolveStringSource(source stringSource, data DataSource) string {
 }
 
 func resolveBoolSource(source boolSource, data DataSource) bool {
-	if !source.Has {
-		return true
-	}
-	if source.Binding == "" {
-		return source.Literal
-	}
-	if raw, ok := dataLookup(data, source.Binding); ok {
-		if value, ok := bindingBoolValue(raw); ok {
-			return value
-		}
-	}
-	return source.Default
+	return resolveBoolSourceOrDefault(source, data, false)
 }
 
 func resolveIntSource(source intSource, data DataSource) int32 {
@@ -1296,7 +1285,18 @@ func resolveBoolSourceOrDefault(source boolSource, data DataSource, fallback boo
 	if !source.Has {
 		return fallback
 	}
-	return resolveBoolSource(source, data)
+	if source.Binding == "" {
+		return source.Literal
+	}
+	if raw, ok := dataLookup(data, source.Binding); ok {
+		if value, ok := bindingBoolValue(raw); ok {
+			return value
+		}
+	}
+	if source.HasDefault {
+		return source.Default
+	}
+	return fallback
 }
 
 func resolveIntSourceOrDefault(source intSource, data DataSource, fallback int32) int32 {
@@ -1342,7 +1342,7 @@ func (b *builder) fileDialogOptions(spec nodeSpec) (sysapi.Options, error) {
 	if multipleSource, err := parseBoolSource(spec.Multiple); err != nil {
 		return options, err
 	} else if multipleSource.Has {
-		options.MultiSelect = resolveBoolSource(multipleSource, b.opts.Data)
+		options.MultiSelect = resolveBoolSourceOrDefault(multipleSource, b.opts.Data, false)
 	}
 	filters, err := parseFileFilters(spec.Filters, spec.Accept)
 	if err != nil {

@@ -41,16 +41,24 @@ func appWndProc(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr {
 			return 0
 		}
 	case wmSetFocus:
-		if app.opts.OnFocus != nil {
+		other := windows.Handle(wParam)
+		if !isChildWindow(app.hwnd, other) && app.opts.OnFocus != nil {
 			app.opts.OnFocus(app, true)
 		}
 		return 0
 
 	case wmKillFocus:
-		if app.opts.OnFocus != nil {
+		other := windows.Handle(wParam)
+		if !isChildWindow(app.hwnd, other) && app.opts.OnFocus != nil {
 			app.opts.OnFocus(app, false)
 		}
 		return 0
+
+	case wmSetCursor:
+		if uint16(lParam&0xFFFF) == hitTestClient {
+			app.setCursor(app.effectiveCursor())
+			return 1
+		}
 
 	case wmPaint:
 		session, err := beginPaintSession(app, app.hwnd, app.opts.DoubleBuffered)

@@ -43,19 +43,21 @@
 
 ```powershell
 go test ./...
+go test -v ./cmd/demo_json_full
 go vet ./...
 go run ./cmd/demo
 go run ./cmd/demo_json
 go run ./cmd/demo_json_full
 ```
 
-GitHub Actions mirrors the build checks on Windows in `.github/workflows/ci.yml` with both `CGO_ENABLED=0` and `CGO_ENABLED=1`.
+GitHub Actions mirrors the build checks on Windows in `.github/workflows/ci.yml` with both `CGO_ENABLED=0` and `CGO_ENABLED=1`, including a dedicated `cmd/demo_json_full` regression step that uploads `output/latest-api-check.txt`.
 
 Recommended:
 
 - Use both demos after layout, painting, hit testing, or input-routing changes
 - Think about both `cgo` enabled and disabled render paths
 - After JSON UI changes, verify that both `cmd/demo_json/demo.ui.json` and `cmd/demo_json_full/demo.ui.json` still load
+- Keep bool field defaults aligned with widget semantics when a JSON field is omitted or a binding has no value: `visible` / `enabled` stay `true`, `checked` / `multiple` / `autoplay` stay `false`
 - If you touch DPI-sensitive layout code, verify that JSON absolute expressions still reflow on resize and DPI changes
 - If you touch `widgets/jsonui/expr.go`, verify precedence, parentheses, percent semantics, and whitespace-insensitive parsing
 - If you touch `sysapi/` or `widgets.FilePicker`, manually verify open, save, folder, and multi-select flows in `cmd/demo_json` and `cmd/demo_json_full`

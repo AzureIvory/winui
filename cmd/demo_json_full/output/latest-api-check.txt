@@ -3,7 +3,7 @@
 ## Panel
 [PASS] Panel.Add - children=2
 [PASS] Panel.AddAll - children=3
-[PASS] Panel.Bounds - (38,2410,944,28)
+[PASS] Panel.Bounds - (38,2250,972,68)
 [PASS] Panel.Children - count=1
 [PASS] Panel.Enabled - true
 [PASS] Panel.HitTest - inside=true
@@ -25,9 +25,9 @@
 ## Modal
 [PASS] Modal.Add - children=2
 [PASS] Modal.AddAll - children=3
-[PASS] Modal.BackdropColor - 0x002a170f
-[PASS] Modal.BackdropOpacity - 96
-[PASS] Modal.BlurRadiusDP - 8
+[PASS] Modal.BackdropColor - 0x0037291f
+[PASS] Modal.BackdropOpacity - 84
+[PASS] Modal.BlurRadiusDP - 6
 [PASS] Modal.Bounds - (0,0,1380,940)
 [PASS] Modal.Children - count=1
 [PASS] Modal.Close - closed
@@ -55,7 +55,7 @@
 [PASS] Modal.Visible - false
 
 ## Label
-[PASS] Label.Bounds - (38,2410,944,40)
+[PASS] Label.Bounds - (52,2264,944,40)
 [PASS] Label.Enabled - true
 [PASS] Label.HitTest - inside=true
 [PASS] Label.ID - panelInfo
@@ -75,7 +75,7 @@
 [PASS] Label.WordWrap - true
 
 ## Button
-[PASS] Button.Bounds - (38,326,466,68)
+[PASS] Button.Bounds - (38,326,653,68)
 [PASS] Button.Close - closed
 [PASS] Button.Enabled - true
 [PASS] Button.HitTest - inside=true
@@ -97,7 +97,7 @@
 
 ## EditBox
 [PASS] EditBox.AcceptReturn - true
-[PASS] EditBox.Bounds - (38,642,944,96)
+[PASS] EditBox.Bounds - (38,642,972,96)
 [PASS] EditBox.Close - closed
 [PASS] EditBox.Enabled - true
 [PASS] EditBox.HitTest - inside=true
@@ -126,13 +126,13 @@
 [PASS] EditBox.SetVerticalScroll - -> false
 [PASS] EditBox.SetVisible - -> false
 [PASS] EditBox.SetWordWrap - -> true
-[PASS] EditBox.TextValue - JSON declares structure and bindings. The host runtime still owns mutations, actions, and API checks.
+[PASS] EditBox.TextValue - ok
 [PASS] EditBox.VerticalScroll - true
 [PASS] EditBox.Visible - true
 [PASS] EditBox.WordWrap - false
 
 ## CheckBox
-[PASS] CheckBox.Bounds - (38,882,944,28)
+[PASS] CheckBox.Bounds - (38,882,972,28)
 [PASS] CheckBox.Close - closed
 [PASS] CheckBox.Enabled - true
 [PASS] CheckBox.HitTest - inside=true
@@ -152,7 +152,7 @@
 [PASS] CheckBox.Visible - true
 
 ## RadioButton
-[PASS] RadioButton.Bounds - (38,1042,944,28)
+[PASS] RadioButton.Bounds - (38,1042,972,28)
 [PASS] RadioButton.Close - closed
 [PASS] RadioButton.Enabled - true
 [PASS] RadioButton.HitTest - inside=true
@@ -173,7 +173,7 @@
 [PASS] RadioButton.Visible - true
 
 ## ComboBox
-[PASS] ComboBox.Bounds - (38,1286,944,36)
+[PASS] ComboBox.Bounds - (38,1286,972,36)
 [PASS] ComboBox.Close - closed
 [PASS] ComboBox.Enabled - true
 [PASS] ComboBox.HitTest - inside=true
@@ -197,7 +197,7 @@
 [PASS] ComboBox.Visible - true
 
 ## ListBox
-[PASS] ListBox.Bounds - (38,1334,944,160)
+[PASS] ListBox.Bounds - (38,1334,972,160)
 [PASS] ListBox.ClearSelection - cleared
 [PASS] ListBox.Enabled - true
 [PASS] ListBox.HitTest - inside=true
@@ -206,8 +206,8 @@
 [PASS] ListBox.LayoutData - <nil>
 [PASS] ListBox.OnEvent - handled=false
 [PASS] ListBox.Paint - paint(nil)
-[PASS] ListBox.SelectedIndex - 1
-[PASS] ListBox.SelectedItem - beta
+[PASS] ListBox.SelectedIndex - 0
+[PASS] ListBox.SelectedItem - alpha
 [PASS] ListBox.SetBounds - -> (20,20,220,160)
 [PASS] ListBox.SetEnabled - -> false
 [PASS] ListBox.SetItems - 3 items
@@ -223,7 +223,7 @@
 ## FilePicker
 [PASS] FilePicker.Add - children=3
 [PASS] FilePicker.AddAll - children=4
-[PASS] FilePicker.Bounds - (38,1598,944,36)
+[PASS] FilePicker.Bounds - (38,1598,972,36)
 [PASS] FilePicker.Children - count=2
 [PASS] FilePicker.DialogOptions - open
 [PASS] FilePicker.Enabled - true
@@ -233,7 +233,7 @@
 [PASS] FilePicker.LayoutData - <nil>
 [PASS] FilePicker.OnEvent - handled=false
 [PASS] FilePicker.Paint - paint(nil)
-[PASS] FilePicker.Paths - README.md
+[PASS] FilePicker.Paths - README.md,go.mod
 [PASS] FilePicker.Remove - panel-remove-temp
 [PASS] FilePicker.SetBounds - -> (20,20,360,36)
 [PASS] FilePicker.SetButtonStyle - applied
@@ -254,7 +254,7 @@
 
 ## Image
 [PASS] Image.Bitmap - true
-[PASS] Image.Bounds - (38,1882,514,120)
+[PASS] Image.Bounds - (38,1882,616,120)
 [PASS] Image.Close - closed and restored
 [PASS] Image.Enabled - true
 [PASS] Image.HitTest - inside=true
@@ -275,7 +275,7 @@
 [PASS] Image.Visible - true
 
 ## AnimatedImage
-[PASS] AnimatedImage.Bounds - (741,1882,241,120)
+[PASS] AnimatedImage.Bounds - (717,1882,293,120)
 [PASS] AnimatedImage.Close - closed and restored
 [PASS] AnimatedImage.CurrentFrame - 0
 [PASS] AnimatedImage.Enabled - true
@@ -298,7 +298,7 @@
 [PASS] AnimatedImage.Visible - true
 
 ## ProgressBar
-[PASS] ProgressBar.Bounds - (38,1214,944,24)
+[PASS] ProgressBar.Bounds - (38,1214,972,24)
 [PASS] ProgressBar.Enabled - true
 [PASS] ProgressBar.HitTest - inside=true
 [PASS] ProgressBar.ID - uploadProgress
@@ -316,7 +316,7 @@
 
 ## ScrollView
 [PASS] ScrollView.Add - children=1
-[PASS] ScrollView.Bounds - (38,2126,944,200)
+[PASS] ScrollView.Bounds - (38,2106,972,40)
 [PASS] ScrollView.Children - 1
 [PASS] ScrollView.Content - *widgets.Panel
 [PASS] ScrollView.Enabled - true
