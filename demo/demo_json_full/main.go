@@ -24,7 +24,7 @@ func main() {
 		panic("primary window is nil")
 	}
 
-	controller := newDemoController(baseDir, store, doc, window)
+	controller := newDemoController(baseDir, store, doc, window, widgets.ModeCustom)
 
 	opts := core.Options{
 		ClassName:      "WinUIJSONFullDemo",
@@ -55,12 +55,14 @@ func main() {
 			return nil
 		},
 		OnResize: func(_ *core.App, _ *widgets.Scene, size core.Size) {
-			if window.Root != nil {
-				window.Root.SetBounds(widgets.Rect{W: size.Width, H: size.Height})
+			if controller.window != nil && controller.window.Root != nil {
+				controller.window.Root.SetBounds(widgets.Rect{W: size.Width, H: size.Height})
 			}
 		},
 		OnDPIChanged: func(_ *core.App, _ *widgets.Scene, _ core.DPIInfo) {
-			_ = window.ReloadResources(jsonui.ReloadReasonDPIChanged)
+			if controller.window != nil {
+				_ = controller.window.ReloadResources(jsonui.ReloadReasonDPIChanged)
+			}
 		},
 	})
 
@@ -75,10 +77,16 @@ func main() {
 }
 
 func loadDemoDocument(baseDir string) (*jsonui.Document, *jsonui.Store, error) {
-	store := newDemoStore()
+	return loadDemoDocumentWithMode(baseDir, widgets.ModeCustom, nil)
+}
+
+func loadDemoDocumentWithMode(baseDir string, mode widgets.ControlMode, store *jsonui.Store) (*jsonui.Document, *jsonui.Store, error) {
+	if store == nil {
+		store = newDemoStore()
+	}
 	doc, err := jsonui.LoadDocumentFile(filepath.Join(baseDir, "demo.ui.json"), jsonui.LoadOptions{
 		AssetsDir:   baseDir,
-		DefaultMode: widgets.ModeCustom,
+		DefaultMode: mode,
 		Data:        store,
 		Theme:       demoTheme(),
 	})

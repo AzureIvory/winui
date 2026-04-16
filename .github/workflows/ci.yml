@@ -98,14 +98,20 @@ jobs:
         shell: powershell
         env:
           CGO_ENABLED: ${{ matrix.cgo }}
-        run: go test -v ./cmd/demo_json_full
+        run: go test -v ./demo/demo_json_full
+
+      - name: Demo Go full regression
+        shell: powershell
+        env:
+          CGO_ENABLED: ${{ matrix.cgo }}
+        run: go test -v ./demo/demo_go_full
 
       - name: Upload demo_json_full API report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: demo-json-full-api-check-go${{ matrix.go-version }}-cgo${{ matrix.cgo }}
-          path: cmd/demo_json_full/output/latest-api-check.txt
+          path: demo/demo_json_full/output/latest-api-check.txt
           if-no-files-found: ignore
 
       - name: Go test

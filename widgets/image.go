@@ -3,13 +3,7 @@
 package widgets
 
 import (
-	"bytes"
 	"github.com/AzureIvory/winui/core"
-	"image"
-	"image/draw"
-	_ "image/gif"
-	_ "image/jpeg"
-	_ "image/png"
 	"time"
 )
 
@@ -29,9 +23,11 @@ const (
 type Image struct {
 	// widgetBase 提供静态图像控件共享的基础控件能力。
 	widgetBase
-	// bitmap 保存当前显示的位图。
+	// resource 保存从编码图像加载得到的高质量缩放资源。
+	resource *core.Image
+	// bitmap 保存当前显示的回退位图。
 	bitmap *core.Bitmap
-	// owned 表示位图资源是否由控件负责释放。
+	// owned 表示回退位图资源是否由控件负责释放。
 	owned bool
 	// opacity 保存绘制透明度。
 	opacity byte
@@ -112,26 +108,33 @@ func (i *Image) SetBitmapOwned(bitmap *core.Bitmap) {
 
 // LoadBytes 将字节数据加载到图像控件中。
 func (i *Image) LoadBytes(data []byte) error {
-	img, err := decodeImage(data)
+	resource, err := core.LoadImageBytes(data)
 	if err != nil {
 		return err
 	}
-	bitmap, err := bitmapFromImage(img)
-	if err != nil {
-		return err
-	}
-	i.SetBitmapOwned(bitmap)
+	i.runOnUI(func() {
+		i.replaceResource(resource)
+	})
 	return nil
 }
 
 // NaturalSize 返回已加载图像数据的原始尺寸。
 func (i *Image) NaturalSize() core.Size {
+	if i.resource != nil {
+		return i.resource.NaturalSize()
+	}
 	return i.sourceSize
 }
 
 // Bitmap 返回当前附加到图像控件上的位图。
 func (i *Image) Bitmap() *core.Bitmap {
-	return i.bitmap
+	if i.bitmap != nil {
+		return i.bitmap
+	}
+	if i.resource != nil {
+		return i.resource.MasterBitmap()
+	}
+	return nil
 }
 
 // OnEvent 处理输入事件或生命周期事件。
@@ -144,31 +147,50 @@ func (i *Image) Paint(ctx *PaintCtx) {
 	if !i.Visible() || ctx == nil {
 		return
 	}
-	if i.bitmap == nil {
+	drawRect := i.drawRect()
+	if drawRect.Empty() {
 		return
 	}
-	_ = ctx.canvas.DrawBitmapAlpha(i.bitmap, i.drawRect(), i.opacity)
+
+	bitmap := i.bitmap
+	if i.resource != nil {
+		quality := chooseImageScaleQuality(i.resource.NaturalSize(), drawRect)
+		if scaled, err := i.resource.BitmapFor(drawRect.W, drawRect.H, quality); err == nil && scaled != nil {
+			bitmap = scaled
+		}
+	}
+	if bitmap == nil {
+		return
+	}
+	_ = ctx.canvas.DrawBitmapAlpha(bitmap, drawRect, i.opacity)
 }
 
 // Close 释放图像控件持有的资源。
 func (i *Image) Close() error {
+	var err error
+	if i.resource != nil {
+		err = i.resource.Close()
+		i.resource = nil
+	}
 	if i.owned && i.bitmap != nil {
-		err := i.bitmap.Close()
-		i.bitmap = nil
-		i.owned = false
-		i.sourceSize = core.Size{}
-		return err
+		if closeErr := i.bitmap.Close(); err == nil {
+			err = closeErr
+		}
 	}
 	i.bitmap = nil
 	i.owned = false
 	i.sourceSize = core.Size{}
-	return nil
+	return err
 }
 
 // replaceBitmap 替换图像控件持有的位图。
 func (i *Image) replaceBitmap(bitmap *core.Bitmap, owned bool) {
-	if i.bitmap == bitmap && i.owned == owned {
+	if i.bitmap == bitmap && i.owned == owned && i.resource == nil {
 		return
+	}
+	if i.resource != nil {
+		_ = i.resource.Close()
+		i.resource = nil
 	}
 	if i.owned && i.bitmap != nil && i.bitmap != bitmap {
 		_ = i.bitmap.Close()
@@ -183,15 +205,38 @@ func (i *Image) replaceBitmap(bitmap *core.Bitmap, owned bool) {
 	i.invalidate(i)
 }
 
+// replaceResource 替换图像控件持有的高质量图片资源。
+func (i *Image) replaceResource(resource *core.Image) {
+	if i.resource == resource {
+		return
+	}
+	if i.resource != nil {
+		_ = i.resource.Close()
+	}
+	if i.owned && i.bitmap != nil {
+		_ = i.bitmap.Close()
+	}
+	i.resource = resource
+	i.bitmap = nil
+	i.owned = false
+	if resource != nil {
+		i.sourceSize = resource.NaturalSize()
+	} else {
+		i.sourceSize = core.Size{}
+	}
+	i.invalidate(i)
+}
+
 // drawRect 返回图像在当前画布上的绘制矩形。
 func (i *Image) drawRect() Rect {
 	target := i.Bounds()
-	if i.bitmap == nil || target.Empty() {
+	if target.Empty() {
 		return target
 	}
 
-	srcW := i.sourceSize.Width
-	srcH := i.sourceSize.Height
+	source := i.NaturalSize()
+	srcW := source.Width
+	srcH := source.Height
 	if srcW <= 0 || srcH <= 0 {
 		return target
 	}
@@ -224,6 +269,16 @@ func (i *Image) drawRect() Rect {
 		y := target.Y + (target.H-drawH)/2
 		return Rect{X: x, Y: y, W: drawW, H: drawH}
 	}
+}
+
+func chooseImageScaleQuality(src core.Size, dst Rect) core.ImageScaleQuality {
+	if src.Width <= 0 || src.Height <= 0 || dst.W <= 0 || dst.H <= 0 {
+		return core.ImageScaleLinear
+	}
+	if dst.W < src.Width || dst.H < src.Height {
+		return core.ImageScaleHigh
+	}
+	return core.ImageScaleLinear
 }
 
 // AnimatedImage 表示播放多帧位图动画的控件。
@@ -283,6 +338,7 @@ func (a *AnimatedImage) setScene(scene *Scene) {
 	oldScene := a.scene()
 	if oldScene == scene {
 		a.widgetBase.setScene(scene)
+		a.syncTimer()
 		return
 	}
 	if oldScene != nil && a.timerID != 0 {
@@ -384,6 +440,9 @@ func (a *AnimatedImage) OnEvent(evt Event) bool {
 func (a *AnimatedImage) Paint(ctx *PaintCtx) {
 	if !a.Visible() || ctx == nil || len(a.frames) == 0 {
 		return
+	}
+	if a.playing {
+		a.syncTimer()
 	}
 	frame := a.frames[a.frameIndex%len(a.frames)]
 	if frame.Bitmap == nil {
@@ -491,17 +550,4 @@ func (a *AnimatedImage) drawRect() Rect {
 		y := target.Y + (target.H-drawH)/2
 		return Rect{X: x, Y: y, W: drawW, H: drawH}
 	}
-}
-
-// decodeImage 将图像数据解码为便于 Go 使用的结构。
-func decodeImage(data []byte) (image.Image, error) {
-	img, _, err := image.Decode(bytes.NewReader(data))
-	return img, err
-}
-
-// bitmapFromImage 将解码后的 Go 图像转换为 core 位图。
-func bitmapFromImage(img image.Image) (*core.Bitmap, error) {
-	rgba := image.NewRGBA(img.Bounds())
-	draw.Draw(rgba, rgba.Bounds(), img, img.Bounds().Min, draw.Src)
-	return core.BitmapFromRGBA(rgba)
 }

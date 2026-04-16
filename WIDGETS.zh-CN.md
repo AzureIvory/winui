@@ -291,10 +291,10 @@ JSON 样式直接映射到现有控件样式结构，而不是再造一套渲染
 ## 11. Demo 与验证
 
 ```powershell
-go run ./cmd/demo
-go run ./cmd/demo_json
-go run ./cmd/demo_json_full
+go run ./demo/demo_json_full
+go run ./demo/demo_go_full
 go test ./...
-go test -v ./cmd/demo_json_full
+go test -v ./demo/demo_json_full
+go test -v ./demo/demo_go_full
 go vet ./...
 ```

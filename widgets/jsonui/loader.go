@@ -432,7 +432,7 @@ func (b *builder) buildInput(window *Window, spec nodeSpec) (widgets.Widget, err
 	if edit.Multiline() {
 		widgets.SetPreferredSize(edit, core.Size{Width: 320, Height: 96})
 	} else {
-		widgets.SetPreferredSize(edit, core.Size{Width: 220, Height: 36})
+		widgets.SetPreferredSize(edit, core.Size{Width: 220, Height: 40})
 	}
 	b.applyCommonState(window, edit, spec)
 	if valueSource.Binding != "" {
@@ -489,7 +489,7 @@ func (b *builder) buildTextArea(window *Window, spec nodeSpec) (widgets.Widget, 
 	if edit.Multiline() {
 		widgets.SetPreferredSize(edit, core.Size{Width: 320, Height: 96})
 	} else {
-		widgets.SetPreferredSize(edit, core.Size{Width: 220, Height: 36})
+		widgets.SetPreferredSize(edit, core.Size{Width: 220, Height: 40})
 	}
 	b.applyCommonState(window, edit, spec)
 	if valueSource.Binding != "" {

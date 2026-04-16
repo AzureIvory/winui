@@ -10,6 +10,10 @@
       "checked": "\u5df2\u9009\u4e2d",
       "unchecked": "\u672a\u9009\u4e2d"
     },
+    "mode": {
+      "custom": "\u81ea\u7ed8\u63a7\u4ef6",
+      "native": "\u539f\u751f\u63a7\u4ef6"
+    },
     "report": {
       "noRun": "\u5c1a\u672a\u8fd0\u884c API \u68c0\u67e5\u3002",
       "summaryFormat": "\u901a\u8fc7=%d \u5931\u8d25=%d",
@@ -19,6 +23,8 @@
       "ready": "\u5c31\u7eea",
       "uiReady": "\u754c\u9762\u5df2\u5c31\u7eea",
       "paletteSwitched": "\u5df2\u5207\u6362\u5230 %s",
+      "controlModeSwitched": "\u63a7\u4ef6\u6e32\u67d3\u6a21\u5f0f\u5df2\u5207\u6362\u4e3a %s",
+      "controlModeSwitchFailed": "\u63a7\u4ef6\u6e32\u67d3\u6a21\u5f0f\u5207\u6362\u5931\u8d25\uff1a%s",
       "modalOpened": "\u5df2\u6253\u5f00\u5f39\u7a97",
       "modalClosed": "\u5df2\u5173\u95ed\u5f39\u7a97",
       "interactivePanelClicked": "\u5df2\u70b9\u51fb\u4ea4\u4e92\u9762\u677f",
@@ -40,6 +46,7 @@
         "titleLabel": "WinUI JSON \u5168\u91cf\u6f14\u793a",
         "subtitleLabel": "\u4e00\u4e2a\u539f\u751f JSON \u9875\u9762\uff0c\u96c6\u4e2d\u5c55\u793a\u6240\u6709\u516c\u5f00\u63a7\u4ef6\u3001\u914d\u8272\u5207\u6362\u548c API \u68c0\u67e5\u3002",
         "togglePaletteBtn": "\u5207\u6362\u989c\u8272",
+        "toggleControlModeBtn": "\u6a21\u5f0f\uff1a%s",
         "runAllBtn": "\u6d4b\u8bd5\u6240\u6709\u63a7\u4ef6\u51fd\u6570",
         "languageToggleBtn": "English",
         "openModalBtn": "\u663e\u793a\u5f39\u7a97"
@@ -131,18 +138,19 @@
       },
       "media": {
         "title": "\u56fe\u50cf",
-        "hint": "\u4e00\u5f20\u9759\u6001 PNG \u9884\u89c8\u56fe\u548c\u4e00\u5f20 GIF \u52a8\u753b\uff0c\u7528\u6765\u9a8c\u8bc1\u4e24\u79cd\u56fe\u50cf\u63a7\u4ef6\u53ef\u4ee5\u5171\u7528\u540c\u4e00\u4efd JSON \u6587\u6863\u3002"
+        "hint": "\u4e00\u5f20\u9759\u6001 PNG \u9884\u89c8\u56fe\u548c\u4e00\u5f20 GIF \u52a8\u753b\uff0c\u7528\u6765\u9a8c\u8bc1\u4e24\u79cd\u56fe\u50cf\u63a7\u4ef6\u53ef\u4ee5\u5171\u7528\u540c\u4e00\u4efd JSON \u6587\u6863\u3002",
+        "emojiBurstLabel": "\ud83d\ude00 \ud83d\ude80 \ud83e\udde0 \ud83e\udde9 \u2728 \ud83c\udfaf \ud83d\udd25 \ud83d\udee0\ufe0f"
       },
       "scroll": {
         "title": "ScrollView",
         "hint": "\u5916\u5c42\u6587\u6863\u4f7f\u7528\u5782\u76f4 ScrollView\uff0c\u8fd9\u4e2a\u5361\u7247\u5185\u90e8\u5219\u5305\u542b\u4e00\u4e2a\u6c34\u5e73 ScrollView\uff0c\u7528\u4e8e\u6f14\u793a Add\u3001Remove\u3001SetContent \u548c\u6eda\u52a8 API\u3002",
         "buttons": [
-          "\u5361\u7247 A",
-          "\u5361\u7247 B",
-          "\u5361\u7247 C",
-          "\u5361\u7247 D",
-          "\u5361\u7247 E",
-          "\u5361\u7247 F"
+          "\ud83d\ude80 \u5361\u7247 A",
+          "\ud83e\udde0 \u5361\u7247 B",
+          "\ud83d\udd25 \u5361\u7247 C",
+          "\ud83c\udfaf \u5361\u7247 D",
+          "\ud83c\udf1f \u5361\u7247 E",
+          "\ud83e\udde9 \u5361\u7247 F"
         ]
       },
       "panel": {
@@ -179,6 +187,10 @@
       "checked": "checked",
       "unchecked": "unchecked"
     },
+    "mode": {
+      "custom": "Custom draw",
+      "native": "Native controls"
+    },
     "report": {
       "noRun": "No API check has been run yet.",
       "summaryFormat": "PASS=%d FAIL=%d",
@@ -188,6 +200,8 @@
       "ready": "Ready",
       "uiReady": "UI ready",
       "paletteSwitched": "Palette switched to %s",
+      "controlModeSwitched": "Control mode switched to %s",
+      "controlModeSwitchFailed": "Failed to switch control mode: %s",
       "modalOpened": "Modal opened",
       "modalClosed": "Modal closed",
       "interactivePanelClicked": "Interactive panel clicked",
@@ -209,6 +223,7 @@
         "titleLabel": "WinUI JSON Full Demo",
         "subtitleLabel": "One native JSON page that showcases every public control, palette switching, and API checks.",
         "togglePaletteBtn": "Switch palette",
+        "toggleControlModeBtn": "Mode: %s",
         "runAllBtn": "Run widget API tests",
         "languageToggleBtn": "\u4e2d\u6587",
         "openModalBtn": "Show modal"
@@ -300,18 +315,19 @@
       },
       "media": {
         "title": "Images",
-        "hint": "A static PNG preview and an animated GIF prove that both image controls work from the same JSON document."
+        "hint": "A static PNG preview and an animated GIF prove that both image controls work from the same JSON document.",
+        "emojiBurstLabel": "\ud83d\ude00 \ud83d\ude80 \ud83e\udde0 \ud83e\udde9 \u2728 \ud83c\udfaf \ud83d\udd25 \ud83d\udee0\ufe0f"
       },
       "scroll": {
         "title": "ScrollView",
         "hint": "The outer document uses a vertical ScrollView, and this card contains a horizontal ScrollView for Add, Remove, SetContent, and scrolling APIs.",
         "buttons": [
-          "Card A",
-          "Card B",
-          "Card C",
-          "Card D",
-          "Card E",
-          "Card F"
+          "\ud83d\ude80 Card A",
+          "\ud83e\udde0 Card B",
+          "\ud83d\udd25 Card C",
+          "\ud83c\udfaf Card D",
+          "\ud83c\udf1f Card E",
+          "\ud83e\udde9 Card F"
         ]
       },
       "panel": {

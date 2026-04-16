@@ -28,6 +28,7 @@ var (
 	procSendMessageW      = nativeUser32.NewProc("SendMessageW")
 	procInvalidateRect    = nativeUser32.NewProc("InvalidateRect")
 	procSetFocus          = nativeUser32.NewProc("SetFocus")
+	procGetFocus          = nativeUser32.NewProc("GetFocus")
 	procGetKeyState       = nativeUser32.NewProc("GetKeyState")
 	procSetWindowLongW    = nativeUser32.NewProc("SetWindowLongW")
 	procSetWindowLongPtrW = nativeUser32.NewProc("SetWindowLongPtrW")
@@ -547,6 +548,14 @@ func setNativeFocus(handle windows.Handle) {
 	procSetFocus.Call(uintptr(handle))
 }
 
+func nativeHasFocus(handle windows.Handle) bool {
+	if handle == 0 {
+		return false
+	}
+	focused, _, _ := procGetFocus.Call()
+	return windows.Handle(focused) == handle
+}
+
 func setWindowLong(pointerSize uintptr) *windows.LazyProc {
 	if pointerSize == 4 {
 		return procSetWindowLongW
@@ -638,4 +647,5 @@ func setNativeEditRect(handle windows.Handle, rc nativeRect) {
 		return
 	}
 	sendNativeMessage(handle, nativeEditSetRectNP, 0, uintptr(unsafe.Pointer(&rc)))
+	procInvalidateRect.Call(uintptr(handle), 0, 1)
 }

@@ -75,11 +75,12 @@ func NewEditBox(id string, mode ControlMode) *EditBox {
 // SetBounds 更新编辑框的边界。
 func (e *EditBox) SetBounds(rect Rect) {
 	e.runOnUI(func() {
+		if e.Bounds() == rect {
+			return
+		}
 		e.widgetBase.setBounds(e, rect)
 		e.clampScroll()
 		e.syncNativeBounds()
-		e.invalidate(e)
-		e.syncNativeInsets()
 	})
 }
 
@@ -341,6 +342,7 @@ func (e *EditBox) OnEvent(evt Event) bool {
 			if e.native.valid() {
 				setNativeSelection(e.native.handle, e.caret, e.caret)
 				setNativeFocus(e.native.handle)
+				e.syncNativeVisible()
 			}
 			e.ensureCaretVisible()
 			e.invalidate(e)
@@ -365,6 +367,7 @@ func (e *EditBox) OnEvent(evt Event) bool {
 			if e.native.valid() {
 				setNativeSelection(e.native.handle, e.caret, e.caret)
 				setNativeFocus(e.native.handle)
+				e.syncNativeVisible()
 			}
 			e.ensureCaretVisible()
 			e.invalidate(e)
@@ -533,6 +536,16 @@ func (e *EditBox) handleNativeCommand(code uint16) bool {
 				scene.setFocus(e)
 			}
 		}
+		e.syncNativeVisible()
+		e.invalidate(e)
+		return true
+	case nativeEditKillFocus:
+		if scene := e.scene(); scene != nil && scene.Focus() == e {
+			scene.setFocus(nil)
+			return true
+		}
+		e.syncNativeVisible()
+		e.invalidate(e)
 		return true
 	case nativeEditChanged:
 		text := e.Text
@@ -542,12 +555,12 @@ func (e *EditBox) handleNativeCommand(code uint16) bool {
 			e.caret = clampInt(end, 0, len([]rune(text)))
 		}
 		if e.Text == text {
+			e.invalidate(e)
 			return true
 		}
 		e.Text = text
-		if isNativeMode(e.mode) || !e.Focused {
-			e.invalidate(e)
-		}
+		e.clampScroll()
+		e.invalidate(e)
 		if e.OnChange != nil {
 			e.OnChange(text)
 		}
@@ -706,7 +719,14 @@ func (e *EditBox) syncNativeInsets() {
 		return
 	}
 
-	setNativeEditMargins(e.native.handle, padding, padding)
+	lineHeight := e.textLineHeight(style)
+	top := max32(0, (b.H-lineHeight)/2)
+	setNativeEditRect(e.native.handle, nativeRect{
+		Left:   padding,
+		Top:    top,
+		Right:  max32(padding, b.W-padding),
+		Bottom: max32(top, b.H-top),
+	})
 }
 
 func (e *EditBox) nativeHostBounds() Rect {

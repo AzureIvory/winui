@@ -21,6 +21,7 @@ type demoController struct {
 	lang      *demoLang
 	locale    string
 	useAlt    bool
+	mode      widgets.ControlMode
 }
 
 type demoPalette struct {
@@ -54,7 +55,10 @@ type demoPalette struct {
 	modalBlurDP   int32
 }
 
-func newDemoController(baseDir string, store *jsonui.Store, doc *jsonui.Document, window *jsonui.Window) *demoController {
+func newDemoController(baseDir string, store *jsonui.Store, doc *jsonui.Document, window *jsonui.Window, mode widgets.ControlMode) *demoController {
+	if mode != widgets.ModeNative {
+		mode = widgets.ModeCustom
+	}
 	controller := &demoController{
 		baseDir:   baseDir,
 		assetsDir: filepath.Join(baseDir, "assets"),
@@ -62,6 +66,7 @@ func newDemoController(baseDir string, store *jsonui.Store, doc *jsonui.Document
 		doc:       doc,
 		window:    window,
 		locale:    "en",
+		mode:      mode,
 	}
 	if lang, err := loadDemoLang(filepath.Join(controller.assetsDir, "lang.json")); err == nil {
 		controller.lang = lang
@@ -135,6 +140,96 @@ func (c *demoController) togglePalette() {
 	c.setStatus(c.trf("status.paletteSwitched", "Palette switched to %s", displayName))
 }
 
+func (c *demoController) controlModeLabel() string {
+	if c != nil && c.mode == widgets.ModeNative {
+		return c.tr("mode.native", "Native controls")
+	}
+	return c.tr("mode.custom", "Custom draw")
+}
+
+func (c *demoController) controlModeButtonText() string {
+	return c.trf("i18n.header.toggleControlModeBtn", "Mode: %s", c.controlModeLabel())
+}
+
+func (c *demoController) nextControlMode() widgets.ControlMode {
+	if c != nil && c.mode == widgets.ModeNative {
+		return widgets.ModeCustom
+	}
+	return widgets.ModeNative
+}
+
+func (c *demoController) toggleControlMode() {
+	if c == nil {
+		return
+	}
+	nextMode := c.nextControlMode()
+	if err := c.reloadWindowForControlMode(nextMode); err != nil {
+		c.setStatus(c.trf("status.controlModeSwitchFailed", "Failed to switch control mode: %v", err))
+		return
+	}
+	c.setStatus(c.trf("status.controlModeSwitched", "Control mode switched to %s", c.controlModeLabel()))
+}
+
+func (c *demoController) reloadWindowForControlMode(mode widgets.ControlMode) error {
+	if c == nil {
+		return fmt.Errorf("controller is nil")
+	}
+	if mode != widgets.ModeNative {
+		mode = widgets.ModeCustom
+	}
+
+	oldDoc := c.doc
+	oldWindow := c.window
+	var scene *widgets.Scene
+	var app *core.App
+	if oldWindow != nil {
+		scene = oldWindow.Scene()
+		app = oldWindow.App()
+	}
+
+	newDoc, store, err := loadDemoDocumentWithMode(c.baseDir, mode, c.store)
+	if err != nil {
+		return err
+	}
+	newWindow := newDoc.PrimaryWindow()
+	if newWindow == nil {
+		return fmt.Errorf("primary window is nil")
+	}
+
+	if scene != nil && oldWindow != nil {
+		_ = oldWindow.Detach()
+		if err := newWindow.Attach(scene); err != nil {
+			_ = oldWindow.Attach(scene)
+			return err
+		}
+	}
+
+	c.doc = newDoc
+	c.window = newWindow
+	c.store = store
+	c.mode = mode
+
+	c.bindCallbacks()
+	c.applyPalette(c.currentPalette())
+	c.applyLanguage(c.locale)
+	c.ensureSpinnerPlaying()
+
+	if app != nil && c.window != nil && c.window.Root != nil {
+		size := app.ClientSize()
+		c.window.Root.SetBounds(widgets.Rect{W: size.Width, H: size.Height})
+	}
+
+	if oldDoc != nil && oldDoc != newDoc {
+		for _, win := range oldDoc.Windows {
+			if win == nil || win == oldWindow {
+				continue
+			}
+			_ = win.Detach()
+		}
+	}
+	return nil
+}
+
 func (c *demoController) showModal(visible bool) {
 	if c == nil || c.store == nil {
 		return
@@ -150,6 +245,9 @@ func (c *demoController) showModal(visible bool) {
 func (c *demoController) bindCallbacks() {
 	c.mustButton("togglePaletteBtn").SetOnClick(func() {
 		c.togglePalette()
+	})
+	c.mustButton("toggleControlModeBtn").SetOnClick(func() {
+		c.toggleControlMode()
 	})
 	c.mustButton("languageToggleBtn").SetOnClick(func() {
 		c.toggleLanguage()
@@ -270,6 +368,7 @@ func (c *demoController) applyLanguage(locale string) {
 	c.setTextOnWindowWidget(c.window, "titleLabel", c.tr("i18n.header.titleLabel", "WinUI JSON Full Demo"))
 	c.setTextOnWindowWidget(c.window, "subtitleLabel", c.tr("i18n.header.subtitleLabel", "One native JSON page that showcases every public control, palette switching, and API checks."))
 	c.setTextOnWindowWidget(c.window, "togglePaletteBtn", c.tr("i18n.header.togglePaletteBtn", "Switch palette"))
+	c.setTextOnWindowWidget(c.window, "toggleControlModeBtn", c.controlModeButtonText())
 	c.setTextOnWindowWidget(c.window, "runAllBtn", c.tr("i18n.header.runAllBtn", "Run widget API tests"))
 	c.setTextOnWindowWidget(c.window, "languageToggleBtn", c.tr("i18n.header.languageToggleBtn", "中文"))
 	c.setTextOnWindowWidget(c.window, "openModalBtn", c.tr("i18n.header.openModalBtn", "Show modal"))
@@ -311,6 +410,7 @@ func (c *demoController) applyLanguage(locale string) {
 
 	c.setTextOnWindowWidget(c.window, "mediaTitle", c.tr("i18n.media.title", "Images"))
 	c.setTextOnWindowWidget(c.window, "mediaHint", c.tr("i18n.media.hint", "A static PNG preview and an animated GIF prove that both image controls work from the same JSON document."))
+	c.setTextOnWindowWidget(c.window, "emojiBurstLabel", c.tr("i18n.media.emojiBurstLabel", "😀 🚀 🧠 🧩 ✨ 🎯 🔥 🛠️"))
 
 	c.setTextOnWindowWidget(c.window, "scrollTitle", c.tr("i18n.scroll.title", "ScrollView"))
 	c.setTextOnWindowWidget(c.window, "scrollHint", c.tr("i18n.scroll.hint", "The outer document uses a vertical ScrollView, and this card contains a horizontal ScrollView for Add, Remove, SetContent, and scrolling APIs."))
@@ -570,6 +670,7 @@ func (c *demoController) applyPalette(p demoPalette) {
 	c.mustPanel("modalSurface").SetStyle(p.modalSurface)
 
 	c.mustButton("togglePaletteBtn").SetStyle(p.buttonNeutral)
+	c.mustButton("toggleControlModeBtn").SetStyle(p.buttonNeutral)
 	c.mustButton("languageToggleBtn").SetStyle(p.buttonNeutral)
 	c.mustButton("runAllBtn").SetStyle(p.buttonPrimary)
 	c.mustButton("openModalBtn").SetStyle(p.buttonGhost)
@@ -647,6 +748,7 @@ func (c *demoController) applyPalette(p demoPalette) {
 		"dataHint",
 		"fileHint",
 		"mediaHint",
+		"emojiBurstLabel",
 		"scrollHint",
 		"panelHint",
 		"panelInfo",

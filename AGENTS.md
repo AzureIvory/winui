@@ -10,8 +10,8 @@ Windows-only Go UI toolkit on top of Win32. No WebView, no XAML, no app logic.
 - `sysapi`: Windows system API helpers, including native open/save/folder dialogs on top of Win32 COM
 - `widgets`: scene tree, theme, layout, controls
 - `widgets/jsonui`: JSON schema loader, bindings, expressions, and multi-window helpers
-- `cmd/demo`: manual regression demo
-- `cmd/demo_json`: JSON UI demo
+- `demo/demo_json_full`: full-surface JSON UI demo
+- `demo/demo_go_full`: full-surface Go UI demo
 
 ## Hard Rules
 
@@ -56,8 +56,10 @@ Windows-only Go UI toolkit on top of Win32. No WebView, no XAML, no app logic.
 ```powershell
 go test ./...
 go vet ./...
-go run ./cmd/demo
-go run ./cmd/demo_json
+go test -v ./demo/demo_json_full
+go test -v ./demo/demo_go_full
+go run ./demo/demo_json_full
+go run ./demo/demo_go_full
 ```
 
 ## Docs To Update

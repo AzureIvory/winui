@@ -23,7 +23,7 @@ It targets native desktop tools that need explicit control over window lifecycle
 - Declarative `scrollview` for JSON-authored nested scrolling surfaces
 - Runtime lookup helpers such as `Window.FindWidget`, `Document.FindWidget`, and `widgets.FindByID`
 - Single-window and multi-window helpers
-- Demo apps in `cmd/demo`, `cmd/demo_json`, and `cmd/demo_json_full`
+- Demo apps in `demo/demo_json_full` and `demo/demo_go_full`
 
 ## Packages
 
@@ -31,9 +31,8 @@ It targets native desktop tools that need explicit control over window lifecycle
 - `sysapi/`: Windows system API helpers, including native file dialogs
 - `widgets/`: scene tree, event routing, layout, theme, controls
 - `widgets/jsonui/`: JSON schema loader, bindings, expressions, multi-window helpers
-- `cmd/demo/`: manual widget regression demo
-- `cmd/demo_json/`: manual JSON UI regression demo
-- `cmd/demo_json_full/`: full-surface JSON UI demo with palette switching and API checks
+- `demo/demo_json_full/`: full-surface JSON UI demo with palette switching and API checks
+- `demo/demo_go_full/`: full-surface Go UI demo with palette switching, mode toggling, and API checks
 
 ## Quick Start
 
@@ -201,23 +200,22 @@ JSON UI:
 ## Run Demos
 
 ```powershell
-go run ./cmd/demo
-go run ./cmd/demo_json
-go run ./cmd/demo_json_full
+go run ./demo/demo_json_full
+go run ./demo/demo_go_full
 ```
 
 ## Validation
 
 ```powershell
 go test ./...
-go test -v ./cmd/demo_json_full
+go test -v ./demo/demo_json_full
+go test -v ./demo/demo_go_full
 go vet ./...
-go run ./cmd/demo
-go run ./cmd/demo_json
-go run ./cmd/demo_json_full
+go run ./demo/demo_json_full
+go run ./demo/demo_go_full
 ```
 
-GitHub Actions mirrors the Windows validation path in `.github/workflows/ci.yml` with `gofmt`, a dedicated `go test -v ./cmd/demo_json_full` regression step that uploads `cmd/demo_json_full/output/latest-api-check.txt`, plus `go test ./...` and `go vet ./...` under both `CGO_ENABLED=0` and `CGO_ENABLED=1`.
+GitHub Actions mirrors the Windows validation path in `.github/workflows/ci.yml` with `gofmt`, dedicated `go test -v ./demo/demo_json_full` and `go test -v ./demo/demo_go_full` regression steps, an upload of `demo/demo_json_full/output/latest-api-check.txt`, plus `go test ./...` and `go vet ./...` under both `CGO_ENABLED=0` and `CGO_ENABLED=1`.
 
 ## Docs
 

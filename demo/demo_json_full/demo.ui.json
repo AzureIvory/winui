@@ -66,8 +66,19 @@
                 "frame": {
                   "x": 20,
                   "y": 42,
-                  "r": 640,
+                  "r": 820,
                   "h": 18
+                }
+              },
+              {
+                "type": "button",
+                "id": "toggleControlModeBtn",
+                "text": "Mode: Custom draw",
+                "frame": {
+                  "r": 640,
+                  "y": 16,
+                  "w": 148,
+                  "h": 40
                 }
               },
               {
@@ -77,7 +88,7 @@
                 "image": "assets/palette.png",
                 "imagePos": "left",
                 "frame": {
-                  "r": 464,
+                  "r": 480,
                   "y": 16,
                   "w": 148,
                   "h": 40
@@ -88,7 +99,7 @@
                 "id": "languageToggleBtn",
                 "text": "\u4e2d\u6587",
                 "frame": {
-                  "r": 356,
+                  "r": 372,
                   "y": 16,
                   "w": 96,
                   "h": 40
@@ -101,7 +112,7 @@
                 "image": "assets/save.png",
                 "imagePos": "left",
                 "frame": {
-                  "r": 148,
+                  "r": 164,
                   "y": 16,
                   "w": 196,
                   "h": 40
@@ -114,7 +125,7 @@
                 "frame": {
                   "r": 20,
                   "y": 16,
-                  "w": 116,
+                  "w": 132,
                   "h": 40
                 }
               }
@@ -647,6 +658,16 @@
                     "style": {
                       "align": "start",
                       "fg": "#64748b"
+                    }
+                  },
+                  {
+                    "type": "label",
+                    "id": "emojiBurstLabel",
+                    "text": "😀 🚀 🧠 🧩 ✨ 🎯 🔥 🛠️",
+                    "style": {
+                      "align": "start",
+                      "size": 16,
+                      "fg": "#334155"
                     }
                   },
                   {

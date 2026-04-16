@@ -3,6 +3,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -235,6 +236,57 @@ func TestDemoLanguageToggleSwitchesBetweenEnglishAndChinese(t *testing.T) {
 	}
 }
 
+func TestDemoHeaderContainsControlModeToggleAndEmojiLabel(t *testing.T) {
+	_, window := loadDemoControllerForTest(t)
+
+	modeButton, ok := window.FindWidget("toggleControlModeBtn").(*widgets.Button)
+	if !ok {
+		t.Fatalf("toggleControlModeBtn type = %T, want *widgets.Button", window.FindWidget("toggleControlModeBtn"))
+	}
+	if strings.TrimSpace(modeButton.Text) == "" {
+		t.Fatal("toggleControlModeBtn text should not be empty")
+	}
+
+	emojiLabel, ok := window.FindWidget("emojiBurstLabel").(*widgets.Label)
+	if !ok {
+		t.Fatalf("emojiBurstLabel type = %T, want *widgets.Label", window.FindWidget("emojiBurstLabel"))
+	}
+	if !strings.Contains(emojiLabel.Text, "🚀") {
+		t.Fatalf("emojiBurstLabel text = %q, want at least one rocket emoji", emojiLabel.Text)
+	}
+}
+
+func TestDemoControlModeToggleUpdatesButtonTextAndStatus(t *testing.T) {
+	controller, _ := loadDemoControllerForTest(t)
+
+	modeButton := controller.mustButton("toggleControlModeBtn")
+	before := modeButton.Text
+	if strings.TrimSpace(before) == "" {
+		t.Fatal("toggleControlModeBtn initial text should not be empty")
+	}
+
+	if handled := modeButton.OnEvent(widgets.Event{Type: widgets.EventClick, Source: modeButton}); !handled {
+		t.Fatal("toggleControlModeBtn click was not handled")
+	}
+
+	after := controller.mustButton("toggleControlModeBtn").Text
+	if strings.TrimSpace(after) == "" {
+		t.Fatal("toggleControlModeBtn text after toggle should not be empty")
+	}
+	if before == after {
+		t.Fatalf("toggleControlModeBtn text did not change after toggle: before=%q after=%q", before, after)
+	}
+
+	rawStatus, ok := controller.store.Get("demo.lastAction")
+	if !ok {
+		t.Fatal("demo.lastAction was not updated")
+	}
+	status := strings.ToLower(fmt.Sprint(rawStatus))
+	if !strings.Contains(status, "mode") && !strings.Contains(fmt.Sprint(rawStatus), "模式") {
+		t.Fatalf("demo.lastAction = %q, want mode-switch status", fmt.Sprint(rawStatus))
+	}
+}
+
 func loadDemoControllerForTest(t *testing.T) (*demoController, *jsonui.Window) {
 	t.Helper()
 
@@ -253,5 +305,5 @@ func loadDemoControllerForTest(t *testing.T) (*demoController, *jsonui.Window) {
 		t.Fatal("PrimaryWindow() returned nil")
 	}
 
-	return newDemoController(baseDir, store, doc, window), window
+	return newDemoController(baseDir, store, doc, window, widgets.ModeCustom), window
 }
