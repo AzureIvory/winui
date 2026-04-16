@@ -29,6 +29,7 @@ var (
 	procInvalidateRect    = nativeUser32.NewProc("InvalidateRect")
 	procSetFocus          = nativeUser32.NewProc("SetFocus")
 	procGetKeyState       = nativeUser32.NewProc("GetKeyState")
+	procSetWindowLongW    = nativeUser32.NewProc("SetWindowLongW")
 	procSetWindowLongPtrW = nativeUser32.NewProc("SetWindowLongPtrW")
 	procCallWindowProcW   = nativeUser32.NewProc("CallWindowProcW")
 	procGetStockObject    = nativeGdi32.NewProc("GetStockObject")
@@ -546,18 +547,29 @@ func setNativeFocus(handle windows.Handle) {
 	procSetFocus.Call(uintptr(handle))
 }
 
+func setWindowLong(pointerSize uintptr) *windows.LazyProc {
+	if pointerSize == 4 {
+		return procSetWindowLongW
+	}
+	return procSetWindowLongPtrW
+}
+
+func callSetWindowLong(handle windows.Handle, value uintptr) uintptr {
+	oldProc, _, _ := setWindowLong(unsafe.Sizeof(uintptr(0))).Call(
+		uintptr(handle),
+		nativeLongWndProc,
+		value,
+	)
+	return oldProc
+}
+
 // subclassNativeEdit 为原生编辑框安装用于处理回车提交的子类窗口过程。
 func subclassNativeEdit(edit *EditBox) {
 	if edit == nil || !edit.native.valid() || edit.native.oldWndProc != 0 {
 		return
 	}
 	nativeEditRegistry.Store(edit.native.handle, edit)
-	oldProc, _, _ := procSetWindowLongPtrW.Call(
-		uintptr(edit.native.handle),
-		nativeLongWndProc,
-		nativeEditWndProc,
-	)
-	edit.native.oldWndProc = oldProc
+	edit.native.oldWndProc = callSetWindowLong(edit.native.handle, nativeEditWndProc)
 }
 
 // unsubclassNativeEdit 还原原生编辑框的原始窗口过程。
@@ -567,11 +579,7 @@ func unsubclassNativeEdit(edit *EditBox) {
 	}
 	nativeEditRegistry.Delete(edit.native.handle)
 	if edit.native.oldWndProc != 0 {
-		procSetWindowLongPtrW.Call(
-			uintptr(edit.native.handle),
-			nativeLongWndProc,
-			edit.native.oldWndProc,
-		)
+		callSetWindowLong(edit.native.handle, edit.native.oldWndProc)
 		edit.native.oldWndProc = 0
 	}
 }
