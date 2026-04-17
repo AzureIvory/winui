@@ -3,8 +3,9 @@
 package widgets
 
 import (
-	"github.com/AzureIvory/winui/core"
 	"time"
+
+	"github.com/AzureIvory/winui/core"
 )
 
 // ImageScaleMode 表示图像在控件中的缩放方式。
@@ -299,6 +300,8 @@ type AnimatedImage struct {
 	scaleMode ImageScaleMode
 	// timerID 保存场景分配的定时器标识。
 	timerID uintptr
+	// timerDelay 保存当前已经提交给场景的帧间隔。
+	timerDelay time.Duration
 }
 
 // NewAnimatedImage 创建一个新的动画图像控件。
@@ -343,8 +346,9 @@ func (a *AnimatedImage) setScene(scene *Scene) {
 	}
 	if oldScene != nil && a.timerID != 0 {
 		_ = oldScene.stopTimer(a.timerID)
-		a.timerID = 0
 	}
+	a.timerID = 0
+	a.timerDelay = 0
 	a.widgetBase.setScene(scene)
 	a.syncTimer()
 }
@@ -441,9 +445,6 @@ func (a *AnimatedImage) Paint(ctx *PaintCtx) {
 	if !a.Visible() || ctx == nil || len(a.frames) == 0 {
 		return
 	}
-	if a.playing {
-		a.syncTimer()
-	}
 	frame := a.frames[a.frameIndex%len(a.frames)]
 	if frame.Bitmap == nil {
 		return
@@ -457,6 +458,7 @@ func (a *AnimatedImage) Close() error {
 		_ = a.scene().stopTimer(a.timerID)
 	}
 	a.timerID = 0
+	a.timerDelay = 0
 	if a.ownedFrames {
 		for i := range a.frames {
 			if a.frames[i].Bitmap != nil {
@@ -490,6 +492,7 @@ func (a *AnimatedImage) replaceFrames(frames []core.AnimatedFrame, owned bool) {
 func (a *AnimatedImage) syncTimer() {
 	scene := a.scene()
 	if scene == nil {
+		a.timerDelay = 0
 		return
 	}
 	if !a.playing || !a.Visible() || len(a.frames) <= 1 {
@@ -497,6 +500,7 @@ func (a *AnimatedImage) syncTimer() {
 			_ = scene.stopTimer(a.timerID)
 			a.timerID = 0
 		}
+		a.timerDelay = 0
 		return
 	}
 
@@ -508,10 +512,15 @@ func (a *AnimatedImage) syncTimer() {
 		timerID, err := scene.startTimer(a, 0, delay)
 		if err == nil {
 			a.timerID = timerID
+			a.timerDelay = delay
 		}
 		return
 	}
+	if a.timerDelay == delay {
+		return
+	}
 	_ = scene.updateTimer(a.timerID, delay)
+	a.timerDelay = delay
 }
 
 // drawRect 返回动画图像在当前画布上的绘制矩形。

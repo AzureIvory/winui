@@ -16,7 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         go-version:
-          - "1.24.x"
+          - "1.25.x"
         cgo:
           - "0"
           - "1"

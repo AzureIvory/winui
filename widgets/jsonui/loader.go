@@ -54,10 +54,10 @@ type nodeSpec struct {
 	Style            json.RawMessage `json:"style"`
 	Children         []nodeSpec      `json:"children"`
 
-	Group      string          `json:"group"`
-	Src        string          `json:"src"`
-	Fit        string          `json:"fit"`
-	Autoplay   json.RawMessage `json:"autoplay"`
+	Group       string          `json:"group"`
+	Src         string          `json:"src"`
+	Fit         string          `json:"fit"`
+	Autoplay    json.RawMessage `json:"autoplay"`
 	Image       string          `json:"image"`
 	ImagePos    string          `json:"imagePos"`
 	ImageSizeDP json.RawMessage `json:"imageSizeDP"`

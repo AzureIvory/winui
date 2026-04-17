@@ -4,6 +4,14 @@ package widgets
 
 import "github.com/AzureIvory/winui/core"
 
+type scrollDragAxis uint8
+
+const (
+	scrollDragNone scrollDragAxis = iota
+	scrollDragVertical
+	scrollDragHorizontal
+)
+
 // ScrollView 表示带裁剪视口的滚动容器。
 type ScrollView struct {
 	// widgetBase 提供滚动容器共享的基础控件能力。
@@ -28,6 +36,16 @@ type ScrollView struct {
 	verticalScroll bool
 	// horizontalScroll 控制是否处理水平滚动输入。
 	horizontalScroll bool
+	// hoverVerticalThumb 记录垂直滚动条滑块是否处于悬停状态。
+	hoverVerticalThumb bool
+	// hoverHorizontalThumb 记录水平滚动条滑块是否处于悬停状态。
+	hoverHorizontalThumb bool
+	// dragAxis 记录当前拖拽的滚动轴。
+	dragAxis scrollDragAxis
+	// dragPointer 保存拖拽开始时的鼠标坐标。
+	dragPointer int32
+	// dragOffset 保存拖拽开始时的滚动偏移。
+	dragOffset int32
 }
 
 // NewScrollView 创建一个新的滚动容器。
@@ -126,6 +144,15 @@ func (s *ScrollView) SetVerticalScroll(enabled bool) {
 			return
 		}
 		s.verticalScroll = enabled
+		if !enabled {
+			s.hoverVerticalThumb = false
+			if s.dragAxis == scrollDragVertical {
+				s.dragAxis = scrollDragNone
+				s.dragPointer = 0
+				s.dragOffset = 0
+			}
+			s.syncCursor()
+		}
 		s.invalidate(s)
 	})
 }
@@ -142,6 +169,15 @@ func (s *ScrollView) SetHorizontalScroll(enabled bool) {
 			return
 		}
 		s.horizontalScroll = enabled
+		if !enabled {
+			s.hoverHorizontalThumb = false
+			if s.dragAxis == scrollDragHorizontal {
+				s.dragAxis = scrollDragNone
+				s.dragPointer = 0
+				s.dragOffset = 0
+			}
+			s.syncCursor()
+		}
 		s.invalidate(s)
 	})
 }
@@ -216,7 +252,6 @@ func (s *ScrollView) HitTest(x, y int32) bool {
 
 // OnEvent 处理输入和焦点事件。
 func (s *ScrollView) OnEvent(evt Event) bool {
-	s.layoutContent()
 	switch evt.Type {
 	case EventFocus:
 		s.Focused = true
@@ -224,9 +259,18 @@ func (s *ScrollView) OnEvent(evt Event) bool {
 	case EventBlur:
 		s.Focused = false
 		return false
+	case EventMouseMove:
+		return s.handleMouseMove(evt)
+	case EventMouseLeave:
+		return s.handleMouseLeave()
+	case EventMouseDown:
+		return s.handleMouseDown(evt)
+	case EventMouseUp:
+		return s.handleMouseUp(evt)
 	case EventMouseWheel:
 		return s.handleWheel(evt)
 	case EventKeyDown:
+		s.layoutContent()
 		switch evt.Key.Key {
 		case 0x21: // VK_PRIOR / PageUp
 			if s.maxOffsetY > 0 {
@@ -298,7 +342,27 @@ func (s *ScrollView) acceptsFocus() bool {
 
 // cursor 返回滚动容器希望使用的光标。
 func (s *ScrollView) cursor() CursorID {
+	if s.dragAxis != scrollDragNone || s.hoverVerticalThumb || s.hoverHorizontalThumb {
+		return core.CursorHand
+	}
 	return core.CursorArrow
+}
+
+func (s *ScrollView) overlayHitTest(x, y int32) bool {
+	vTrack, vThumb, hTrack, hThumb := s.scrollbarRectsForWidget()
+	if !vTrack.Empty() && vTrack.Contains(x, y) {
+		return true
+	}
+	if !vThumb.Empty() && vThumb.Contains(x, y) {
+		return true
+	}
+	if !hTrack.Empty() && hTrack.Contains(x, y) {
+		return true
+	}
+	if !hThumb.Empty() && hThumb.Contains(x, y) {
+		return true
+	}
+	return false
 }
 
 // clipBounds 返回滚动容器对子树生效的裁剪区域。
@@ -348,6 +412,11 @@ func (s *ScrollView) replaceContent(widget Widget) {
 	s.offsetY = 0
 	s.maxOffsetX = 0
 	s.maxOffsetY = 0
+	s.hoverVerticalThumb = false
+	s.hoverHorizontalThumb = false
+	s.dragAxis = scrollDragNone
+	s.dragPointer = 0
+	s.dragOffset = 0
 	s.layoutContent()
 	s.invalidate(s)
 }
@@ -363,6 +432,25 @@ func (s *ScrollView) layoutContent() {
 		s.maxOffsetY = 0
 		return
 	}
+	size := s.contentSizeForViewport(viewport)
+	s.syncOffsetsForSize(viewport, size)
+	target := s.contentRectForViewport(viewport, size)
+	if s.content.Bounds() != target {
+		s.content.SetBounds(target)
+	}
+
+	measured := s.measuredContentSize(viewport)
+	if measured != size {
+		size = measured
+		s.syncOffsetsForSize(viewport, size)
+		target = s.contentRectForViewport(viewport, size)
+		if s.content.Bounds() != target {
+			s.content.SetBounds(target)
+		}
+	}
+}
+
+func (s *ScrollView) contentSizeForViewport(viewport Rect) core.Size {
 	size := measureWidgetNatural(s.content)
 	if size.Width < viewport.W {
 		size.Width = viewport.W
@@ -370,22 +458,52 @@ func (s *ScrollView) layoutContent() {
 	if size.Height < viewport.H {
 		size.Height = viewport.H
 	}
+	return size
+}
+
+func (s *ScrollView) measuredContentSize(viewport Rect) core.Size {
+	size := s.contentSizeForViewport(viewport)
+	container, ok := s.content.(Container)
+	if !ok {
+		return size
+	}
+	bounds := s.content.Bounds()
+	right := bounds.X
+	bottom := bounds.Y
+	for _, child := range container.Children() {
+		if child == nil {
+			continue
+		}
+		childBounds := child.Bounds()
+		if edge := childBounds.X + childBounds.W; edge > right {
+			right = edge
+		}
+		if edge := childBounds.Y + childBounds.H; edge > bottom {
+			bottom = edge
+		}
+	}
+	if width := right - bounds.X; width > size.Width {
+		size.Width = width
+	}
+	if height := bottom - bounds.Y; height > size.Height {
+		size.Height = height
+	}
+	return size
+}
+
+func (s *ScrollView) syncOffsetsForSize(viewport Rect, size core.Size) {
 	s.maxOffsetX = max32(0, size.Width-viewport.W)
 	s.maxOffsetY = max32(0, size.Height-viewport.H)
 	s.offsetX = clampValue(s.offsetX, 0, s.maxOffsetX)
 	s.offsetY = clampValue(s.offsetY, 0, s.maxOffsetY)
-	target := Rect{
+}
+
+func (s *ScrollView) contentRectForViewport(viewport Rect, size core.Size) Rect {
+	return Rect{
 		X: viewport.X - s.offsetX,
 		Y: viewport.Y - s.offsetY,
 		W: size.Width,
 		H: size.Height,
-	}
-	if s.content.Bounds() != target {
-		s.content.SetBounds(target)
-		return
-	}
-	if panel, ok := s.content.(*Panel); ok {
-		panel.applyLayout()
 	}
 }
 
@@ -401,36 +519,211 @@ func (s *ScrollView) applyOffset(x, y int32) {
 	s.invalidate(s)
 }
 
+func (s *ScrollView) handleMouseMove(evt Event) bool {
+	if s.dragAxis != scrollDragNone {
+		handled := s.updateDrag(evt.Point)
+		s.updateScrollbarHover(evt.Point)
+		s.syncCursor()
+		return handled
+	}
+	if s.updateScrollbarHover(evt.Point) {
+		s.invalidate(s)
+		s.syncCursor()
+	}
+	return s.hoverVerticalThumb || s.hoverHorizontalThumb
+}
+
+func (s *ScrollView) handleMouseLeave() bool {
+	if s.dragAxis != scrollDragNone {
+		return true
+	}
+	if !s.hoverVerticalThumb && !s.hoverHorizontalThumb {
+		return false
+	}
+	s.hoverVerticalThumb = false
+	s.hoverHorizontalThumb = false
+	s.invalidate(s)
+	s.syncCursor()
+	return true
+}
+
+func (s *ScrollView) handleMouseDown(evt Event) bool {
+	if evt.Button != core.MouseButtonLeft {
+		return false
+	}
+	vTrack, vThumb, hTrack, hThumb := s.scrollbarRectsForWidget()
+	if !vThumb.Empty() && vThumb.Contains(evt.Point.X, evt.Point.Y) {
+		s.dragAxis = scrollDragVertical
+		s.dragPointer = evt.Point.Y
+		s.dragOffset = s.offsetY
+		s.updateScrollbarHover(evt.Point)
+		s.invalidate(s)
+		s.syncCursor()
+		return true
+	}
+	if !hThumb.Empty() && hThumb.Contains(evt.Point.X, evt.Point.Y) {
+		s.dragAxis = scrollDragHorizontal
+		s.dragPointer = evt.Point.X
+		s.dragOffset = s.offsetX
+		s.updateScrollbarHover(evt.Point)
+		s.invalidate(s)
+		s.syncCursor()
+		return true
+	}
+	if !vTrack.Empty() && vTrack.Contains(evt.Point.X, evt.Point.Y) {
+		page := max32(1, s.viewportRect().H)
+		if evt.Point.Y < vThumb.Y {
+			s.applyOffset(s.offsetX, s.offsetY-page)
+		} else if evt.Point.Y > vThumb.Y+vThumb.H {
+			s.applyOffset(s.offsetX, s.offsetY+page)
+		}
+		s.updateScrollbarHover(evt.Point)
+		s.syncCursor()
+		return true
+	}
+	if !hTrack.Empty() && hTrack.Contains(evt.Point.X, evt.Point.Y) {
+		page := max32(1, s.viewportRect().W)
+		if evt.Point.X < hThumb.X {
+			s.applyOffset(s.offsetX-page, s.offsetY)
+		} else if evt.Point.X > hThumb.X+hThumb.W {
+			s.applyOffset(s.offsetX+page, s.offsetY)
+		}
+		s.updateScrollbarHover(evt.Point)
+		s.syncCursor()
+		return true
+	}
+	return false
+}
+
+func (s *ScrollView) handleMouseUp(evt Event) bool {
+	if evt.Button != core.MouseButtonLeft {
+		return false
+	}
+	if s.dragAxis == scrollDragNone {
+		return false
+	}
+	s.dragAxis = scrollDragNone
+	s.dragPointer = 0
+	s.dragOffset = 0
+	s.updateScrollbarHover(evt.Point)
+	s.invalidate(s)
+	s.syncCursor()
+	return true
+}
+
+func (s *ScrollView) updateDrag(point core.Point) bool {
+	s.layoutContent()
+	vTrack, vThumb, hTrack, hThumb := s.scrollbarRectsForWidget()
+	switch s.dragAxis {
+	case scrollDragVertical:
+		if vTrack.Empty() || vThumb.Empty() || s.maxOffsetY <= 0 {
+			return true
+		}
+		travel := max32(0, vTrack.H-vThumb.H)
+		if travel <= 0 {
+			return true
+		}
+		delta := point.Y - s.dragPointer
+		target := clampValue(s.dragOffset+int32(int64(delta)*int64(s.maxOffsetY)/int64(travel)), 0, s.maxOffsetY)
+		if target != s.offsetY {
+			s.applyOffset(s.offsetX, target)
+		}
+		return true
+	case scrollDragHorizontal:
+		if hTrack.Empty() || hThumb.Empty() || s.maxOffsetX <= 0 {
+			return true
+		}
+		travel := max32(0, hTrack.W-hThumb.W)
+		if travel <= 0 {
+			return true
+		}
+		delta := point.X - s.dragPointer
+		target := clampValue(s.dragOffset+int32(int64(delta)*int64(s.maxOffsetX)/int64(travel)), 0, s.maxOffsetX)
+		if target != s.offsetX {
+			s.applyOffset(target, s.offsetY)
+		}
+		return true
+	default:
+		return false
+	}
+}
+
+func (s *ScrollView) updateScrollbarHover(point core.Point) bool {
+	_, vThumb, _, hThumb := s.scrollbarRectsForWidget()
+	hoverV := !vThumb.Empty() && vThumb.Contains(point.X, point.Y)
+	hoverH := !hThumb.Empty() && hThumb.Contains(point.X, point.Y)
+	if s.hoverVerticalThumb == hoverV && s.hoverHorizontalThumb == hoverH {
+		return false
+	}
+	s.hoverVerticalThumb = hoverV
+	s.hoverHorizontalThumb = hoverH
+	return true
+}
+
+func (s *ScrollView) syncCursor() {
+	if scene := s.scene(); scene != nil && scene.app != nil {
+		scene.app.SetCursor(s.cursor())
+	}
+}
+
 func (s *ScrollView) handleWheel(evt Event) bool {
 	step := s.wheelStep
 	if step <= 0 {
 		step = 48
 	}
-	if s.verticalScroll && s.maxOffsetY > 0 {
-		delta := -evt.Delta * step / 120
-		if delta == 0 {
-			if evt.Delta > 0 {
-				delta = -step
-			} else if evt.Delta < 0 {
-				delta = step
-			}
+	delta := -evt.Delta * step / 120
+	if delta == 0 {
+		if evt.Delta > 0 {
+			delta = -step
+		} else if evt.Delta < 0 {
+			delta = step
 		}
-		s.ScrollBy(0, delta)
+	}
+	const mouseKeyShift = 0x0004
+	preferHorizontal := evt.Flags&mouseKeyShift != 0
+	if preferHorizontal {
+		if s.scrollAlongAxis(delta, true) {
+			return true
+		}
+		if s.scrollAlongAxis(delta, false) {
+			return true
+		}
+		return false
+	}
+	if s.scrollAlongAxis(delta, false) {
 		return true
 	}
-	if s.horizontalScroll && s.maxOffsetX > 0 {
-		delta := -evt.Delta * step / 120
-		if delta == 0 {
-			if evt.Delta > 0 {
-				delta = -step
-			} else if evt.Delta < 0 {
-				delta = step
-			}
-		}
-		s.ScrollBy(delta, 0)
+	if s.scrollAlongAxis(delta, true) {
 		return true
 	}
 	return false
+}
+
+func (s *ScrollView) scrollAlongAxis(delta int32, horizontal bool) bool {
+	if delta == 0 {
+		return false
+	}
+	s.layoutContent()
+	if horizontal {
+		if !s.horizontalScroll || s.maxOffsetX <= 0 {
+			return false
+		}
+		target := clampValue(s.offsetX+delta, 0, s.maxOffsetX)
+		if target == s.offsetX {
+			return false
+		}
+		s.applyOffset(target, s.offsetY)
+		return true
+	}
+	if !s.verticalScroll || s.maxOffsetY <= 0 {
+		return false
+	}
+	target := clampValue(s.offsetY+delta, 0, s.maxOffsetY)
+	if target == s.offsetY {
+		return false
+	}
+	s.applyOffset(s.offsetX, target)
+	return true
 }
 
 func (s *ScrollView) paintScrollbars(ctx *PaintCtx) {
@@ -460,11 +753,17 @@ func (s *ScrollView) paintScrollbars(ctx *PaintCtx) {
 	}
 }
 
+func (s *ScrollView) scrollbarRectsForWidget() (Rect, Rect, Rect, Rect) {
+	s.layoutContent()
+	return s.scrollbarRects(func(value int32) int32 {
+		return widgetDP(s, value)
+	})
+}
+
 func (s *ScrollView) scrollbarRects(scale func(int32) int32) (Rect, Rect, Rect, Rect) {
 	if s == nil || scale == nil {
 		return Rect{}, Rect{}, Rect{}, Rect{}
 	}
-	s.layoutContent()
 	viewport := s.viewportRect()
 	if viewport.Empty() {
 		return Rect{}, Rect{}, Rect{}, Rect{}
@@ -549,7 +848,14 @@ func (s *ScrollView) scrollbarColors() (core.Color, core.Color) {
 	if border == 0 {
 		border = core.RGB(203, 213, 225)
 	}
-	return blendScrollColor(background, border, 28), blendScrollColor(background, border, 112)
+	thumbAlpha := byte(112)
+	if s.hoverVerticalThumb || s.hoverHorizontalThumb {
+		thumbAlpha = 144
+	}
+	if s.dragAxis != scrollDragNone {
+		thumbAlpha = 176
+	}
+	return blendScrollColor(background, border, 28), blendScrollColor(background, border, thumbAlpha)
 }
 
 func blendScrollColor(background, foreground core.Color, alpha byte) core.Color {
