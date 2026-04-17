@@ -4,6 +4,8 @@
 
 It targets native desktop tools that need explicit control over window lifecycle, painting, DPI, input, reusable widgets, and a declarative JSON UI layer without WebView, XAML, or cross-platform wrappers.
 
+Chinese version: [README.zh-CN.md](./README.zh-CN.md)
+
 ## Features
 
 - Windows only
@@ -204,6 +206,14 @@ go run ./demo/demo_json_full
 go run ./demo/demo_go_full
 ```
 
+## Demo Screenshots
+
+JSON full demo UI snapshots:
+
+![JSON demo screenshot 1](./demo/demo_json_full/pic/main1.png)
+![JSON demo screenshot 2](./demo/demo_json_full/pic/main2.png)
+![JSON demo screenshot 3](./demo/demo_json_full/pic/main3.png)
+
 ## Validation
 
 ```powershell
@@ -219,6 +229,7 @@ GitHub Actions mirrors the Windows validation path in `.github/workflows/ci.yml`
 
 ## Docs
 
+- [README.zh-CN.md](./README.zh-CN.md): Chinese landing page
 - [DEVELOPING.md](./DEVELOPING.md): maintainer rules, architecture boundaries, validation
 - [WIDGETS.zh-CN.md](./WIDGETS.zh-CN.md): widget and JSON UI overview
 - [JSONUI.zh-CN.md](./JSONUI.zh-CN.md): Chinese end-user guide for the JSON DSL
