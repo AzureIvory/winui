@@ -541,6 +541,7 @@ func (a *App) createWindow() error {
 
 	procShowWindow.Call(hwnd, showWindowNormal)
 	procUpdateWindow.Call(hwnd)
+	a.scheduleInitialRelayout()
 	return nil
 }
 
@@ -684,6 +685,26 @@ func (a *App) finishCreate(size Size, hasSize bool) error {
 		a.opts.OnResize(a, size)
 	}
 	return nil
+}
+
+func (a *App) scheduleInitialRelayout() {
+	if a == nil || a.hwnd == 0 || a.closed.Load() {
+		return
+	}
+	_ = a.Post(func() {
+		if a == nil || a.hwnd == 0 || a.closed.Load() {
+			return
+		}
+		rect, err := clientRect(a.hwnd)
+		if err != nil {
+			return
+		}
+		size := Size{Width: rect.W, Height: rect.H}
+		a.updateClientSize(size)
+		if a.opts.OnResize != nil {
+			a.opts.OnResize(a, size)
+		}
+	})
 }
 
 // minTrackSize 返回窗口最小可拖拽外框尺寸。
