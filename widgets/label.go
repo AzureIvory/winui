@@ -113,7 +113,7 @@ func (l *Label) Paint(ctx *PaintCtx) {
 		return
 	}
 	style := l.resolveStyle(ctx)
-	_ = ctx.DrawText(l.Text, l.Bounds(), style)
+	_ = ctx.DrawWidgetText(l, l.Text, l.Bounds(), style)
 }
 
 func (l *Label) preferredSize() core.Size {
@@ -281,24 +281,12 @@ func (l *Label) wrapLogicalLine(style TextStyle, runes []rune, maxWidth int32) [
 }
 
 func (l *Label) textLineHeight(style TextStyle) int32 {
-	size := style.Font.SizeDP
-	if size <= 0 {
-		size = 16
-	}
-	if scene := l.scene(); scene != nil && scene.app != nil {
-		size = scene.app.DP(size)
-	}
+	size := scaledFontHeightForWidget(l, style.Font)
 	return max32(size+6, 18)
 }
 
 func (l *Label) measureRune(style TextStyle, ch rune) int32 {
-	size := style.Font.SizeDP
-	if size <= 0 {
-		size = 16
-	}
-	if scene := l.scene(); scene != nil && scene.app != nil {
-		size = scene.app.DP(size)
-	}
+	size := scaledFontHeightForWidget(l, style.Font)
 	switch ch {
 	case '\t':
 		return max32(size*2, 8)

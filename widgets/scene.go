@@ -18,6 +18,12 @@ type PaintCtx struct {
 }
 
 // newPaintCtx 将 core 绘制上下文封装为场景感知的绘制上下文。
+type fontCacheKey struct {
+	Face   string
+	Height int32
+	Weight int32
+}
+
 func newPaintCtx(scene *Scene, canvas *core.PaintCtx) *PaintCtx {
 	return &PaintCtx{
 		canvas: canvas,
@@ -91,10 +97,14 @@ func (p *PaintCtx) DrawIcon(icon *core.Icon, rect Rect) error {
 
 // DrawText 在当前画布上绘制文本。
 func (p *PaintCtx) DrawText(text string, rect Rect, style TextStyle) error {
+	return p.DrawWidgetText(nil, text, rect, style)
+}
+
+func (p *PaintCtx) DrawWidgetText(widget Widget, text string, rect Rect, style TextStyle) error {
 	if p == nil || p.canvas == nil {
 		return nil
 	}
-	font, err := p.scene.font(style.Font)
+	font, err := p.scene.fontForWidget(widget, style.Font)
 	if err != nil {
 		return err
 	}
@@ -103,10 +113,14 @@ func (p *PaintCtx) DrawText(text string, rect Rect, style TextStyle) error {
 
 // MeasureText 测量渲染给定文本所需的尺寸。
 func (p *PaintCtx) MeasureText(text string, spec FontSpec) (core.Size, error) {
+	return p.MeasureWidgetText(nil, text, spec)
+}
+
+func (p *PaintCtx) MeasureWidgetText(widget Widget, text string, spec FontSpec) (core.Size, error) {
 	if p == nil || p.canvas == nil || p.scene == nil {
 		return core.Size{}, nil
 	}
-	font, err := p.scene.font(spec)
+	font, err := p.scene.fontForWidget(widget, spec)
 	if err != nil {
 		return core.Size{}, err
 	}
@@ -250,7 +264,7 @@ type Scene struct {
 	// fontMu 保护字体缓存。
 	fontMu sync.Mutex
 	// fonts 缓存已创建的字体资源。
-	fonts map[FontSpec]*core.Font
+	fonts map[fontCacheKey]*core.Font
 
 	// timerMu 保护定时器映射。
 	timerMu sync.Mutex
@@ -274,7 +288,7 @@ func NewScene(coreApp *core.App) *Scene {
 		app:           coreApp,
 		root:          root,
 		theme:         DefaultTheme(),
-		fonts:         make(map[FontSpec]*core.Font),
+		fonts:         make(map[fontCacheKey]*core.Font),
 		timers:        make(map[uintptr]Widget),
 		nativeTargets: make(map[uintptr]nativeCommandHandler),
 	}
@@ -504,17 +518,26 @@ func (s *Scene) runOnUI(fn func()) {
 
 // font 返回场景中对应规格的字体资源。
 func (s *Scene) font(spec FontSpec) (*core.Font, error) {
+	return s.fontForWidget(nil, spec)
+}
+
+func (s *Scene) fontForWidget(widget Widget, spec FontSpec) (*core.Font, error) {
 	s.fontMu.Lock()
 	defer s.fontMu.Unlock()
 
-	if font := s.fonts[spec]; font != nil {
+	key := fontCacheKey{
+		Face:   spec.Face,
+		Height: scaledFontHeightForWidget(widget, spec),
+		Weight: spec.Weight,
+	}
+	if font := s.fonts[key]; font != nil {
 		return font, nil
 	}
-	font, err := s.app.NewFont(spec.Face, spec.SizeDP, spec.Weight)
+	font, err := core.NewFont(key.Face, key.Height, key.Weight, core.FontQualityClearType)
 	if err != nil {
 		return nil, err
 	}
-	s.fonts[spec] = font
+	s.fonts[key] = font
 	return font, nil
 }
 

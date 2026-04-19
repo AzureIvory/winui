@@ -23,6 +23,8 @@
 - Follow existing UI-thread patterns such as `runOnUI(...)` and `app.Post(...)`
 - Trigger invalidation after state changes when needed
 - Treat JSON UI frame values as logical DP units, not raw device pixels
+- Keep the default DPI path backward compatible: no scale policy should behave exactly like the legacy all-DP model
+- Keep DPI policy ownership on widgets; `Mode` may cascade, while a widget's own `Layout` slot controls its preferred size / frame metrics and a container's own `Layout` slot controls that container's gap / padding / item metrics
 - Keep JSON frame expressions compatible with the arithmetic parser: `+`, `-`, `*`, `/`, `()`, `%`, and only `winW`, `winH`, `parentW`, `parentH`
 - Keep per-window JSON widget ids unique; the loader indexes them for runtime lookup
 - Keep JSON image loading DPI-aware through logical DP sizing instead of fixed pixel constants, and keep image slots using contain-style aspect ratio preservation

@@ -134,6 +134,9 @@ func (w *Window) Attach(scene *widgets.Scene) error {
 		return err
 	}
 	w.RefreshBindings()
+	if w.Root != nil {
+		w.Root.SetBounds(root.Bounds())
+	}
 	return nil
 }
 

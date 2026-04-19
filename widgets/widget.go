@@ -114,7 +114,8 @@ type widgetBase struct {
 	// parentRef 表示控件当前所属父容器。
 	parentRef Container
 	// layoutData 表示控件附带的布局数据。
-	layoutData any
+	layoutData       any
+	scalePolicyValue ScalePolicy
 }
 
 // newWidgetBase 初始化控件公共基础状态。
@@ -146,6 +147,14 @@ func (b *widgetBase) preferredSize() core.Size {
 
 func (b *widgetBase) preferredSizeInfo() (core.Size, bool) {
 	return b.preferred, b.preferredLogical
+}
+
+func (b *widgetBase) scalePolicy() ScalePolicy {
+	return b.scalePolicyValue
+}
+
+func (b *widgetBase) setScalePolicy(policy ScalePolicy) {
+	b.scalePolicyValue = policy
 }
 
 // Visible 返回控件是否可见。

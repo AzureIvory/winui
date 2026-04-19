@@ -277,6 +277,31 @@ JSON 样式直接映射到现有控件样式结构，而不是再造一套渲染
 
 `type: "file"` 映射到 `widgets.FilePicker`。
 
+## 11. DPI 缩放策略
+
+默认情况下，控件行为与旧版本一致：几何尺寸、字体、图片槽位、padding、gap、radius 都按逻辑 DP 参与 DPI 缩放。
+
+如果需要局部混合策略，可以在 Go 代码里调用：
+
+```go
+widgets.SetScalePolicy(widget, widgets.ScalePolicy{
+    Mode:    widgets.ScaleDP,
+    Layout:  widgets.ScalePX,
+    Font:    widgets.ScalePX,
+    Image:   widgets.ScalePX,
+    Padding: widgets.ScalePX,
+    Gap:     widgets.ScalePX,
+    Radius:  widgets.ScaleDP,
+})
+```
+
+规则约定：
+
+- `Mode` 是节点默认策略，可向后代继承
+- `Layout` 控制该节点自己的布局尺寸：例如 preferred size、绝对布局 `frame`，以及容器自己的 `gap` / `padding` / `itemSize` / `labelWidth`
+- `Font` / `Image` / `Padding` / `Gap` / `Radius` 控制渲染侧样式尺寸
+- 不设置策略时仍然走原来的 DP 路径
+
 常用字段：
 
 - `dialog: "open" | "save" | "folder"`

@@ -22,6 +22,33 @@ type layoutFrame struct {
 type absoluteLayoutData struct {
 	frame  layoutFrame
 	window *Window
+	widget widgets.Widget
+}
+
+func (d absoluteLayoutData) AbsoluteLayoutData() (widgets.AbsoluteLayoutData, bool) {
+	data := widgets.AbsoluteLayoutData{}
+	ok := false
+
+	assign := func(source exprSource, target *int32, has *bool) {
+		if !source.Has {
+			return
+		}
+		value, valueOK := source.Literal.ConstValue()
+		if !valueOK {
+			return
+		}
+		*target = value
+		*has = true
+		ok = true
+	}
+
+	assign(d.frame.X, &data.Left, &data.HasLeft)
+	assign(d.frame.Y, &data.Top, &data.HasTop)
+	assign(d.frame.R, &data.Right, &data.HasRight)
+	assign(d.frame.B, &data.Bottom, &data.HasBottom)
+	assign(d.frame.W, &data.Width, &data.HasWidth)
+	assign(d.frame.H, &data.Height, &data.HasHeight)
+	return data, ok
 }
 
 type absoluteLayout struct {
@@ -86,11 +113,25 @@ func (d absoluteLayoutData) resolve(source exprSource, axis ExprAxis, ctx ExprCo
 }
 
 func (d absoluteLayoutData) exprContext(parent widgets.Rect) ExprContext {
+	windowW := int32(0)
+	windowH := int32(0)
+	if d.window != nil {
+		windowSize := d.window.sceneClientSize()
+		windowW = windowSize.Width
+		windowH = windowSize.Height
+	}
+	if d.layoutMode() == widgets.ScalePX {
+		return ExprContext{
+			WindowW: windowW,
+			WindowH: windowH,
+			ParentW: parent.W,
+			ParentH: parent.H,
+		}
+	}
 	scale := d.scaleFactor()
-	windowSize := d.window.sceneClientSize()
 	return ExprContext{
-		WindowW: logicalPixels(windowSize.Width, scale),
-		WindowH: logicalPixels(windowSize.Height, scale),
+		WindowW: logicalPixels(windowW, scale),
+		WindowH: logicalPixels(windowH, scale),
 		ParentW: logicalPixels(parent.W, scale),
 		ParentH: logicalPixels(parent.H, scale),
 	}
@@ -100,16 +141,10 @@ func (d absoluteLayoutData) scale(value int32) int32 {
 	if value == 0 {
 		return 0
 	}
-	if d.window == nil {
+	if d.layoutMode() == widgets.ScalePX {
 		return value
 	}
-	d.window.mu.Lock()
-	scene := d.window.scene
-	d.window.mu.Unlock()
-	if scene == nil || scene.App() == nil {
-		return value
-	}
-	return scene.App().DP(value)
+	return widgets.ScaleLayoutValue(d.widget, value)
 }
 
 func (d absoluteLayoutData) scaleFactor() float64 {
@@ -127,6 +162,10 @@ func (d absoluteLayoutData) scaleFactor() float64 {
 		return 1
 	}
 	return scale
+}
+
+func (d absoluteLayoutData) layoutMode() widgets.ScaleMode {
+	return widgets.LayoutScaleModeOf(d.widget)
 }
 
 func logicalPixels(value int32, scale float64) int32 {

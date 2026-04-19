@@ -139,6 +139,17 @@ func (e ScalarExpr) Resolve(axis ExprAxis, ctx ExprContext) int32 {
 	return clampResolvedScalar(e.root.resolve(axis, ctx))
 }
 
+func (e ScalarExpr) ConstValue() (int32, bool) {
+	if e.root == nil {
+		return 0, false
+	}
+	value, ok := e.root.constValue()
+	if !ok {
+		return 0, false
+	}
+	return clampResolvedScalar(value), true
+}
+
 func clampResolvedScalar(value int64) int32 {
 	switch {
 	case value > math.MaxInt32:
@@ -178,6 +189,65 @@ func (n *scalarExprNode) resolve(axis ExprAxis, ctx ExprContext) int64 {
 		return -n.left.resolve(axis, ctx)
 	default:
 		return 0
+	}
+}
+
+func (n *scalarExprNode) constValue() (int64, bool) {
+	if n == nil {
+		return 0, false
+	}
+
+	switch n.kind {
+	case exprNodeLiteral:
+		return int64(n.value), true
+	case exprNodeAdd:
+		left, ok := n.left.constValue()
+		if !ok {
+			return 0, false
+		}
+		right, ok := n.right.constValue()
+		if !ok {
+			return 0, false
+		}
+		return left + right, true
+	case exprNodeSub:
+		left, ok := n.left.constValue()
+		if !ok {
+			return 0, false
+		}
+		right, ok := n.right.constValue()
+		if !ok {
+			return 0, false
+		}
+		return left - right, true
+	case exprNodeMul:
+		left, ok := n.left.constValue()
+		if !ok {
+			return 0, false
+		}
+		right, ok := n.right.constValue()
+		if !ok {
+			return 0, false
+		}
+		return left * right, true
+	case exprNodeDiv:
+		left, ok := n.left.constValue()
+		if !ok {
+			return 0, false
+		}
+		right, ok := n.right.constValue()
+		if !ok || right == 0 {
+			return 0, false
+		}
+		return left / right, true
+	case exprNodeNeg:
+		left, ok := n.left.constValue()
+		if !ok {
+			return 0, false
+		}
+		return -left, true
+	default:
+		return 0, false
 	}
 }
 

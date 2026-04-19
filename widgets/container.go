@@ -163,7 +163,7 @@ func (p *Panel) Paint(ctx *PaintCtx) {
 		return
 	}
 	if ctx != nil {
-		radius := ctx.DP(p.Style.CornerRadius)
+		radius := scaleValueForWidget(p, scaleSlotRadius, p.Style.CornerRadius)
 		if p.Style.Background != 0 {
 			if radius > 0 {
 				_ = ctx.FillRoundRect(p.Bounds(), radius, p.Style.Background)
@@ -206,6 +206,12 @@ func (p *Panel) applyLayout() {
 	}
 	beginLayoutPass()
 	defer endLayoutPass()
+	if layout, ok := p.layout.(interface {
+		ApplyFor(owner Widget, parent Rect, children []Widget)
+	}); ok {
+		layout.ApplyFor(p, p.Bounds(), p.children)
+		return
+	}
 	p.layout.Apply(p.Bounds(), p.children)
 }
 

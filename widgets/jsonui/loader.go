@@ -50,6 +50,7 @@ type nodeSpec struct {
 	Items            json.RawMessage `json:"items"`
 	Sel              json.RawMessage `json:"sel"`
 	Layout           json.RawMessage `json:"layout"`
+	Scale            json.RawMessage `json:"scale"`
 	Frame            *frameSpec      `json:"frame"`
 	Style            json.RawMessage `json:"style"`
 	Children         []nodeSpec      `json:"children"`
@@ -279,6 +280,11 @@ func (b *builder) buildNode(window *Window, spec nodeSpec, parentLayout string) 
 	}
 	if err != nil {
 		return nil, err
+	}
+	if policy, err := parseScalePolicy(spec.Scale); err != nil {
+		return nil, err
+	} else if spec.Scale != nil {
+		widgets.SetScalePolicy(widget, policy)
 	}
 	if err := window.registerWidget(widget); err != nil {
 		return nil, err
@@ -956,6 +962,7 @@ func (b *builder) applyLayoutData(window *Window, widget widgets.Widget, spec no
 	if err != nil {
 		return err
 	}
+	data.widget = widget
 	widget.SetLayoutData(data)
 	b.registerFrameBindings(window, widget, data)
 	return nil
@@ -1025,6 +1032,7 @@ func (b *builder) registerFrameBindings(window *Window, widget widgets.Widget, d
 	}
 	b.addBinding(window, paths, func(ctx *bindingContext) {
 		updated := data
+		updated.widget = widget
 		updated.frame.X = resolveExprSource(updated.frame.X, ctx.data)
 		updated.frame.Y = resolveExprSource(updated.frame.Y, ctx.data)
 		updated.frame.R = resolveExprSource(updated.frame.R, ctx.data)

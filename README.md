@@ -135,6 +135,8 @@ store.Set("page.title", "Updated Title")
 - JSON declares widget trees, styles, actions, and bindings
 - Host code owns all data mutation through `jsonui.DataSource`
 - Frame values are logical DP by default and scale with DPI
+- Widget DPI behavior stays backward compatible by default; no `scale` config means the legacy all-DP model
+- Use `widgets.SetScalePolicy(...)` in Go or a node-level JSON `scale` field to opt individual nodes into `px`, mixed slot policies, or both
 - Widget ids must stay unique within each declared window
 - Bool fields fall back to widget semantics when omitted or when a bound value is missing: `visible` / `enabled` stay `true`, while `checked`, `multiple`, and `autoplay` stay `false`
 - `input` / `textarea` support `readOnly`, `multiline`, `wordWrap`, `acceptReturn`, `verticalScroll`, and `horizontalScroll`

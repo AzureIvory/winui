@@ -262,7 +262,11 @@ type LinearLayout struct {
 
 // Apply 按行布局规则排布子控件。
 func (l RowLayout) Apply(parent Rect, children []Widget) {
-	applyFlexLayout(parent, children, flexOptions{
+	l.ApplyFor(nil, parent, children)
+}
+
+func (l RowLayout) ApplyFor(owner Widget, parent Rect, children []Widget) {
+	applyFlexLayout(owner, parent, children, flexOptions{
 		axis:       AxisHorizontal,
 		gap:        l.Gap,
 		padding:    l.Padding,
@@ -273,7 +277,11 @@ func (l RowLayout) Apply(parent Rect, children []Widget) {
 
 // Apply 按列布局规则排布子控件。
 func (l ColumnLayout) Apply(parent Rect, children []Widget) {
-	applyFlexLayout(parent, children, flexOptions{
+	l.ApplyFor(nil, parent, children)
+}
+
+func (l ColumnLayout) ApplyFor(owner Widget, parent Rect, children []Widget) {
+	applyFlexLayout(owner, parent, children, flexOptions{
 		axis:       AxisVertical,
 		gap:        l.Gap,
 		padding:    l.Padding,
@@ -284,12 +292,16 @@ func (l ColumnLayout) Apply(parent Rect, children []Widget) {
 
 // Apply 按网格布局规则排布子控件。
 func (l GridLayout) Apply(parent Rect, children []Widget) {
+	l.ApplyFor(nil, parent, children)
+}
+
+func (l GridLayout) ApplyFor(owner Widget, parent Rect, children []Widget) {
 	columns := l.Columns
 	if columns <= 0 {
 		columns = 1
 	}
 
-	metricWidget := layoutMetricWidget(children)
+	metricWidget := layoutMetricOwner(owner, children)
 	padding := scaleInsetsForWidget(metricWidget, l.Padding)
 	content := padding.inset(parent)
 	if content.Empty() {
@@ -406,7 +418,11 @@ func (l GridLayout) Apply(parent Rect, children []Widget) {
 
 // Apply 按表单布局规则排布子控件。
 func (l FormLayout) Apply(parent Rect, children []Widget) {
-	metricWidget := layoutMetricWidget(children)
+	l.ApplyFor(nil, parent, children)
+}
+
+func (l FormLayout) ApplyFor(owner Widget, parent Rect, children []Widget) {
+	metricWidget := layoutMetricOwner(owner, children)
 	padding := scaleInsetsForWidget(metricWidget, l.Padding)
 	content := padding.inset(parent)
 	if content.Empty() {
@@ -509,6 +525,10 @@ func (l FormLayout) Apply(parent Rect, children []Widget) {
 
 // Apply 兼容旧接口并委托给行布局或列布局。
 func (l LinearLayout) Apply(parent Rect, children []Widget) {
+	l.ApplyFor(nil, parent, children)
+}
+
+func (l LinearLayout) ApplyFor(owner Widget, parent Rect, children []Widget) {
 	padding := UniformInsets(l.Padding)
 	if l.Axis == AxisHorizontal {
 		RowLayout{
@@ -516,7 +536,7 @@ func (l LinearLayout) Apply(parent Rect, children []Widget) {
 			Padding:    padding,
 			ItemSize:   l.ItemSize,
 			CrossAlign: AlignStretch,
-		}.Apply(parent, children)
+		}.ApplyFor(owner, parent, children)
 		return
 	}
 	ColumnLayout{
@@ -524,7 +544,7 @@ func (l LinearLayout) Apply(parent Rect, children []Widget) {
 		Padding:    padding,
 		ItemSize:   l.ItemSize,
 		CrossAlign: AlignStretch,
-	}.Apply(parent, children)
+	}.ApplyFor(owner, parent, children)
 }
 
 // flexOptions 描述线性布局内部使用的归一化配置。
@@ -564,8 +584,8 @@ type widthConstrainedSizer interface {
 }
 
 // applyFlexLayout 根据统一逻辑执行行布局或列布局。
-func applyFlexLayout(parent Rect, children []Widget, opts flexOptions) {
-	metricWidget := layoutMetricWidget(children)
+func applyFlexLayout(owner Widget, parent Rect, children []Widget, opts flexOptions) {
+	metricWidget := layoutMetricOwner(owner, children)
 	opts.padding = scaleInsetsForWidget(metricWidget, opts.padding)
 	opts.gap = widgetDP(metricWidget, opts.gap)
 	opts.itemSize = widgetDP(metricWidget, opts.itemSize)
@@ -924,6 +944,10 @@ func absoluteDataOf(data any) (AbsoluteLayoutData, bool) {
 		if typed != nil {
 			return *typed, true
 		}
+	case interface {
+		AbsoluteLayoutData() (AbsoluteLayoutData, bool)
+	}:
+		return typed.AbsoluteLayoutData()
 	}
 	return AbsoluteLayoutData{}, false
 }
@@ -937,35 +961,23 @@ func layoutMetricWidget(children []Widget) Widget {
 	return nil
 }
 
+func layoutMetricOwner(owner Widget, children []Widget) Widget {
+	if owner != nil {
+		return owner
+	}
+	return layoutMetricWidget(children)
+}
+
 func widgetDP(widget Widget, value int32) int32 {
-	if value == 0 {
-		return 0
-	}
-	node := asWidgetNode(widget)
-	if node == nil {
-		return value
-	}
-	scene := node.scene()
-	if scene == nil || scene.app == nil {
-		return value
-	}
-	return scene.app.DP(value)
+	return scaleValueForWidget(widget, scaleSlotLayout, value)
 }
 
 func scaleInsetsForWidget(widget Widget, value Insets) Insets {
-	return Insets{
-		Top:    widgetDP(widget, value.Top),
-		Right:  widgetDP(widget, value.Right),
-		Bottom: widgetDP(widget, value.Bottom),
-		Left:   widgetDP(widget, value.Left),
-	}
+	return scaleInsetsForWidgetSlot(widget, scaleSlotLayout, value)
 }
 
 func scaleSizeForWidget(widget Widget, value core.Size) core.Size {
-	return core.Size{
-		Width:  widgetDP(widget, value.Width),
-		Height: widgetDP(widget, value.Height),
-	}
+	return scaleSizeForWidgetSlot(widget, scaleSlotLayout, value)
 }
 
 // heightForAlign 根据对齐方式计算实际高度。

@@ -47,27 +47,27 @@ func measurePanelNatural(panel *Panel) core.Size {
 	}
 	switch layout := panel.layout.(type) {
 	case RowLayout:
-		return measureFlexNatural(panel.children, AxisHorizontal, layout.Gap, layout.Padding, layout.ItemSize)
+		return measureFlexNatural(panel, panel.children, AxisHorizontal, layout.Gap, layout.Padding, layout.ItemSize)
 	case ColumnLayout:
-		return measureFlexNatural(panel.children, AxisVertical, layout.Gap, layout.Padding, layout.ItemSize)
+		return measureFlexNatural(panel, panel.children, AxisVertical, layout.Gap, layout.Padding, layout.ItemSize)
 	case GridLayout:
-		return measureGridNatural(panel.children, layout)
+		return measureGridNatural(panel, panel.children, layout)
 	case FormLayout:
-		return measureFormNatural(panel.children, layout)
+		return measureFormNatural(panel, panel.children, layout)
 	case LinearLayout:
 		padding := UniformInsets(layout.Padding)
 		axis := layout.Axis
 		if axis == 0 {
 			axis = AxisHorizontal
 		}
-		return measureFlexNatural(panel.children, axis, layout.Gap, padding, layout.ItemSize)
+		return measureFlexNatural(panel, panel.children, axis, layout.Gap, padding, layout.ItemSize)
 	default:
 		return measureAbsoluteNatural(panel.children)
 	}
 }
 
-func measureFlexNatural(children []Widget, axis Axis, gap int32, padding Insets, itemSize int32) core.Size {
-	metricWidget := layoutMetricWidget(children)
+func measureFlexNatural(owner Widget, children []Widget, axis Axis, gap int32, padding Insets, itemSize int32) core.Size {
+	metricWidget := layoutMetricOwner(owner, children)
 	gap = widgetDP(metricWidget, gap)
 	padding = scaleInsetsForWidget(metricWidget, padding)
 	itemSize = widgetDP(metricWidget, itemSize)
@@ -109,12 +109,12 @@ func measureFlexNatural(children []Widget, axis Axis, gap int32, padding Insets,
 	return core.Size{Width: cross + padding.horizontal(), Height: main + padding.vertical()}
 }
 
-func measureGridNatural(children []Widget, layout GridLayout) core.Size {
+func measureGridNatural(owner Widget, children []Widget, layout GridLayout) core.Size {
 	columns := layout.Columns
 	if columns <= 0 {
 		columns = 1
 	}
-	metricWidget := layoutMetricWidget(children)
+	metricWidget := layoutMetricOwner(owner, children)
 	padding := scaleInsetsForWidget(metricWidget, layout.Padding)
 	columnGap := widgetDP(metricWidget, layout.ColumnGap)
 	if columnGap == 0 {
@@ -160,8 +160,8 @@ func measureGridNatural(children []Widget, layout GridLayout) core.Size {
 	return core.Size{Width: width, Height: height}
 }
 
-func measureFormNatural(children []Widget, layout FormLayout) core.Size {
-	metricWidget := layoutMetricWidget(children)
+func measureFormNatural(owner Widget, children []Widget, layout FormLayout) core.Size {
+	metricWidget := layoutMetricOwner(owner, children)
 	padding := scaleInsetsForWidget(metricWidget, layout.Padding)
 	labelWidth := widgetDP(metricWidget, layout.LabelWidth)
 	rowGap := widgetDP(metricWidget, layout.RowGap)

@@ -225,7 +225,7 @@ func (b *Button) Paint(ctx *PaintCtx) {
 		bgColor = style.Hover
 	}
 
-	radius := ctx.DP(style.CornerRadius)
+	radius := scaleValueForWidget(b, scaleSlotRadius, style.CornerRadius)
 	if radius < 0 {
 		radius = 0
 	}
@@ -428,7 +428,8 @@ func (b *Button) drawButtonText(ctx *PaintCtx, rect Rect, style ButtonStyle, col
 	if b.Down {
 		rect = offsetRect(rect, 1, 1)
 	}
-	_ = ctx.DrawText(
+	_ = ctx.DrawWidgetText(
+		b,
 		b.Text,
 		rect,
 		TextStyle{
@@ -441,7 +442,7 @@ func (b *Button) drawButtonText(ctx *PaintCtx, rect Rect, style ButtonStyle, col
 
 // drawCenteredGraphic 在按钮中心绘制图片或图标。
 func (b *Button) drawCenteredGraphic(ctx *PaintCtx, rect Rect, style ButtonStyle, kind BtnKind) {
-	boxSize := buttonImageBoxSize(ctx, rect, style, kind)
+	boxSize := buttonImageBoxSize(b, ctx, rect, style, kind)
 	slot := Rect{
 		X: rect.X + (rect.W-boxSize)/2,
 		Y: rect.Y + (rect.H-boxSize)/2,
@@ -456,15 +457,15 @@ func (b *Button) drawCenteredGraphic(ctx *PaintCtx, rect Rect, style ButtonStyle
 
 // drawLeftGraphicButton 绘制左图右字按钮。
 func (b *Button) drawLeftGraphicButton(ctx *PaintCtx, rect Rect, style ButtonStyle, textColor core.Color) {
-	pad := ctx.DP(style.PadDP)
+	pad := scaleValueForWidget(b, scaleSlotPadding, style.PadDP)
 	if pad <= 0 {
-		pad = ctx.DP(12)
+		pad = scaleValueForWidget(b, scaleSlotPadding, 12)
 	}
-	gap := ctx.DP(style.GapDP)
+	gap := scaleValueForWidget(b, scaleSlotGap, style.GapDP)
 	if gap <= 0 {
-		gap = ctx.DP(8)
+		gap = scaleValueForWidget(b, scaleSlotGap, 8)
 	}
-	boxSize := buttonImageBoxSize(ctx, rect, style, BtnLeft)
+	boxSize := buttonImageBoxSize(b, ctx, rect, style, BtnLeft)
 
 	slot := Rect{
 		X: rect.X + pad,
@@ -485,7 +486,8 @@ func (b *Button) drawLeftGraphicButton(ctx *PaintCtx, rect Rect, style ButtonSty
 	}
 
 	_ = b.drawGraphic(ctx, slot)
-	_ = ctx.DrawText(
+	_ = ctx.DrawWidgetText(
+		b,
 		b.Text,
 		textRect,
 		TextStyle{
@@ -498,25 +500,25 @@ func (b *Button) drawLeftGraphicButton(ctx *PaintCtx, rect Rect, style ButtonSty
 
 // drawTopGraphicButton 绘制上图下字按钮。
 func (b *Button) drawTopGraphicButton(ctx *PaintCtx, rect Rect, style ButtonStyle, textColor core.Color) {
-	pad := ctx.DP(style.PadDP)
+	pad := scaleValueForWidget(b, scaleSlotPadding, style.PadDP)
 	if pad <= 0 {
-		pad = ctx.DP(8)
+		pad = scaleValueForWidget(b, scaleSlotPadding, 8)
 	}
-	gap := ctx.DP(style.GapDP)
+	gap := scaleValueForWidget(b, scaleSlotGap, style.GapDP)
 	if gap <= 0 {
-		gap = ctx.DP(6)
+		gap = scaleValueForWidget(b, scaleSlotGap, 6)
 	}
-	labelH := ctx.DP(style.TextInsetDP)
+	labelH := scaleValueForWidget(b, scaleSlotFont, style.TextInsetDP)
 	if labelH <= 0 {
-		labelH = ctx.DP(18)
+		labelH = scaleValueForWidget(b, scaleSlotFont, 18)
 	}
 
-	boxSize := buttonImageBoxSize(ctx, rect, style, BtnTop)
+	boxSize := buttonImageBoxSize(b, ctx, rect, style, BtnTop)
 	maxBoxSize := rect.H - pad*2 - labelH - gap
 	if maxBoxSize > 0 {
 		boxSize = min32(boxSize, maxBoxSize)
 	}
-	boxSize = max32(boxSize, ctx.DP(12))
+	boxSize = max32(boxSize, scaleValueForWidget(b, scaleSlotImage, 12))
 
 	contentH := boxSize + gap + labelH
 	startY := rect.Y + pad
@@ -546,7 +548,8 @@ func (b *Button) drawTopGraphicButton(ctx *PaintCtx, rect Rect, style ButtonStyl
 	}
 
 	_ = b.drawGraphic(ctx, slot)
-	_ = ctx.DrawText(
+	_ = ctx.DrawWidgetText(
+		b,
 		b.Text,
 		textRect,
 		TextStyle{
@@ -601,17 +604,25 @@ func chooseButtonImageQuality(src core.Size, dst core.Size) core.ImageScaleQuali
 }
 
 // buttonImageBoxSize 计算按钮图片槽位尺寸。
-func buttonImageBoxSize(ctx *PaintCtx, rect Rect, style ButtonStyle, kind BtnKind) int32 {
+func buttonImageBoxSize(widget Widget, ctx *PaintCtx, rect Rect, style ButtonStyle, kind BtnKind) int32 {
 	if ctx == nil {
 		return 0
 	}
 	if style.ImageSizeDP > 0 {
-		return ctx.DP(style.ImageSizeDP)
+		return scaleValueForWidget(widget, scaleSlotImage, style.ImageSizeDP)
 	}
 	if kind == BtnLeft {
-		return clampValue(rect.H-ctx.DP(20), ctx.DP(14), ctx.DP(18))
+		return clampValue(
+			rect.H-scaleValueForWidget(widget, scaleSlotImage, 20),
+			scaleValueForWidget(widget, scaleSlotImage, 14),
+			scaleValueForWidget(widget, scaleSlotImage, 18),
+		)
 	}
-	return clampValue(rect.H-ctx.DP(22), ctx.DP(16), ctx.DP(28))
+	return clampValue(
+		rect.H-scaleValueForWidget(widget, scaleSlotImage, 22),
+		scaleValueForWidget(widget, scaleSlotImage, 16),
+		scaleValueForWidget(widget, scaleSlotImage, 28),
+	)
 }
 
 // normalizeBtnKind 规范化按钮布局枚举值。

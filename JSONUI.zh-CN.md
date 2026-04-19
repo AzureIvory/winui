@@ -392,3 +392,40 @@ jsonui.RunApps(hosted)
 - 绝对布局仍然是约束式布局，不是完整的 CSS 盒模型
 - JSON 已支持多窗口、样式映射、文件对话框、宿主绑定和 DPI 表达式
 - 如果需要更复杂的模板、循环或条件渲染，建议在宿主层生成 JSON，或直接用 Go 代码构建控件树
+## 14. `scale` 缩放策略
+
+默认情况下，JSON 仍然沿用旧版行为：布局尺寸、字体、图片槽位、padding、gap、radius 都按逻辑 DP 参与 DPI 缩放。
+
+如果某个节点需要混合策略，可以声明 `scale`：
+
+```json
+{
+  "type": "button",
+  "id": "fixedBtn",
+  "scale": {
+    "layout": "px",
+    "font": "px",
+    "image": "px",
+    "padding": "px",
+    "gap": "px",
+    "radius": "dp"
+  }
+}
+```
+
+也可以写成简写：
+
+```json
+{
+  "type": "panel",
+  "scale": "px"
+}
+```
+
+约定如下：
+
+- `mode` 是节点默认策略，可向后代继承
+- `layout` 控制该节点自己的布局尺寸，例如 preferred size、绝对布局 `frame`，以及容器自己的 `gap` / `pad` / `item` / `labelW`
+- `font` / `image` / `padding` / `gap` / `radius` 控制渲染侧样式尺寸
+- `frame` 默认仍按逻辑 DP 解释；当节点 `scale.layout = "px"` 时，`frame` 表达式里的 `winW` / `winH` / `parentW` / `parentH` 会改用物理像素，结果也不再二次按 DPI 缩放
+- 不写 `scale` 时，旧页面行为保持不变
