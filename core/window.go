@@ -528,19 +528,15 @@ func (a *App) createWindow() error {
 
 	a.applyResolvedWindowIcons(smallIcon, bigIcon)
 
-	if a.opts.OnCreate != nil {
-		if err := a.opts.OnCreate(a); err != nil {
-			procDestroyWindow.Call(hwnd)
-			return err
-		}
-	}
-
+	size := Size{}
+	hasSize := false
 	if rect, err := clientRect(a.hwnd); err == nil {
-		size := Size{Width: rect.W, Height: rect.H}
-		a.updateClientSize(size)
-		if a.opts.OnResize != nil {
-			a.opts.OnResize(a, size)
-		}
+		size = Size{Width: rect.W, Height: rect.H}
+		hasSize = true
+	}
+	if err := a.finishCreate(size, hasSize); err != nil {
+		procDestroyWindow.Call(hwnd)
+		return err
 	}
 
 	procShowWindow.Call(hwnd, showWindowNormal)
@@ -673,6 +669,21 @@ func (a *App) updateClientSize(size Size) {
 	a.sizeMu.Lock()
 	a.clientSize = size
 	a.sizeMu.Unlock()
+}
+
+func (a *App) finishCreate(size Size, hasSize bool) error {
+	if hasSize {
+		a.updateClientSize(size)
+	}
+	if a.opts.OnCreate != nil {
+		if err := a.opts.OnCreate(a); err != nil {
+			return err
+		}
+	}
+	if hasSize && a.opts.OnResize != nil {
+		a.opts.OnResize(a, size)
+	}
+	return nil
 }
 
 // minTrackSize 返回窗口最小可拖拽外框尺寸。
