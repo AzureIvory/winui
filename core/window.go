@@ -774,7 +774,7 @@ func (a *App) screenToClient(pt Point) Point {
 	if a == nil || a.hwnd == 0 {
 		return pt
 	}
-	wp := point{X: pt.X, Y: pt.Y}
+	wp := point(pt)
 	procScreenToClient.Call(uintptr(a.hwnd), uintptr(unsafe.Pointer(&wp)))
-	return Point{X: wp.X, Y: wp.Y}
+	return Point(wp)
 }

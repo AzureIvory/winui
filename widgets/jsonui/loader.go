@@ -951,7 +951,7 @@ func (b *builder) applyLayoutData(window *Window, widget widgets.Widget, spec no
 	}
 	if spec.Frame == nil {
 		if parentLayout == "abs" && spec.Type == "modal" {
-			widget.SetLayoutData(modalAbsoluteLayoutData(window))
+			widget.SetLayoutData(modalAbsoluteLayoutData(window, widget))
 		}
 		return nil
 	}
@@ -1118,10 +1118,6 @@ func resolveStringSource(source stringSource, data DataSource) string {
 		}
 	}
 	return source.Default
-}
-
-func resolveBoolSource(source boolSource, data DataSource) bool {
-	return resolveBoolSourceOrDefault(source, data, false)
 }
 
 func resolveIntSource(source intSource, data DataSource) int32 {

@@ -45,14 +45,6 @@ func wrapError(op string, err error) error {
 	}
 }
 
-// wrapHRESULT 将 HRESULT 风格结果转换为带操作上下文的 Go 错误。
-func wrapHRESULT(op string, hr uintptr) error {
-	return &opError{
-		Op:  op,
-		Err: fmt.Errorf("HRESULT 0x%08X", uint32(hr)),
-	}
-}
-
 // normalizeSyscallError 将零值系统调用错误归一化为 nil。
 func normalizeSyscallError(err error) error {
 	if err == nil {

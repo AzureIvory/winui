@@ -175,14 +175,9 @@ func (c *CheckBox) Paint(ctx *PaintCtx) {
 		return
 	}
 
-	boxSize := ctx.DP(style.IndicatorSizeDP)
-	if boxSize <= 0 {
-		boxSize = ctx.DP(18)
-	}
-	gap := ctx.DP(style.IndicatorGapDP)
-	if gap <= 0 {
-		gap = ctx.DP(10)
-	}
+	boxSize := choiceIndicatorBoxSize(c, style)
+	gap := choiceIndicatorGap(c, style)
+	radius := choiceIndicatorRadius(c, style)
 
 	boxRect := Rect{
 		X: content.X,
@@ -193,7 +188,7 @@ func (c *CheckBox) Paint(ctx *PaintCtx) {
 	wrapRect := Rect{X: content.X, Y: content.Y, W: content.W, H: content.H}
 
 	if c.Hover || c.Focused {
-		_ = ctx.FillRoundRect(wrapRect, choiceWrapRadius(ctx, style), style.HoverBackground)
+		_ = ctx.FillRoundRect(wrapRect, choiceWrapRadiusForWidget(c, style), style.HoverBackground)
 	}
 
 	background := style.Background
@@ -209,21 +204,21 @@ func (c *CheckBox) Paint(ctx *PaintCtx) {
 		borderColor = style.HoverBorder
 	}
 
-	_ = ctx.FillRoundRect(boxRect, ctx.DP(style.CornerRadius), background)
+	_ = ctx.FillRoundRect(boxRect, radius, background)
 	if c.Checked {
 		if resolveChoiceIndicatorStyle(style, false) == ChoiceIndicatorCheck {
 			borderColor = style.IndicatorColor
 			_ = ctx.FillRoundRect(
 				boxRect,
-				ctx.DP(style.CornerRadius),
+				radius,
 				choiceIndicatorCheckFill(background, style.IndicatorColor),
 			)
 		} else {
-			_ = ctx.FillRoundRect(boxRect, ctx.DP(style.CornerRadius), style.IndicatorColor)
+			_ = ctx.FillRoundRect(boxRect, radius, style.IndicatorColor)
 		}
-		drawChoiceMark(ctx, boxRect, style, false)
+		drawChoiceMark(ctx, c, boxRect, style, false)
 	}
-	_ = ctx.StrokeRoundRect(boxRect, ctx.DP(style.CornerRadius), borderColor, 1)
+	_ = ctx.StrokeRoundRect(boxRect, radius, borderColor, 1)
 
 	textRect := Rect{
 		X: boxRect.X + boxRect.W + gap,
@@ -371,10 +366,7 @@ func (c *CheckBox) syncNativeChecked() {
 
 // acceptsFocus 返回控件是否可接受键盘焦点。
 func (c *CheckBox) acceptsFocus() bool {
-	if isNativeMode(c.mode) {
-		return false
-	}
-	return true
+	return !isNativeMode(c.mode)
 }
 
 // cursor 返回悬停控件时应使用的光标。
@@ -589,14 +581,8 @@ func (r *RadioButton) Paint(ctx *PaintCtx) {
 		return
 	}
 
-	boxSize := ctx.DP(style.IndicatorSizeDP)
-	if boxSize <= 0 {
-		boxSize = ctx.DP(18)
-	}
-	gap := ctx.DP(style.IndicatorGapDP)
-	if gap <= 0 {
-		gap = ctx.DP(10)
-	}
+	boxSize := choiceIndicatorBoxSize(r, style)
+	gap := choiceIndicatorGap(r, style)
 
 	boxRect := Rect{
 		X: content.X,
@@ -607,7 +593,7 @@ func (r *RadioButton) Paint(ctx *PaintCtx) {
 	wrapRect := Rect{X: content.X, Y: content.Y, W: content.W, H: content.H}
 
 	if r.Hover || r.Focused {
-		_ = ctx.FillRoundRect(wrapRect, choiceWrapRadius(ctx, style), style.HoverBackground)
+		_ = ctx.FillRoundRect(wrapRect, choiceWrapRadiusForWidget(r, style), style.HoverBackground)
 	}
 
 	background := style.Background
@@ -634,7 +620,7 @@ func (r *RadioButton) Paint(ctx *PaintCtx) {
 				choiceIndicatorCheckFill(background, style.IndicatorColor),
 			)
 		}
-		drawChoiceMark(ctx, boxRect, style, true)
+		drawChoiceMark(ctx, r, boxRect, style, true)
 	}
 	_ = ctx.StrokeRoundRect(boxRect, radius, borderColor, 1)
 
@@ -782,10 +768,7 @@ func (r *RadioButton) syncNativeChecked() {
 
 // acceptsFocus 返回控件是否可接受键盘焦点。
 func (r *RadioButton) acceptsFocus() bool {
-	if isNativeMode(r.mode) {
-		return false
-	}
-	return true
+	return !isNativeMode(r.mode)
 }
 
 // cursor 返回悬停控件时应使用的光标。
@@ -841,16 +824,37 @@ func (r *RadioButton) syncGroup(notify bool) {
 	}
 }
 
-// choiceWrapRadius 返回选择类控件外层悬停区域应使用的圆角半径。
-func choiceWrapRadius(ctx *PaintCtx, style ChoiceStyle) int32 {
-	if ctx == nil {
-		return 0
+func choiceIndicatorBoxSize(widget Widget, style ChoiceStyle) int32 {
+	size := scaleValueForWidget(widget, scaleSlotImage, style.IndicatorSizeDP)
+	if size <= 0 {
+		return scaleValueForWidget(widget, scaleSlotImage, 18)
 	}
-	radius := ctx.DP(style.CornerRadius)
+	return size
+}
+
+func choiceIndicatorGap(widget Widget, style ChoiceStyle) int32 {
+	gap := scaleValueForWidget(widget, scaleSlotGap, style.IndicatorGapDP)
+	if gap <= 0 {
+		return scaleValueForWidget(widget, scaleSlotGap, 10)
+	}
+	return gap
+}
+
+func choiceIndicatorRadius(widget Widget, style ChoiceStyle) int32 {
+	radius := scaleValueForWidget(widget, scaleSlotRadius, style.CornerRadius)
 	if radius <= 0 {
 		return 0
 	}
-	return radius + ctx.DP(4)
+	return radius
+}
+
+// choiceWrapRadiusForWidget 返回选择类控件外层悬停区域应使用的圆角半径。
+func choiceWrapRadiusForWidget(widget Widget, style ChoiceStyle) int32 {
+	radius := choiceIndicatorRadius(widget, style)
+	if radius <= 0 {
+		return 0
+	}
+	return radius + scaleValueForWidget(widget, scaleSlotRadius, 4)
 }
 
 // resolveChoiceIndicatorStyle 返回当前选择类控件应使用的选中标记样式。
@@ -865,25 +869,25 @@ func resolveChoiceIndicatorStyle(style ChoiceStyle, isRadio bool) ChoiceIndicato
 }
 
 // drawChoiceMark 按给定样式绘制选择类控件的选中标记。
-func drawChoiceMark(ctx *PaintCtx, boxRect Rect, style ChoiceStyle, isRadio bool) {
+func drawChoiceMark(ctx *PaintCtx, widget Widget, boxRect Rect, style ChoiceStyle, isRadio bool) {
 	switch resolveChoiceIndicatorStyle(style, isRadio) {
 	case ChoiceIndicatorCheck:
-		drawChoiceCheck(ctx, boxRect, resolveChoiceCheckMarkColor(style))
+		drawChoiceCheck(ctx, widget, boxRect, resolveChoiceCheckMarkColor(style))
 	default:
 		color := style.CheckColor
 		if isRadio {
 			color = style.IndicatorColor
 		}
-		drawChoiceDot(ctx, boxRect, color)
+		drawChoiceDot(ctx, widget, boxRect, color)
 	}
 }
 
 // drawChoiceDot 在选择框内部绘制圆点选中标记。
-func drawChoiceDot(ctx *PaintCtx, boxRect Rect, color core.Color) {
+func drawChoiceDot(ctx *PaintCtx, widget Widget, boxRect Rect, color core.Color) {
 	if ctx == nil || boxRect.Empty() {
 		return
 	}
-	dotSize := max32(ctx.DP(6), boxRect.W/2)
+	dotSize := choiceIndicatorDotSize(widget, boxRect)
 	dotRect := Rect{
 		X: boxRect.X + (boxRect.W-dotSize)/2,
 		Y: boxRect.Y + (boxRect.H-dotSize)/2,
@@ -894,7 +898,7 @@ func drawChoiceDot(ctx *PaintCtx, boxRect Rect, color core.Color) {
 }
 
 // drawChoiceCheck 在选择框内部绘制打钩选中标记。
-func drawChoiceCheck(ctx *PaintCtx, boxRect Rect, color core.Color) {
+func drawChoiceCheck(ctx *PaintCtx, widget Widget, boxRect Rect, color core.Color) {
 	if ctx == nil || boxRect.Empty() {
 		return
 	}
@@ -904,7 +908,7 @@ func drawChoiceCheck(ctx *PaintCtx, boxRect Rect, color core.Color) {
 		return
 	}
 
-	stroke := max32(2, min32(boxRect.W, boxRect.H)/8)
+	stroke := choiceIndicatorCheckStroke(widget, boxRect)
 	start := core.Point{
 		X: boxRect.X + boxRect.W/5,
 		Y: boxRect.Y + boxRect.H*11/20,
@@ -935,6 +939,14 @@ func drawChoiceCheck(ctx *PaintCtx, boxRect Rect, color core.Color) {
 		H: max32(1, stroke),
 	}
 	_ = ctx.FillRoundRect(joint, max32(1, stroke/2), color)
+}
+
+func choiceIndicatorDotSize(widget Widget, boxRect Rect) int32 {
+	return max32(scaleValueForWidget(widget, scaleSlotImage, 6), boxRect.W/2)
+}
+
+func choiceIndicatorCheckStroke(widget Widget, boxRect Rect) int32 {
+	return max32(scaleValueForWidget(widget, scaleSlotImage, 2), min32(boxRect.W, boxRect.H)/8)
 }
 
 // mergeChoiceStyle 把多选框或单选按钮样式覆盖合并到基础样式中。

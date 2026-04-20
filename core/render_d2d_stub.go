@@ -29,11 +29,6 @@ func (r *d2dRenderer) end() error {
 	return errors.New("Direct2D backend unavailable: cgo is disabled")
 }
 
-// flush 在无 cgo 构建中始终返回不可用错误。
-func (r *d2dRenderer) flush() error {
-	return errors.New("Direct2D backend unavailable: cgo is disabled")
-}
-
 // fillRect 在无 cgo 构建中始终返回不可用错误。
 func (r *d2dRenderer) fillRect(Rect, Color) error {
 	return errors.New("Direct2D backend unavailable: cgo is disabled")

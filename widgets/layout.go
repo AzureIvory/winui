@@ -866,14 +866,6 @@ func maxInt(a, b int) int {
 	return b
 }
 
-// ceilDiv 返回向上取整后的整除结果。
-func ceilDiv(value, divisor int32) int32 {
-	if divisor <= 0 {
-		return value
-	}
-	return (value + divisor - 1) / divisor
-}
-
 // normalizeAlignment 把默认对齐值替换成给定的回退值。
 func normalizeAlignment(value, fallback Alignment) Alignment {
 	if value == AlignDefault {

@@ -278,9 +278,10 @@ func (b *builder) loadImage(src string) (*core.Image, error) {
 	return core.LoadImageBytes(data)
 }
 
-func modalAbsoluteLayoutData(window *Window) absoluteLayoutData {
+func modalAbsoluteLayoutData(window *Window, widget widgets.Widget) absoluteLayoutData {
 	return absoluteLayoutData{
 		window: window,
+		widget: widget,
 		frame: layoutFrame{
 			X: literalExprSource(0),
 			Y: literalExprSource(0),

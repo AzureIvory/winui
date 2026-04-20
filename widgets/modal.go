@@ -166,6 +166,14 @@ func (m *Modal) overlayHitTest(x, y int32) bool {
 	return true
 }
 
+func (m *Modal) dirtyRect() Rect {
+	rect := m.Bounds()
+	for _, child := range m.children {
+		rect = unionRect(rect, widgetDirtyRect(child))
+	}
+	return rect
+}
+
 // Close releases modal-owned graphical resources.
 func (m *Modal) Close() error {
 	m.releaseBackdropBitmap()

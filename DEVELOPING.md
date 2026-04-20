@@ -47,11 +47,13 @@ go test ./...
 go test -v ./demo/demo_json_full
 go test -v ./demo/demo_go_full
 go vet ./...
+powershell -ExecutionPolicy Bypass -File .\scripts\staticcheck.ps1 -CgoEnabled 0
+powershell -ExecutionPolicy Bypass -File .\scripts\staticcheck.ps1 -CgoEnabled 1
 go run ./demo/demo_json_full
 go run ./demo/demo_go_full
 ```
 
-GitHub Actions mirrors the build checks on Windows in `.github/workflows/ci.yml` with both `CGO_ENABLED=0` and `CGO_ENABLED=1`, including dedicated `demo/demo_json_full` and `demo/demo_go_full` regression steps, plus the `demo/demo_json_full/output/latest-api-check.txt` artifact upload.
+GitHub Actions mirrors the build checks on Windows in `.github/workflows/ci.yml` with both `CGO_ENABLED=0` and `CGO_ENABLED=1`, including dedicated `staticcheck`, `demo/demo_json_full`, and `demo/demo_go_full` regression steps, plus the `demo/demo_json_full/output/latest-api-check.txt` artifact upload.
 
 Recommended:
 

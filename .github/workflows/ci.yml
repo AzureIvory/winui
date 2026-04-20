@@ -94,6 +94,16 @@ jobs:
             throw "gofmt check failed"
           }
 
+      - name: Install staticcheck
+        shell: powershell
+        run: go install honnef.co/go/tools/cmd/staticcheck@v0.7.0
+
+      - name: Staticcheck
+        shell: powershell
+        env:
+          CGO_ENABLED: ${{ matrix.cgo }}
+        run: powershell -ExecutionPolicy Bypass -File .\scripts\staticcheck.ps1 -CgoEnabled $env:CGO_ENABLED
+
       - name: Demo JSON full regression
         shell: powershell
         env:

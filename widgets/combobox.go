@@ -551,10 +551,7 @@ func (c *ComboBox) syncNativeSelection() {
 
 // acceptsFocus 返回控件是否可接收键盘焦点。
 func (c *ComboBox) acceptsFocus() bool {
-	if isNativeMode(c.mode) {
-		return false
-	}
-	return true
+	return !isNativeMode(c.mode)
 }
 
 // cursor 返回悬停控件时应使用的光标。
@@ -720,12 +717,6 @@ func (c *ComboBox) popupRect() Rect {
 	return c.popupLayout().rect
 }
 
-// popupRange 返回组合框弹出层的可见项范围。
-func (c *ComboBox) popupRange() (int, int) {
-	layout := c.popupLayout()
-	return layout.start, layout.end
-}
-
 // popupIndexAt 返回弹出层指定位置对应的项索引。
 func (c *ComboBox) popupIndexAt(point core.Point) int {
 	layout := c.popupLayout()
@@ -744,16 +735,6 @@ func (c *ComboBox) popupIndexAt(point core.Point) int {
 		return -1
 	}
 	return layout.start + index
-}
-
-// popupRowRect 返回组合框弹出层某一行的绘制矩形。
-func (c *ComboBox) popupRowRect(index int, ctx *PaintCtx, style ComboStyle) Rect {
-	return c.popupRowRectForLayout(index, c.popupLayout())
-}
-
-// invalidateAll 使整个场景失效，以刷新弹出层或覆盖层状态。
-func (c *ComboBox) invalidateAll() {
-	c.invalidateStateChange(widgetDirtyRect(c))
 }
 
 // dp 按应用当前 DPI 缩放设备无关值。

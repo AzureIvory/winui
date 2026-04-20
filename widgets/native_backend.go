@@ -28,6 +28,7 @@ var (
 	procSendMessageW      = nativeUser32.NewProc("SendMessageW")
 	procInvalidateRect    = nativeUser32.NewProc("InvalidateRect")
 	procSetFocus          = nativeUser32.NewProc("SetFocus")
+	//lint:ignore U1000 Reserved for future native backend focus checks.
 	procGetFocus          = nativeUser32.NewProc("GetFocus")
 	procGetKeyState       = nativeUser32.NewProc("GetKeyState")
 	procSetWindowLongW    = nativeUser32.NewProc("SetWindowLongW")
@@ -129,8 +130,6 @@ const (
 	nativeEditSetSel = 0x00B1
 	// nativeEditScrollCaret 表示将光标滚动到可见区域。
 	nativeEditScrollCaret = 0x00B7
-	// nativeEditSetCueBanner 表示设置编辑框占位提示。
-	nativeEditSetCueBanner = 0x1501
 	// nativeRichEditSetEventMask 表示配置 RichEdit 事件掩码。
 	nativeRichEditSetEventMask = 0x0445
 	// nativeRichEditSetBackgroundColor 表示设置 RichEdit 背景色。
@@ -468,16 +467,6 @@ func applyNativeDefaultFont(handle windows.Handle) {
 }
 
 // setNativeCueBanner 设置原生编辑框的占位提示。
-func setNativeCueBanner(handle windows.Handle, text string) {
-	if handle == 0 {
-		return
-	}
-	ptr, err := windows.UTF16PtrFromString(text)
-	if err != nil {
-		return
-	}
-	sendNativeMessage(handle, nativeEditSetCueBanner, 0, uintptr(unsafe.Pointer(ptr)))
-}
 
 // setNativeReadOnly 设置原生编辑框的只读状态。
 func setNativeReadOnly(handle windows.Handle, readOnly bool) {
@@ -546,14 +535,6 @@ func setNativeFocus(handle windows.Handle) {
 		return
 	}
 	procSetFocus.Call(uintptr(handle))
-}
-
-func nativeHasFocus(handle windows.Handle) bool {
-	if handle == 0 {
-		return false
-	}
-	focused, _, _ := procGetFocus.Call()
-	return windows.Handle(focused) == handle
 }
 
 func setWindowLong(pointerSize uintptr) *windows.LazyProc {
@@ -630,6 +611,39 @@ func nativeEditProc(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr {
 	result, _, _ := procCallWindowProcW.Call(edit.native.oldWndProc, hwnd, uintptr(msg), wParam, lParam)
 	return result
 }
+func setNativeEditRect(handle windows.Handle, rc nativeRect) {
+	if handle == 0 {
+		return
+	}
+	sendNativeMessage(handle, nativeEditSetRectNP, 0, uintptr(unsafe.Pointer(&rc)))
+	procInvalidateRect.Call(uintptr(handle), 0, 1)
+}
+
+//lint:ignore U1000 Reserved for future native placeholder support.
+const nativeEditSetCueBanner = 0x1501
+
+//lint:ignore U1000 Reserved for future native placeholder support.
+func setNativeCueBanner(handle windows.Handle, text string) {
+	if handle == 0 {
+		return
+	}
+	ptr, err := windows.UTF16PtrFromString(text)
+	if err != nil {
+		return
+	}
+	sendNativeMessage(handle, nativeEditSetCueBanner, 0, uintptr(unsafe.Pointer(ptr)))
+}
+
+//lint:ignore U1000 Reserved for future native backend focus integration.
+func nativeHasFocus(handle windows.Handle) bool {
+	if handle == 0 {
+		return false
+	}
+	focused, _, _ := procGetFocus.Call()
+	return windows.Handle(focused) == handle
+}
+
+//lint:ignore U1000 Reserved for future native edit margin support.
 func setNativeEditMargins(handle windows.Handle, left, right int32) {
 	if handle == 0 {
 		return
@@ -641,11 +655,4 @@ func setNativeEditMargins(handle windows.Handle, left, right int32) {
 		nativeEditLeftMargin|nativeEditRightMargin,
 		lr,
 	)
-}
-func setNativeEditRect(handle windows.Handle, rc nativeRect) {
-	if handle == 0 {
-		return
-	}
-	sendNativeMessage(handle, nativeEditSetRectNP, 0, uintptr(unsafe.Pointer(&rc)))
-	procInvalidateRect.Call(uintptr(handle), 0, 1)
 }

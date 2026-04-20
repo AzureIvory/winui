@@ -758,10 +758,7 @@ func setNativeControlFont(handle windows.Handle, font windows.Handle) {
 
 // acceptsFocus 返回控件是否可接收键盘焦点。
 func (e *EditBox) acceptsFocus() bool {
-	if isNativeMode(e.mode) {
-		return false
-	}
-	return true
+	return !isNativeMode(e.mode)
 }
 
 // cursor 返回悬停控件时应使用的光标。

@@ -759,7 +759,7 @@ func splitInitialPath(initial string, folderOnly bool) (folder string, name stri
 	if base == "." || base == string(filepath.Separator) {
 		return initial, ""
 	}
-	if dir == "." && strings.IndexAny(initial, `/\`) < 0 {
+	if dir == "." && !strings.ContainsAny(initial, `/\`) {
 		return "", base
 	}
 	return dir, base
