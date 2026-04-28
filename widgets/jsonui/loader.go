@@ -107,6 +107,12 @@ func LoadDocumentFile(path string, opts LoadOptions) (*Document, error) {
 
 // LoadDocumentString builds a Document from JSON text.
 func LoadDocumentString(text string, opts LoadOptions) (*Document, error) {
+	expanded, err := preprocessComponentDocument(text, opts)
+	if err != nil {
+		return nil, err
+	}
+	text = expanded
+
 	var spec documentSpec
 	decoder := json.NewDecoder(strings.NewReader(text))
 	decoder.UseNumber()

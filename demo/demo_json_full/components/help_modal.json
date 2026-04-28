@@ -1,0 +1,103 @@
+{
+  "component": "helpModal",
+  "params": {},
+  "node": {
+    "type": "modal",
+    "id": "helpModal",
+    "visible": {
+      "bind": "demo.modalVisible",
+      "default": false
+    },
+    "backdrop": {
+      "color": "#0f172a",
+      "opacity": 96,
+      "blur": 8,
+      "dismissOnClick": true
+    },
+    "frame": {
+      "x": 0,
+      "y": 0,
+      "r": 0,
+      "b": 0
+    },
+    "children": [
+      {
+        "type": "panel",
+        "id": "modalSurface",
+        "style": {
+          "bg": "#ffffff",
+          "border": "#d6deea",
+          "borderW": 1,
+          "radius": 18
+        },
+        "frame": {
+          "x": "50%-220",
+          "y": "50%-144",
+          "w": 440,
+          "h": 288
+        },
+        "children": [
+          {
+            "type": "label",
+            "id": "modalTitle",
+            "text": "Native modal panel",
+            "style": {
+              "size": 20,
+              "weight": "bold",
+              "align": "start"
+            },
+            "frame": {
+              "x": 20,
+              "y": 20,
+              "w": 260,
+              "h": 26
+            }
+          },
+          {
+            "type": "label",
+            "id": "modalBody",
+            "text": "This modal is still declared by JSON. Visibility is bound through the store, while the host wires actions and API tests at runtime.",
+            "multiline": true,
+            "wordWrap": true,
+            "style": {
+              "align": "start",
+              "fg": "#475569"
+            },
+            "frame": {
+              "x": 20,
+              "y": 58,
+              "w": 392,
+              "h": 90
+            }
+          },
+          {
+            "type": "label",
+            "id": "modalStatus",
+            "text": "Backdrop click will dismiss the modal.",
+            "style": {
+              "align": "start",
+              "fg": "#64748b"
+            },
+            "frame": {
+              "x": 20,
+              "y": 166,
+              "w": 260,
+              "h": 20
+            }
+          },
+          {
+            "type": "button",
+            "id": "closeModalBtn",
+            "text": "Close modal",
+            "frame": {
+              "x": 292,
+              "y": 220,
+              "w": 128,
+              "h": 40
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -57,6 +57,7 @@ func main() {
 		OnResize: func(_ *core.App, _ *widgets.Scene, size core.Size) {
 			if controller.window != nil && controller.window.Root != nil {
 				controller.window.Root.SetBounds(widgets.Rect{W: size.Width, H: size.Height})
+				controller.restartSpinnerAfterLayout()
 			}
 		},
 		OnDPIChanged: func(_ *core.App, _ *widgets.Scene, _ core.DPIInfo) {

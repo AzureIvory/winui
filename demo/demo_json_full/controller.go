@@ -22,6 +22,8 @@ type demoController struct {
 	locale    string
 	useAlt    bool
 	mode      widgets.ControlMode
+	// spinnerLayoutRestart 标记首轮布局后是否已经重新触发过 GIF 播放。
+	spinnerLayoutRestart bool
 }
 
 type demoPalette struct {
@@ -212,11 +214,12 @@ func (c *demoController) reloadWindowForControlMode(mode widgets.ControlMode) er
 	c.bindCallbacks()
 	c.applyPalette(c.currentPalette())
 	c.applyLanguage(c.locale)
-	c.ensureSpinnerPlaying()
+	c.spinnerLayoutRestart = false
 
 	if app != nil && c.window != nil && c.window.Root != nil {
 		size := app.ClientSize()
 		c.window.Root.SetBounds(widgets.Rect{W: size.Width, H: size.Height})
+		c.restartSpinnerAfterLayout()
 	}
 
 	if oldDoc != nil && oldDoc != newDoc {
@@ -336,6 +339,14 @@ func (c *demoController) ensureSpinnerPlaying() {
 	spinner := c.mustAnimated("spinnerImage")
 	spinner.SetPlaying(false)
 	spinner.SetPlaying(true)
+}
+
+func (c *demoController) restartSpinnerAfterLayout() {
+	if c == nil || c.spinnerLayoutRestart {
+		return
+	}
+	c.spinnerLayoutRestart = true
+	c.ensureSpinnerPlaying()
 }
 
 func (c *demoController) checkedLabel(checked bool) string {

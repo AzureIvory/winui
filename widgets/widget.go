@@ -87,6 +87,9 @@ var widgetSequence atomic.Uint64
 // layoutPassDepth 记录当前布局过程的嵌套深度。
 var layoutPassDepth atomic.Int32
 
+// suppressInvalidationDepth 允许容器在内部调整子树几何时暂时屏蔽逐节点失效。
+var suppressInvalidationDepth atomic.Int32
+
 // newWidgetID 返回一个稳定的自动生成控件标识。
 func newWidgetID(prefix string) string {
 	if prefix == "" {
@@ -229,7 +232,7 @@ func (b *widgetBase) setBounds(owner Widget, rect Rect) {
 		oldRect = widgetDirtyRect(owner)
 	}
 	b.bounds = rect
-	if b.sceneRef != nil {
+	if b.sceneRef != nil && suppressInvalidationDepth.Load() == 0 {
 		if !oldRect.Empty() {
 			b.sceneRef.invalidateRect(oldRect)
 		}
@@ -329,4 +332,38 @@ func beginLayoutPass() {
 // endLayoutPass 标记结束一次布局过程。
 func endLayoutPass() {
 	layoutPassDepth.Add(-1)
+}
+
+func beginSuppressedInvalidation() {
+	suppressInvalidationDepth.Add(1)
+}
+
+func endSuppressedInvalidation() {
+	suppressInvalidationDepth.Add(-1)
+}
+
+type boundsMovable interface {
+	moveBoundsBy(dx, dy int32)
+}
+
+func (b *widgetBase) moveBoundsBy(dx, dy int32) {
+	if dx == 0 && dy == 0 {
+		return
+	}
+	b.bounds.X += dx
+	b.bounds.Y += dy
+}
+
+func translateWidgetTree(widget Widget, dx, dy int32) {
+	if widget == nil || (dx == 0 && dy == 0) {
+		return
+	}
+	if movable, ok := widget.(boundsMovable); ok {
+		movable.moveBoundsBy(dx, dy)
+	}
+	if container, ok := widget.(Container); ok {
+		for _, child := range container.Children() {
+			translateWidgetTree(child, dx, dy)
+		}
+	}
 }

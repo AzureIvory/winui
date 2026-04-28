@@ -220,6 +220,14 @@ func (a *App) Post(fn func()) error {
 		return nil
 	}
 
+	return a.enqueuePost(fn)
+}
+
+func (a *App) enqueuePost(fn func()) error {
+	if fn == nil {
+		return nil
+	}
+
 	a.postMu.Lock()
 	if a.closed.Load() {
 		a.postMu.Unlock()

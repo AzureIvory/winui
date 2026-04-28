@@ -17,6 +17,7 @@ Chinese version: [README.zh-CN.md](./README.zh-CN.md)
 - Reusable built-in controls
 - Native open / save / folder dialogs in `sysapi`
 - Declarative JSON UI loader in `widgets/jsonui`
+- JSON UI component templates with a top-level registry and argument-based instantiation
 - DPI-aware JSON frame expressions with `+`, `-`, `*`, `/`, `()`, `%`, and window/parent size variables
 - State-driven bindings through `jsonui.DataSource`
 - JSON text inputs with `readOnly`, `multiline`, wrapping, and scroll flags
@@ -132,8 +133,13 @@ store.Set("page.title", "Updated Title")
 ## JSON UI Model
 
 - Top-level `wins` declares one or more windows
+- Top-level `components` can register reusable external component templates relative to `LoadOptions.AssetsDir`
 - JSON declares widget trees, styles, actions, and bindings
 - Host code owns all data mutation through `jsonui.DataSource`
+- A component instance node uses `component` + `args` and expands to one widget subtree before normal loading begins
+- A component instance node may also pass `slots`, and templates may splice named slot arrays into `children`
+- Template files define `component`, `params`, and `node`
+- Placeholders must occupy the entire JSON value, for example `"${title}"`; partial string interpolation such as `"btn-${id}"` is rejected
 - Frame values are logical DP by default and scale with DPI
 - Widget DPI behavior stays backward compatible by default; no `scale` config means the legacy all-DP model
 - Use `widgets.SetScalePolicy(...)` in Go or a node-level JSON `scale` field to opt individual nodes into `px`, mixed slot policies, or both

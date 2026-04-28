@@ -82,6 +82,72 @@ store.Set("page.title", "Updated Title")
 
 同一窗口内的 widget `id` 必须唯一。loader 会按窗口建立运行时索引，供 `win.FindWidget(...)` 和 `doc.FindWidget(...)` 使用。
 
+### 3.1 组件模板
+
+顶层可选增加 `components` 注册表，把组件名映射到外部模板文件：
+
+```json
+{
+  "components": {
+    "button": "components/button.json",
+    "summaryCard": "components/summary_card.json"
+  },
+  "wins": [...]
+}
+```
+
+路径相对于 `LoadOptions.AssetsDir`；如果使用 `LoadDocumentFile(...)`，默认就是主 JSON 所在目录。
+
+主 JSON 在“节点位置”可以直接实例化组件：
+
+```json
+{
+  "component": "button",
+  "args": {
+    "id": "saveBtn",
+    "text": "保存",
+    "action": "save",
+    "x": 20,
+    "y": 20
+  }
+}
+```
+
+对应模板文件示例：
+
+```json
+{
+  "component": "button",
+  "params": {
+    "id": { "type": "string" },
+    "text": { "type": "string", "default": "OK" },
+    "action": { "type": "string" },
+    "x": { "type": "int" },
+    "y": { "type": "int" }
+  },
+  "node": {
+    "type": "button",
+    "id": "${id}",
+    "text": "${text}",
+    "onClick": "${action}",
+    "frame": { "x": "${x}", "y": "${y}", "w": 120, "h": 36 }
+  }
+}
+```
+
+规则：
+
+- 一个模板文件只定义一个组件
+- 一个组件实例只展开成一棵节点子树，不会直接产出多个并列 sibling
+- `args` 只允许传给模板里声明过的 `params`
+- 组件实例还可通过 `slots` 传命名子节点数组，例如 `{ "slots": { "content": [ ... ] } }`
+- 缺少无默认值的参数会报错
+- 支持的参数类型：`string` / `int` / `bool` / `object` / `array`
+- `type` 可省略；若存在 `default`，会从默认值推导类型；若两者都省略，则接受任意 JSON 值
+- 占位符只允许整值替换，例如 `"${title}"`、`"${style}"`、`"${items}"`；不支持 `"btn-${id}"` 这种字符串拼接
+- 会检测递归展开和循环引用
+- 当前只支持显式命名的 `children` slot，占位节点写成 `{ "slot": "content" }`；不支持条件分支、循环渲染，也不支持在组件实例节点上追加额外 override 字段
+
 ### 图片资源
 
 窗口和按钮统一使用 `image` 语义，而不是旧的 `icon` 语义。

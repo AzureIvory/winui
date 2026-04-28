@@ -1,0 +1,114 @@
+{
+  "component": "headerCard",
+  "params": {},
+  "node": {
+    "type": "panel",
+    "id": "headerCard",
+    "style": {
+      "bg": "#ffffff",
+      "border": "#d6deea",
+      "borderW": 1,
+      "radius": 18
+    },
+    "frame": {
+      "x": 20,
+      "y": 20,
+      "r": 20,
+      "h": 72
+    },
+    "children": [
+      {
+        "type": "label",
+        "id": "titleLabel",
+        "text": "WinUI JSON Full Demo",
+        "style": {
+          "size": 24,
+          "weight": "bold",
+          "align": "start",
+          "fg": "#0f172a"
+        },
+        "frame": {
+          "x": 20,
+          "y": 12,
+          "w": 420,
+          "h": 28
+        }
+      },
+      {
+        "type": "label",
+        "id": "subtitleLabel",
+        "text": "One native JSON page that showcases every public control, palette switching, and API checks.",
+        "style": {
+          "size": 13,
+          "align": "start",
+          "fg": "#64748b"
+        },
+        "frame": {
+          "x": 20,
+          "y": 42,
+          "r": 820,
+          "h": 18
+        }
+      },
+      {
+        "type": "button",
+        "id": "toggleControlModeBtn",
+        "text": "Mode: Custom draw",
+        "frame": {
+          "r": 640,
+          "y": 16,
+          "w": 148,
+          "h": 40
+        }
+      },
+      {
+        "type": "button",
+        "id": "togglePaletteBtn",
+        "text": "Switch palette",
+        "image": "assets/palette.png",
+        "imagePos": "left",
+        "frame": {
+          "r": 480,
+          "y": 16,
+          "w": 148,
+          "h": 40
+        }
+      },
+      {
+        "type": "button",
+        "id": "languageToggleBtn",
+        "text": "\u4e2d\u6587",
+        "frame": {
+          "r": 372,
+          "y": 16,
+          "w": 96,
+          "h": 40
+        }
+      },
+      {
+        "type": "button",
+        "id": "runAllBtn",
+        "text": "Run widget API tests",
+        "image": "assets/save.png",
+        "imagePos": "left",
+        "frame": {
+          "r": 164,
+          "y": 16,
+          "w": 196,
+          "h": 40
+        }
+      },
+      {
+        "type": "button",
+        "id": "openModalBtn",
+        "text": "Show modal",
+        "frame": {
+          "r": 20,
+          "y": 16,
+          "w": 132,
+          "h": 40
+        }
+      }
+    ]
+  }
+}

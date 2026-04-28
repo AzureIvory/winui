@@ -1,0 +1,47 @@
+{
+  "component": "cardSectionHeader",
+  "params": {
+    "titleId": { "type": "string" },
+    "title": { "type": "string" },
+    "hintId": { "type": "string" },
+    "hint": { "type": "string" },
+    "gap": { "type": "int", "default": 12 },
+    "titleStyle": {
+      "default": {
+        "size": 18,
+        "weight": "bold",
+        "align": "start"
+      }
+    },
+    "hintStyle": {
+      "default": {
+        "align": "start",
+        "fg": "#64748b"
+      }
+    }
+  },
+  "node": {
+    "type": "panel",
+    "id": "",
+    "layout": {
+      "type": "col",
+      "gap": "${gap}"
+    },
+    "children": [
+      {
+        "type": "label",
+        "id": "${titleId}",
+        "text": "${title}",
+        "style": "${titleStyle}"
+      },
+      {
+        "type": "label",
+        "id": "${hintId}",
+        "text": "${hint}",
+        "multiline": true,
+        "wordWrap": true,
+        "style": "${hintStyle}"
+      }
+    ]
+  }
+}

@@ -46,6 +46,12 @@ type ScrollView struct {
 	dragPointer int32
 	// dragOffset 保存拖拽开始时的滚动偏移。
 	dragOffset int32
+	// layoutDirty 标记内容自然尺寸是否需要重新测量。
+	layoutDirty bool
+	// measuredViewport 保存最近一次测量使用的视口尺寸。
+	measuredViewport core.Size
+	// measuredContent 保存最近一次稳定测量得到的内容尺寸。
+	measuredContent core.Size
 }
 
 // NewScrollView 创建一个新的滚动容器。
@@ -55,12 +61,16 @@ func NewScrollView(id string) *ScrollView {
 		wheelStep:        48,
 		verticalScroll:   true,
 		horizontalScroll: false,
+		layoutDirty:      true,
 	}
 }
 
 // SetBounds 更新滚动容器的边界。
 func (s *ScrollView) SetBounds(rect Rect) {
 	s.runOnUI(func() {
+		if bounds := s.Bounds(); bounds.W != rect.W || bounds.H != rect.H {
+			s.invalidateLayoutCache()
+		}
 		s.widgetBase.setBounds(s, rect)
 		s.layoutContent()
 		s.invalidate(s)
@@ -114,7 +124,6 @@ func (s *ScrollView) ScrollOffset() (int32, int32) {
 // ScrollBy 按增量滚动内容。
 func (s *ScrollView) ScrollBy(dx, dy int32) {
 	s.runOnUI(func() {
-		s.layoutContent()
 		s.applyOffset(s.offsetX+dx, s.offsetY+dy)
 	})
 }
@@ -122,7 +131,6 @@ func (s *ScrollView) ScrollBy(dx, dy int32) {
 // ScrollTo 滚动到给定偏移。
 func (s *ScrollView) ScrollTo(x, y int32) {
 	s.runOnUI(func() {
-		s.layoutContent()
 		s.applyOffset(x, y)
 	})
 }
@@ -199,6 +207,7 @@ func (s *ScrollView) Add(child Widget) {
 		}
 		if container, ok := s.content.(Container); ok {
 			container.Add(child)
+			s.invalidateLayoutCache()
 			s.layoutContent()
 			s.invalidate(s)
 			return
@@ -231,6 +240,7 @@ func (s *ScrollView) Remove(id string) {
 		}
 		if container, ok := s.content.(Container); ok {
 			container.Remove(id)
+			s.invalidateLayoutCache()
 			s.layoutContent()
 			s.invalidate(s)
 		}
@@ -412,6 +422,7 @@ func (s *ScrollView) replaceContent(widget Widget) {
 	s.offsetY = 0
 	s.maxOffsetX = 0
 	s.maxOffsetY = 0
+	s.invalidateLayoutCache()
 	s.hoverVerticalThumb = false
 	s.hoverHorizontalThumb = false
 	s.dragAxis = scrollDragNone
@@ -426,28 +437,60 @@ func (s *ScrollView) viewportRect() Rect {
 }
 
 func (s *ScrollView) layoutContent() {
+	s.layoutContentForOffsets(s.offsetX, s.offsetY)
+}
+
+func (s *ScrollView) layoutContentForOffsets(requestedX, requestedY int32) {
 	viewport := s.viewportRect()
 	if viewport.Empty() || s.content == nil {
+		s.offsetX = 0
+		s.offsetY = 0
 		s.maxOffsetX = 0
 		s.maxOffsetY = 0
+		s.invalidateLayoutCache()
 		return
 	}
-	size := s.contentSizeForViewport(viewport)
-	s.syncOffsetsForSize(viewport, size)
-	target := s.contentRectForViewport(viewport, size)
-	if s.content.Bounds() != target {
-		s.content.SetBounds(target)
+	if s.canReuseMeasuredLayout(viewport) {
+		s.applyMeasuredLayout(viewport, requestedX, requestedY, s.measuredContent)
+		return
 	}
 
-	measured := s.measuredContentSize(viewport)
-	if measured != size {
-		size = measured
-		s.syncOffsetsForSize(viewport, size)
-		target = s.contentRectForViewport(viewport, size)
-		if s.content.Bounds() != target {
-			s.content.SetBounds(target)
+	// Width-constrained children can grow the content height after the first layout pass.
+	// Iterate until the measured content size stabilizes so max offsets stay in sync.
+	size := s.contentSizeForViewport(viewport)
+	for pass := 0; pass < 4; pass++ {
+		s.applyMeasuredLayout(viewport, requestedX, requestedY, size)
+		measured := s.measuredContentSize(viewport, size)
+		if measured == size {
+			s.measuredViewport = core.Size{Width: viewport.W, Height: viewport.H}
+			s.measuredContent = size
+			s.layoutDirty = false
+			return
 		}
+		size = measured
 	}
+
+	s.applyMeasuredLayout(viewport, requestedX, requestedY, size)
+	s.measuredViewport = core.Size{Width: viewport.W, Height: viewport.H}
+	s.measuredContent = size
+	s.layoutDirty = false
+}
+
+func (s *ScrollView) positionContent(target Rect) {
+	if s == nil || s.content == nil {
+		return
+	}
+	current := s.content.Bounds()
+	if current == target {
+		return
+	}
+	if current.W == target.W && current.H == target.H {
+		translateWidgetTree(s.content, target.X-current.X, target.Y-current.Y)
+		return
+	}
+	beginSuppressedInvalidation()
+	s.content.SetBounds(target)
+	endSuppressedInvalidation()
 }
 
 func (s *ScrollView) contentSizeForViewport(viewport Rect) core.Size {
@@ -461,8 +504,7 @@ func (s *ScrollView) contentSizeForViewport(viewport Rect) core.Size {
 	return size
 }
 
-func (s *ScrollView) measuredContentSize(viewport Rect) core.Size {
-	size := s.contentSizeForViewport(viewport)
+func (s *ScrollView) measuredContentSize(viewport Rect, size core.Size) core.Size {
 	container, ok := s.content.(Container)
 	if !ok {
 		return size
@@ -491,31 +533,13 @@ func (s *ScrollView) measuredContentSize(viewport Rect) core.Size {
 	return size
 }
 
-func (s *ScrollView) syncOffsetsForSize(viewport Rect, size core.Size) {
-	s.maxOffsetX = max32(0, size.Width-viewport.W)
-	s.maxOffsetY = max32(0, size.Height-viewport.H)
-	s.offsetX = clampValue(s.offsetX, 0, s.maxOffsetX)
-	s.offsetY = clampValue(s.offsetY, 0, s.maxOffsetY)
-}
-
-func (s *ScrollView) contentRectForViewport(viewport Rect, size core.Size) Rect {
-	return Rect{
-		X: viewport.X - s.offsetX,
-		Y: viewport.Y - s.offsetY,
-		W: size.Width,
-		H: size.Height,
-	}
-}
-
 func (s *ScrollView) applyOffset(x, y int32) {
-	x = clampValue(x, 0, s.maxOffsetX)
-	y = clampValue(y, 0, s.maxOffsetY)
-	if s.offsetX == x && s.offsetY == y {
+	oldX := s.offsetX
+	oldY := s.offsetY
+	s.layoutContentForOffsets(x, y)
+	if s.offsetX == oldX && s.offsetY == oldY {
 		return
 	}
-	s.offsetX = x
-	s.offsetY = y
-	s.layoutContent()
 	s.invalidate(s)
 }
 
@@ -612,7 +636,6 @@ func (s *ScrollView) handleMouseUp(evt Event) bool {
 }
 
 func (s *ScrollView) updateDrag(point core.Point) bool {
-	s.layoutContent()
 	vTrack, vThumb, hTrack, hThumb := s.scrollbarRectsForWidget()
 	switch s.dragAxis {
 	case scrollDragVertical:
@@ -703,7 +726,6 @@ func (s *ScrollView) scrollAlongAxis(delta int32, horizontal bool) bool {
 	if delta == 0 {
 		return false
 	}
-	s.layoutContent()
 	if horizontal {
 		if !s.horizontalScroll || s.maxOffsetX <= 0 {
 			return false
@@ -757,6 +779,33 @@ func (s *ScrollView) scrollbarRectsForWidget() (Rect, Rect, Rect, Rect) {
 	s.layoutContent()
 	return s.scrollbarRects(func(value int32) int32 {
 		return widgetDP(s, value)
+	})
+}
+
+func (s *ScrollView) invalidateLayoutCache() {
+	s.layoutDirty = true
+	s.measuredViewport = core.Size{}
+	s.measuredContent = core.Size{}
+}
+
+func (s *ScrollView) canReuseMeasuredLayout(viewport Rect) bool {
+	return !s.layoutDirty &&
+		s.measuredViewport.Width == viewport.W &&
+		s.measuredViewport.Height == viewport.H &&
+		s.measuredContent.Width > 0 &&
+		s.measuredContent.Height > 0
+}
+
+func (s *ScrollView) applyMeasuredLayout(viewport Rect, requestedX, requestedY int32, size core.Size) {
+	s.maxOffsetX = max32(0, size.Width-viewport.W)
+	s.maxOffsetY = max32(0, size.Height-viewport.H)
+	s.offsetX = clampValue(requestedX, 0, s.maxOffsetX)
+	s.offsetY = clampValue(requestedY, 0, s.maxOffsetY)
+	s.positionContent(Rect{
+		X: viewport.X - s.offsetX,
+		Y: viewport.Y - s.offsetY,
+		W: size.Width,
+		H: size.Height,
 	})
 }
 

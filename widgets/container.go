@@ -215,6 +215,14 @@ func (p *Panel) applyLayout() {
 	p.layout.Apply(p.Bounds(), p.children)
 }
 
+// preferredSizeForWidth reports the panel's preferred size under a constrained width.
+//
+// Column-style containers need this to keep multiline text height in sync with
+// the actual layout width and avoid child overlap.
+func (p *Panel) preferredSizeForWidth(width int32) core.Size {
+	return measurePanelNaturalForWidth(p, width)
+}
+
 // attachSceneRecursive 递归关联场景引用。
 func attachSceneRecursive(container Container, scene *Scene) {
 	node := asWidgetNode(container)

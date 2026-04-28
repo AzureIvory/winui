@@ -1,0 +1,58 @@
+{
+  "component": "standardCard",
+  "params": {
+    "id": { "type": "string" },
+    "titleId": { "type": "string" },
+    "title": { "type": "string" },
+    "hintId": { "type": "string" },
+    "hint": { "type": "string" },
+    "gap": { "type": "int", "default": 12 },
+    "pad": { "type": "array", "default": [18, 18, 18, 18] },
+    "headerGap": { "type": "int", "default": 12 },
+    "titleStyle": {
+      "default": {
+        "size": 18,
+        "weight": "bold",
+        "align": "start"
+      }
+    },
+    "hintStyle": {
+      "default": {
+        "align": "start",
+        "fg": "#64748b"
+      }
+    }
+  },
+  "node": {
+    "type": "panel",
+    "id": "${id}",
+    "layout": {
+      "type": "col",
+      "gap": "${gap}",
+      "pad": "${pad}"
+    },
+    "style": {
+      "bg": "#ffffff",
+      "border": "#d6deea",
+      "borderW": 1,
+      "radius": 16
+    },
+    "children": [
+      {
+        "component": "cardSectionHeader",
+        "args": {
+          "titleId": "${titleId}",
+          "title": "${title}",
+          "hintId": "${hintId}",
+          "hint": "${hint}",
+          "gap": "${headerGap}",
+          "titleStyle": "${titleStyle}",
+          "hintStyle": "${hintStyle}"
+        }
+      },
+      {
+        "slot": "content"
+      }
+    ]
+  }
+}

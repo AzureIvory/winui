@@ -9,7 +9,7 @@ var (
 	procKillTimer = user32.NewProc("KillTimer")
 )
 
-// SetTimer 更新应用的定时器。
+// SetTimer updates a native window timer for the app.
 func (a *App) SetTimer(id uintptr, interval time.Duration) error {
 	if id == 0 {
 		return ErrTimerIDZero
@@ -32,7 +32,7 @@ func (a *App) SetTimer(id uintptr, interval time.Duration) error {
 	return nil
 }
 
-// KillTimer 停止应用的原生窗口定时器。
+// KillTimer stops a native window timer for the app.
 func (a *App) KillTimer(id uintptr) error {
 	if a == nil || a.hwnd == 0 {
 		return ErrNotInitialized
@@ -49,7 +49,7 @@ func (a *App) KillTimer(id uintptr) error {
 	return nil
 }
 
-// killAllTimers 停止应用的全部定时器。
+// killAllTimers stops every native timer owned by the app.
 func (a *App) killAllTimers() {
 	a.timerMu.Lock()
 	ids := make([]uintptr, 0, len(a.activeTimers))

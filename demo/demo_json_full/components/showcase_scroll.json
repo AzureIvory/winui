@@ -1,0 +1,524 @@
+{
+  "component": "showcaseScroll",
+  "params": {},
+  "node": {
+    "type": "scrollview",
+    "id": "showcaseScroll",
+    "layout": {
+      "type": "col",
+      "gap": 16,
+      "pad": [0, 0, 16, 0]
+    },
+    "verticalScroll": {
+      "bind": "demo.showVerticalScroll",
+      "default": true
+    },
+    "style": {
+      "bg": "#ffffff",
+      "border": "#d6deea",
+      "borderW": 1,
+      "radius": 18
+    },
+    "frame": {
+      "x": 20,
+      "y": 108,
+      "r": 380,
+      "b": 20
+    },
+    "children": [
+      {
+        "component": "standardCard",
+        "args": {
+          "id": "introCard",
+          "titleId": "introTitle",
+          "title": "Coverage",
+          "hintId": "introBody",
+          "hint": "This page covers Panel, Modal, Label, Button, EditBox, ProgressBar, CheckBox, RadioButton, ComboBox, ListBox, FilePicker, Image, AnimatedImage, and ScrollView.",
+          "gap": 10,
+          "headerGap": 10,
+          "titleStyle": {
+            "size": 18,
+            "weight": "bold",
+            "align": "start",
+            "fg": "#0f172a"
+          },
+          "hintStyle": {
+            "align": "start",
+            "fg": "#475569"
+          }
+        },
+        "slots": {
+          "content": [
+            {
+              "type": "label",
+              "id": "paletteValue",
+              "text": {
+                "bind": "demo.paletteName",
+                "default": "Ocean Blue"
+              },
+              "style": {
+                "size": 14,
+                "weight": "bold",
+                "align": "start",
+                "fg": "#2563eb"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "component": "standardCard",
+        "args": {
+          "id": "buttonsCard",
+          "titleId": "buttonsTitle",
+          "title": "Buttons",
+          "hintId": "buttonsHint",
+          "hint": "Primary, image-left, image-top, ghost, and disabled states are all included in one section."
+        },
+        "slots": {
+          "content": [
+            {
+              "type": "panel",
+              "id": "buttonsGrid",
+              "layout": {
+                "type": "grid",
+                "cols": 2,
+                "gap": 12
+              },
+              "children": [
+                {
+                  "type": "button",
+                  "id": "saveBtn",
+                  "text": "Save changes",
+                  "image": "assets/save.png",
+                  "imagePos": "left"
+                },
+                {
+                  "type": "button",
+                  "id": "imageTopBtn",
+                  "text": "Top image",
+                  "image": "assets/palette.png",
+                  "imagePos": "top"
+                },
+                {
+                  "type": "button",
+                  "id": "ghostBtn",
+                  "text": "Ghost action"
+                },
+                {
+                  "type": "button",
+                  "id": "disabledBtn",
+                  "text": "Disabled action",
+                  "enabled": false
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "component": "standardCard",
+        "args": {
+          "id": "inputCard",
+          "titleId": "inputTitle",
+          "title": "Inputs",
+          "hintId": "inputHint",
+          "hint": "Single-line, password, and read-only multiline input states are all present here."
+        },
+        "slots": {
+          "content": [
+            {
+              "type": "input",
+              "id": "nameInput",
+              "placeholder": "Project name"
+            },
+            {
+              "type": "input",
+              "id": "passwordInput",
+              "input": "password",
+              "placeholder": "Type a secret"
+            },
+            {
+              "type": "textarea",
+              "id": "notesBox",
+              "readOnly": true,
+              "placeholder": "Notes",
+              "value": "JSON declares structure and bindings. The host runtime still owns mutations, actions, and API checks."
+            }
+          ]
+        }
+      },
+      {
+        "component": "standardCard",
+        "args": {
+          "id": "choiceCard",
+          "titleId": "choiceTitle",
+          "title": "Checks and radios",
+          "hintId": "choiceHint",
+          "hint": "Checkboxes show both dot and check indicators. Radios include the default dot and explicit check styles."
+        },
+        "slots": {
+          "content": [
+            {
+              "type": "checkbox",
+              "id": "dotStyleBox",
+              "text": "Dot-style checkbox",
+              "checked": true,
+              "style": {
+                "indicatorStyle": "dot"
+              }
+            },
+            {
+              "type": "checkbox",
+              "id": "checkStyleBox",
+              "text": "Check-style checkbox",
+              "checked": true,
+              "style": {
+                "indicatorStyle": "check"
+              }
+            },
+            {
+              "type": "checkbox",
+              "id": "disabledRule",
+              "text": "Disabled selected rule",
+              "checked": true,
+              "enabled": false,
+              "style": {
+                "indicatorStyle": "check"
+              }
+            },
+            {
+              "type": "radio",
+              "id": "radioDotA",
+              "group": "notify-mode",
+              "text": "Notify immediately",
+              "checked": true
+            },
+            {
+              "type": "radio",
+              "id": "radioDotB",
+              "group": "notify-mode",
+              "text": "Notify later"
+            },
+            {
+              "type": "radio",
+              "id": "radioCheckA",
+              "group": "approve-mode",
+              "text": "Approve with check style",
+              "checked": true,
+              "style": {
+                "indicatorStyle": "check"
+              }
+            },
+            {
+              "type": "radio",
+              "id": "radioCheckB",
+              "group": "approve-mode",
+              "text": "Escalate with check style",
+              "style": {
+                "indicatorStyle": "check"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "component": "standardCard",
+        "args": {
+          "id": "dataCard",
+          "titleId": "dataTitle",
+          "title": "Progress and selection",
+          "hintId": "dataHint",
+          "hint": "Two progress bars, one combo box, and one list box cover the selection and data-display widgets."
+        },
+        "slots": {
+          "content": [
+            {
+              "type": "progress",
+              "id": "uploadProgress",
+              "value": 72,
+              "style": {
+                "showPct": true
+              }
+            },
+            {
+              "type": "progress",
+              "id": "syncProgress",
+              "value": 38,
+              "style": {
+                "showPct": true
+              }
+            },
+            {
+              "type": "select",
+              "id": "citySelect",
+              "placeholder": "Select a city",
+              "items": [
+                {
+                  "value": "bj",
+                  "text": "Beijing"
+                },
+                {
+                  "value": "sh",
+                  "text": "Shanghai",
+                  "selected": true
+                },
+                {
+                  "value": "hz",
+                  "text": "Hangzhou"
+                },
+                {
+                  "value": "cd",
+                  "text": "Chengdu"
+                }
+              ]
+            },
+            {
+              "type": "listbox",
+              "id": "cityList",
+              "items": [
+                {
+                  "value": "alpha",
+                  "text": "Alpha rollout"
+                },
+                {
+                  "value": "beta",
+                  "text": "Beta rollout",
+                  "selected": true
+                },
+                {
+                  "value": "release",
+                  "text": "Release rollout"
+                },
+                {
+                  "value": "hold",
+                  "text": "Hold rollout",
+                  "disabled": true
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "component": "standardCard",
+        "args": {
+          "id": "fileCard",
+          "titleId": "fileTitle",
+          "title": "File pickers",
+          "hintId": "fileHint",
+          "hint": "Open, save, folder, and multi-select file pickers are all present in one section."
+        },
+        "slots": {
+          "content": [
+            {
+              "type": "file",
+              "id": "openFile",
+              "value": "README.md",
+              "buttonText": "Open file",
+              "dialogTitle": "Select a source file",
+              "accept": ["*.md", "*.txt", "*.go"]
+            },
+            {
+              "type": "file",
+              "id": "saveFile",
+              "dialog": "save",
+              "buttonText": "Save report",
+              "dialogTitle": "Export the API report",
+              "defaultExt": "txt",
+              "filters": [
+                {
+                  "name": "Text Files",
+                  "pattern": "*.txt"
+                },
+                {
+                  "name": "Markdown",
+                  "pattern": "*.md"
+                },
+                {
+                  "name": "All Files",
+                  "pattern": "*.*"
+                }
+              ],
+              "placeholder": "Choose an output path"
+            },
+            {
+              "type": "file",
+              "id": "folderPick",
+              "dialog": "folder",
+              "buttonText": "Pick folder",
+              "dialogTitle": "Select a workspace folder",
+              "placeholder": "No folder selected"
+            },
+            {
+              "type": "file",
+              "id": "multiFiles",
+              "multiple": true,
+              "buttonText": "Pick files",
+              "dialogTitle": "Select multiple project files",
+              "accept": ["*.go", "*.json", "*.md"],
+              "valueSep": " | ",
+              "placeholder": "No files selected"
+            }
+          ]
+        }
+      },
+      {
+        "component": "standardCard",
+        "args": {
+          "id": "mediaCard",
+          "titleId": "mediaTitle",
+          "title": "Images",
+          "hintId": "mediaHint",
+          "hint": "A static PNG preview and an animated GIF prove that both image controls work from the same JSON document."
+        },
+        "slots": {
+          "content": [
+            {
+              "type": "label",
+              "id": "emojiBurstLabel",
+              "text": "😀 🚀 🧠 🧩 ✨ 🎯 🔥 🛠️",
+              "style": {
+                "align": "start",
+                "size": 16,
+                "fg": "#334155"
+              }
+            },
+            {
+              "type": "panel",
+              "id": "mediaGrid",
+              "layout": {
+                "type": "grid",
+                "cols": 2,
+                "gap": 12
+              },
+              "children": [
+                {
+                  "type": "image",
+                  "id": "previewImage",
+                  "src": "assets/preview.png",
+                  "fit": "contain"
+                },
+                {
+                  "type": "animimg",
+                  "id": "spinnerImage",
+                  "src": "assets/spinner.gif",
+                  "autoplay": true,
+                  "fit": "contain"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "component": "standardCard",
+        "args": {
+          "id": "scrollCard",
+          "titleId": "scrollTitle",
+          "title": "ScrollView",
+          "hintId": "scrollHint",
+          "hint": "The outer document uses a vertical ScrollView, and this card contains a horizontal ScrollView for Add, Remove, SetContent, and scrolling APIs."
+        },
+        "slots": {
+          "content": [
+            {
+              "type": "scrollview",
+              "id": "miniScroll",
+              "layout": {
+                "type": "row",
+                "gap": 12,
+                "pad": [8, 8, 8, 8]
+              },
+              "verticalScroll": false,
+              "horizontalScroll": {
+                "bind": "demo.showHorizontalScroll",
+                "default": true
+              },
+              "style": {
+                "bg": "#f8fafc",
+                "border": "#d6deea",
+                "borderW": 1,
+                "radius": 14
+              },
+              "children": [
+                {
+                  "type": "button",
+                  "id": "miniScrollBtn1",
+                  "text": "Card A"
+                },
+                {
+                  "type": "button",
+                  "id": "miniScrollBtn2",
+                  "text": "Card B"
+                },
+                {
+                  "type": "button",
+                  "id": "miniScrollBtn3",
+                  "text": "Card C"
+                },
+                {
+                  "type": "button",
+                  "id": "miniScrollBtn4",
+                  "text": "Card D"
+                },
+                {
+                  "type": "button",
+                  "id": "miniScrollBtn5",
+                  "text": "Card E"
+                },
+                {
+                  "type": "button",
+                  "id": "miniScrollBtn6",
+                  "text": "Card F"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "component": "standardCard",
+        "args": {
+          "id": "panelCard",
+          "titleId": "panelTitle",
+          "title": "Panel and modal hooks",
+          "hintId": "panelHint",
+          "hint": "Click the panel below to exercise the panel click callback. The modal above is used for backdrop, blur, and dismiss APIs."
+        },
+        "slots": {
+          "content": [
+            {
+              "type": "panel",
+              "id": "interactivePanel",
+              "layout": {
+                "type": "col",
+                "gap": 8,
+                "pad": [14, 14, 14, 14]
+              },
+              "style": {
+                "bg": "#f8fafc",
+                "border": "#cdd8e6",
+                "borderW": 1,
+                "radius": 14
+              },
+              "children": [
+                {
+                  "type": "label",
+                  "id": "panelInfo",
+                  "text": "Click this surface to update the status area. The function test also exercises Panel.Add, Panel.Remove, and Panel.SetLayout on runtime-created content.",
+                  "multiline": true,
+                  "wordWrap": true,
+                  "style": {
+                    "align": "start",
+                    "fg": "#475569"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

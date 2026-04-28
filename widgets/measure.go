@@ -66,6 +66,37 @@ func measurePanelNatural(panel *Panel) core.Size {
 	}
 }
 
+func measurePanelNaturalForWidth(panel *Panel, width int32) core.Size {
+	if panel == nil {
+		return core.Size{}
+	}
+	if width <= 0 {
+		return measurePanelNatural(panel)
+	}
+	if len(panel.children) == 0 {
+		size := preferredSizeOf(panel)
+		if size.Width < width {
+			size.Width = width
+		}
+		return size
+	}
+
+	switch layout := panel.layout.(type) {
+	case ColumnLayout:
+		return measureFlexNaturalForWidth(panel, panel.children, AxisVertical, layout.Gap, layout.Padding, layout.ItemSize, width)
+	case LinearLayout:
+		padding := UniformInsets(layout.Padding)
+		axis := layout.Axis
+		if axis == 0 {
+			axis = AxisHorizontal
+		}
+		if axis == AxisVertical {
+			return measureFlexNaturalForWidth(panel, panel.children, axis, layout.Gap, padding, layout.ItemSize, width)
+		}
+	}
+	return measurePanelNatural(panel)
+}
+
 func measureFlexNatural(owner Widget, children []Widget, axis Axis, gap int32, padding Insets, itemSize int32) core.Size {
 	metricWidget := layoutMetricOwner(owner, children)
 	gap = widgetDP(metricWidget, gap)
@@ -107,6 +138,52 @@ func measureFlexNatural(owner Widget, children []Widget, axis Axis, gap int32, p
 		return core.Size{Width: main + padding.horizontal(), Height: cross + padding.vertical()}
 	}
 	return core.Size{Width: cross + padding.horizontal(), Height: main + padding.vertical()}
+}
+
+func measureFlexNaturalForWidth(owner Widget, children []Widget, axis Axis, gap int32, padding Insets, itemSize int32, width int32) core.Size {
+	if axis != AxisVertical {
+		return measureFlexNatural(owner, children, axis, gap, padding, itemSize)
+	}
+
+	metricWidget := layoutMetricOwner(owner, children)
+	gap = widgetDP(metricWidget, gap)
+	padding = scaleInsetsForWidget(metricWidget, padding)
+	itemSize = widgetDP(metricWidget, itemSize)
+	contentWidth := max32(0, width-padding.horizontal())
+
+	main := int32(0)
+	cross := int32(0)
+	count := 0
+	for _, child := range children {
+		if child == nil {
+			continue
+		}
+		size := preferredSizeForWidth(child, contentWidth)
+		childMain := size.Height
+		childCross := size.Width
+		if itemSize > 0 {
+			childMain = itemSize
+		}
+		if childMain < 0 {
+			childMain = 0
+		}
+		if childCross < 0 {
+			childCross = 0
+		}
+		main += childMain
+		if childCross > cross {
+			cross = childCross
+		}
+		count++
+	}
+	if count > 1 {
+		main += gap * int32(count-1)
+	}
+	measuredWidth := cross + padding.horizontal()
+	if measuredWidth < width {
+		measuredWidth = width
+	}
+	return core.Size{Width: measuredWidth, Height: main + padding.vertical()}
 }
 
 func measureGridNatural(owner Widget, children []Widget, layout GridLayout) core.Size {

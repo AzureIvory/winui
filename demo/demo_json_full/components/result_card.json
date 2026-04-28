@@ -1,0 +1,163 @@
+{
+  "component": "resultCard",
+  "params": {},
+  "node": {
+    "type": "panel",
+    "id": "resultCard",
+    "style": {
+      "bg": "#ffffff",
+      "border": "#d6deea",
+      "borderW": 1,
+      "radius": 18
+    },
+    "frame": {
+      "y": 108,
+      "r": 20,
+      "w": 340,
+      "b": 20
+    },
+    "children": [
+      {
+        "type": "label",
+        "id": "resultsTitle",
+        "text": "API report",
+        "style": {
+          "size": 18,
+          "weight": "bold",
+          "align": "start"
+        },
+        "frame": {
+          "x": 16,
+          "y": 16,
+          "w": 200,
+          "h": 24
+        }
+      },
+      {
+        "type": "label",
+        "id": "statusCaption",
+        "text": "Status",
+        "style": {
+          "size": 12,
+          "align": "start",
+          "fg": "#64748b"
+        },
+        "frame": {
+          "x": 16,
+          "y": 48,
+          "w": 120,
+          "h": 18
+        }
+      },
+      {
+        "type": "label",
+        "id": "statusValue",
+        "text": {
+          "bind": "demo.lastAction",
+          "default": "Ready"
+        },
+        "multiline": true,
+        "wordWrap": true,
+        "style": {
+          "align": "start",
+          "fg": "#334155"
+        },
+        "frame": {
+          "x": 16,
+          "y": 68,
+          "r": 16,
+          "h": 42
+        }
+      },
+      {
+        "type": "label",
+        "id": "resultsHint",
+        "text": "The button writes the full PASS / FAIL detail report to a local txt file. The UI only shows the latest summary and file path.",
+        "multiline": true,
+        "wordWrap": true,
+        "style": {
+          "align": "start",
+          "fg": "#64748b"
+        },
+        "frame": {
+          "x": 16,
+          "y": 118,
+          "r": 16,
+          "h": 42
+        }
+      },
+      {
+        "type": "label",
+        "id": "reportSummaryCaption",
+        "text": "Last summary",
+        "style": {
+          "size": 12,
+          "align": "start",
+          "fg": "#64748b"
+        },
+        "frame": {
+          "x": 16,
+          "y": 174,
+          "r": 16,
+          "h": 18
+        }
+      },
+      {
+        "type": "label",
+        "id": "reportSummaryValue",
+        "text": {
+          "bind": "demo.reportSummary",
+          "default": "No API check has been run yet."
+        },
+        "multiline": true,
+        "wordWrap": true,
+        "style": {
+          "align": "start",
+          "fg": "#334155"
+        },
+        "frame": {
+          "x": 16,
+          "y": 194,
+          "r": 16,
+          "h": 44
+        }
+      },
+      {
+        "type": "label",
+        "id": "reportPathCaption",
+        "text": "Report file",
+        "style": {
+          "size": 12,
+          "align": "start",
+          "fg": "#64748b"
+        },
+        "frame": {
+          "x": 16,
+          "y": 246,
+          "r": 16,
+          "h": 18
+        }
+      },
+      {
+        "type": "label",
+        "id": "reportPathValue",
+        "text": {
+          "bind": "demo.reportPath",
+          "default": "output\\latest-api-check.txt"
+        },
+        "multiline": true,
+        "wordWrap": true,
+        "style": {
+          "align": "start",
+          "fg": "#334155"
+        },
+        "frame": {
+          "x": 16,
+          "y": 266,
+          "r": 16,
+          "h": 120
+        }
+      }
+    ]
+  }
+}

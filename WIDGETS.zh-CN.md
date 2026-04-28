@@ -92,6 +92,15 @@
 
 `widgets/jsonui` 里的窗口和按钮图片统一使用 `image` / `imagePos` / `imageSizeDP` 语义，详情见 `JSONUI.zh-CN.md`。
 
+`jsonui` 现在还支持组件模板：
+
+- 顶层 `components` 注册组件名到外部 JSON 模板文件
+- 节点位置可用 `{ "component": "...", "args": { ... } }` 实例化
+- 组件实例还可传 `{ "slots": { "content": [ ... ] } }`，由模板在 `children` 位置显式插入
+- 模板文件用 `component` / `params` / `node` 描述一棵可复用子树
+- 占位符只支持整值替换，不支持字符串拼接
+- 当前只支持命名 `children` slot，不支持条件、循环，组件实例节点也不支持额外 override 字段
+
 ## 6. JSON 结构
 
 顶层使用 `wins` 声明一个或多个窗口：

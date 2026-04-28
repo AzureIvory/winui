@@ -1,0 +1,31 @@
+{
+  "component": "auxRoot",
+  "params": {},
+  "node": {
+    "type": "panel",
+    "id": "auxRoot",
+    "layout": "abs",
+    "style": {
+      "bg": "#f8fafc"
+    },
+    "children": [
+      {
+        "type": "label",
+        "id": "auxLabel",
+        "text": "A second window exists so the demo can exercise jsonui Window.Attach, Window.Detach, and document window lookup helpers.",
+        "multiline": true,
+        "wordWrap": true,
+        "style": {
+          "align": "start",
+          "fg": "#334155"
+        },
+        "frame": {
+          "x": 20,
+          "y": 20,
+          "r": 20,
+          "h": 60
+        }
+      }
+    ]
+  }
+}
