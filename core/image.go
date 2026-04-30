@@ -20,6 +20,9 @@ import (
 var (
 	procCreateBitmap       = gdi32.NewProc("CreateBitmap")
 	procCreateIconIndirect = user32.NewProc("CreateIconIndirect")
+	// bitmapSourceRegistry 让控件可以从原生位图反查到源图资源，
+	// 这样按钮和动画帧在缩小时都能复用统一的高质量缩放与缓存。
+	bitmapSourceRegistry sync.Map
 )
 
 // ImageScaleQuality 表示缓存位图时使用的缩放质量。
@@ -28,7 +31,7 @@ type ImageScaleQuality uint8
 const (
 	// ImageScaleLinear 适合普通 UI 图像。
 	ImageScaleLinear ImageScaleQuality = iota + 1
-	// ImageScaleHigh 适合小尺寸缩小图标。
+	// ImageScaleHigh 适合缩小显示的位图。
 	ImageScaleHigh
 )
 
@@ -53,6 +56,46 @@ type Image struct {
 
 	variants map[ImageCacheKey]*Bitmap
 	icons    map[int32]*Icon
+}
+
+func registerBitmapSource(bitmap *Bitmap, img *Image) {
+	if bitmap == nil || bitmap.handle == 0 || img == nil {
+		return
+	}
+	bitmapSourceRegistry.Store(bitmap.handle, img)
+}
+
+func unregisterBitmapSource(bitmap *Bitmap) {
+	if bitmap == nil || bitmap.handle == 0 {
+		return
+	}
+	bitmapSourceRegistry.Delete(bitmap.handle)
+}
+
+// ImageForBitmap 返回原生位图对应的源图资源。
+// 当位图来自 core.Image 或动画帧解码结果时，调用方可以借此复用统一的缩放缓存。
+func ImageForBitmap(bitmap *Bitmap) *Image {
+	if bitmap == nil || bitmap.handle == 0 {
+		return nil
+	}
+	value, ok := bitmapSourceRegistry.Load(bitmap.handle)
+	if !ok {
+		return nil
+	}
+	img, _ := value.(*Image)
+	return img
+}
+
+// ChooseScaleQuality 根据源尺寸和目标尺寸决定缩放质量。
+// 统一规则是：只要目标尺寸小于源尺寸，就默认使用高质量缩放。
+func ChooseScaleQuality(src, dst Size) ImageScaleQuality {
+	if src.Width <= 0 || src.Height <= 0 || dst.Width <= 0 || dst.Height <= 0 {
+		return ImageScaleLinear
+	}
+	if dst.Width < src.Width || dst.Height < src.Height {
+		return ImageScaleHigh
+	}
+	return ImageScaleLinear
 }
 
 type iconInfo struct {
@@ -87,17 +130,27 @@ func NewImageFromDecoded(src image.Image) (*Image, error) {
 	if rgba == nil || rgba.Bounds().Dx() <= 0 || rgba.Bounds().Dy() <= 0 {
 		return nil, wrapError("BitmapFromRGBA", windows.ERROR_INVALID_DATA)
 	}
+	return newImageFromRGBA(rgba)
+}
+
+// newImageFromRGBA 从规范化后的 RGBA 数据创建图像资源。
+func newImageFromRGBA(rgba *image.RGBA) (*Image, error) {
+	if rgba == nil || rgba.Bounds().Dx() <= 0 || rgba.Bounds().Dy() <= 0 {
+		return nil, wrapError("BitmapFromRGBA", windows.ERROR_INVALID_DATA)
+	}
 	master, err := BitmapFromRGBA(rgba)
 	if err != nil {
 		return nil, err
 	}
-	return &Image{
+	img := &Image{
 		source:     rgba,
 		sourceSize: Size{Width: int32(rgba.Bounds().Dx()), Height: int32(rgba.Bounds().Dy())},
 		master:     master,
 		variants:   make(map[ImageCacheKey]*Bitmap),
 		icons:      make(map[int32]*Icon),
-	}, nil
+	}
+	registerBitmapSource(master, img)
+	return img, nil
 }
 
 // NaturalSize 返回原始像素尺寸。
@@ -270,6 +323,7 @@ func (i *Image) bitmapForLocked(width, height int32, quality ImageScaleQuality) 
 		return nil, err
 	}
 	i.variants[key] = bmp
+	registerBitmapSource(bmp, i)
 	return bmp, nil
 }
 

@@ -273,13 +273,7 @@ func (i *Image) drawRect() Rect {
 }
 
 func chooseImageScaleQuality(src core.Size, dst Rect) core.ImageScaleQuality {
-	if src.Width <= 0 || src.Height <= 0 || dst.W <= 0 || dst.H <= 0 {
-		return core.ImageScaleLinear
-	}
-	if dst.W < src.Width || dst.H < src.Height {
-		return core.ImageScaleHigh
-	}
-	return core.ImageScaleLinear
+	return core.ChooseScaleQuality(src, core.Size{Width: dst.W, Height: dst.H})
 }
 
 // AnimatedImage 表示播放多帧位图动画的控件。
@@ -446,10 +440,12 @@ func (a *AnimatedImage) Paint(ctx *PaintCtx) {
 		return
 	}
 	frame := a.frames[a.frameIndex%len(a.frames)]
-	if frame.Bitmap == nil {
+	drawRect := a.drawRect()
+	if frame.Bitmap == nil || drawRect.Empty() {
 		return
 	}
-	_ = ctx.canvas.DrawBitmapAlpha(frame.Bitmap, a.drawRect(), a.opacity)
+	bitmap := animatedFrameBitmapForDraw(frame, drawRect)
+	_ = ctx.canvas.DrawBitmapAlpha(bitmap, drawRect, a.opacity)
 }
 
 // Close 释放动画图像持有的资源。
@@ -460,11 +456,7 @@ func (a *AnimatedImage) Close() error {
 	a.timerID = 0
 	a.timerDelay = 0
 	if a.ownedFrames {
-		for i := range a.frames {
-			if a.frames[i].Bitmap != nil {
-				_ = a.frames[i].Bitmap.Close()
-			}
-		}
+		closeAnimatedFrames(a.frames)
 	}
 	a.frames = nil
 	a.ownedFrames = false
@@ -475,17 +467,54 @@ func (a *AnimatedImage) Close() error {
 // replaceFrames 替换动画图像持有的帧集合。
 func (a *AnimatedImage) replaceFrames(frames []core.AnimatedFrame, owned bool) {
 	if a.ownedFrames {
-		for i := range a.frames {
-			if a.frames[i].Bitmap != nil {
-				_ = a.frames[i].Bitmap.Close()
-			}
-		}
+		closeAnimatedFrames(a.frames)
 	}
 	a.frames = append(a.frames[:0], frames...)
 	a.ownedFrames = owned
 	a.frameIndex = 0
 	a.invalidate(a)
 	a.syncTimer()
+}
+
+// closeAnimatedFrames 统一释放动画帧资源。
+// 如果帧位图来自 core.Image，会优先关闭整套资源，避免缩放缓存泄漏。
+func closeAnimatedFrames(frames []core.AnimatedFrame) {
+	closedImages := make(map[*core.Image]struct{})
+	closedBitmaps := make(map[*core.Bitmap]struct{})
+	for i := range frames {
+		bitmap := frames[i].Bitmap
+		if bitmap == nil {
+			continue
+		}
+		if resource := core.ImageForBitmap(bitmap); resource != nil {
+			if _, exists := closedImages[resource]; exists {
+				continue
+			}
+			closedImages[resource] = struct{}{}
+			_ = resource.Close()
+			continue
+		}
+		if _, exists := closedBitmaps[bitmap]; exists {
+			continue
+		}
+		closedBitmaps[bitmap] = struct{}{}
+		_ = bitmap.Close()
+	}
+}
+
+// animatedFrameBitmapForDraw 根据目标尺寸选择动画帧最终要绘制的位图。
+// 这样动画帧在缩小时可以和普通图片共用同一套高质量缩放与缓存。
+func animatedFrameBitmapForDraw(frame core.AnimatedFrame, drawRect Rect) *core.Bitmap {
+	if frame.Bitmap == nil {
+		return nil
+	}
+	if resource := core.ImageForBitmap(frame.Bitmap); resource != nil && drawRect.W > 0 && drawRect.H > 0 {
+		quality := core.ChooseScaleQuality(resource.NaturalSize(), core.Size{Width: drawRect.W, Height: drawRect.H})
+		if scaled, err := resource.BitmapFor(drawRect.W, drawRect.H, quality); err == nil && scaled != nil {
+			return scaled
+		}
+	}
+	return frame.Bitmap
 }
 
 // syncTimer 让动画定时器与当前播放状态保持一致。

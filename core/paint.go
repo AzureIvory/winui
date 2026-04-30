@@ -519,6 +519,7 @@ func (b *Bitmap) Close() error {
 	if b == nil || b.handle == 0 {
 		return nil
 	}
+	unregisterBitmapSource(b)
 	h := b.handle
 	b.handle = 0
 	r1, _, err := procDeleteObject.Call(uintptr(h))
@@ -560,13 +561,12 @@ func DecodeGIF(data []byte) ([]AnimatedFrame, error) {
 		rgba := image.NewRGBA(canvas.Bounds())
 		copy(rgba.Pix, canvas.Pix)
 
-		bmp, bmpErr := BitmapFromRGBA(rgba)
-		if bmpErr != nil {
-			for i := range frames {
-				_ = frames[i].Bitmap.Close()
-			}
-			return nil, bmpErr
+		img, imgErr := newImageFromRGBA(rgba)
+		if imgErr != nil {
+			closeAnimatedFrames(frames)
+			return nil, imgErr
 		}
+		bmp := img.MasterBitmap()
 
 		delay := 100 * time.Millisecond
 		if idx < len(all.Delay) && all.Delay[idx] > 0 {
@@ -584,6 +584,30 @@ func DecodeGIF(data []byte) ([]AnimatedFrame, error) {
 		})
 	}
 	return frames, nil
+}
+
+func closeAnimatedFrames(frames []AnimatedFrame) {
+	closedImages := make(map[*Image]struct{})
+	closedBitmaps := make(map[*Bitmap]struct{})
+	for i := range frames {
+		bitmap := frames[i].Bitmap
+		if bitmap == nil {
+			continue
+		}
+		if img := ImageForBitmap(bitmap); img != nil {
+			if _, exists := closedImages[img]; exists {
+				continue
+			}
+			closedImages[img] = struct{}{}
+			_ = img.Close()
+			continue
+		}
+		if _, exists := closedBitmaps[bitmap]; exists {
+			continue
+		}
+		closedBitmaps[bitmap] = struct{}{}
+		_ = bitmap.Close()
+	}
 }
 
 func gifDisposalAt(all *gif.GIF, index int) byte {

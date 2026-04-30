@@ -594,13 +594,7 @@ func (b *Button) drawGraphic(ctx *PaintCtx, slot Rect) error {
 }
 
 func chooseButtonImageQuality(src core.Size, dst core.Size) core.ImageScaleQuality {
-	if src.Width <= 0 || src.Height <= 0 || dst.Width <= 0 || dst.Height <= 0 {
-		return core.ImageScaleLinear
-	}
-	if (dst.Width < src.Width || dst.Height < src.Height) && max32(dst.Width, dst.Height) <= 32 {
-		return core.ImageScaleHigh
-	}
-	return core.ImageScaleLinear
+	return core.ChooseScaleQuality(src, dst)
 }
 
 // buttonImageBoxSize 计算按钮图片槽位尺寸。
