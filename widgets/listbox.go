@@ -351,6 +351,8 @@ func (l *ListBox) resolveStyle(ctx *PaintCtx) ListStyle {
 	style := DefaultTheme().ListBox
 	if ctx != nil && ctx.scene != nil && ctx.scene.theme != nil {
 		style = ctx.scene.theme.ListBox
+	} else if scene := l.scene(); scene != nil && scene.theme != nil {
+		style = scene.theme.ListBox
 	}
 	return mergeListStyle(style, l.Style)
 }
@@ -430,7 +432,7 @@ func (l *ListBox) indexAt(point core.Point) int {
 	if !rect.Contains(point.X, point.Y) {
 		return -1
 	}
-	style := mergeListStyle(DefaultTheme().ListBox, l.Style)
+	style := l.resolveStyle(nil)
 	itemHeight := max32(1, l.dp(style.ItemHeightDP))
 	padding := max32(0, l.dp(style.PaddingDP))
 	index := int((point.Y-rect.Y-padding)/itemHeight) + l.scroll
@@ -528,7 +530,7 @@ func (l *ListBox) maxScroll(style ListStyle) int {
 
 // clampScroll 把滚动位置限制在合法范围内。
 func (l *ListBox) clampScroll() {
-	style := mergeListStyle(DefaultTheme().ListBox, l.Style)
+	style := l.resolveStyle(nil)
 	maxScroll := l.maxScroll(style)
 	if l.scroll < 0 {
 		l.scroll = 0
@@ -558,7 +560,7 @@ func (l *ListBox) ensureVisible(index int) {
 	if index < 0 || index >= len(l.items) {
 		return
 	}
-	style := mergeListStyle(DefaultTheme().ListBox, l.Style)
+	style := l.resolveStyle(nil)
 	rows := l.visibleRows(style)
 	if rows <= 0 {
 		return
