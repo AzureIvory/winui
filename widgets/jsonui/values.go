@@ -613,6 +613,21 @@ func parseIndicatorStyleValue(value string) (widgets.ChoiceIndicatorStyle, bool,
 	}
 }
 
+func parseButtonShapeValue(value string) (widgets.ButtonShape, bool, error) {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "":
+		return widgets.ButtonShapeAuto, false, nil
+	case "auto":
+		return widgets.ButtonShapeAuto, true, nil
+	case "default", "rounded":
+		return widgets.ButtonShapeDefault, true, nil
+	case "pill", "capsule":
+		return widgets.ButtonShapePill, true, nil
+	default:
+		return widgets.ButtonShapeAuto, false, fmt.Errorf("invalid button shape %q", value)
+	}
+}
+
 func parseTextFormat(align widgets.Alignment, multiline bool) uint32 {
 	format := uint32(0)
 	switch align {

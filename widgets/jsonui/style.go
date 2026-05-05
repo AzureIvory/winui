@@ -157,6 +157,19 @@ func parseButtonStyle(raw json.RawMessage) (widgets.ButtonStyle, error) {
 	if err := assignColor(styles, "border", &style.Border); err != nil {
 		return style, err
 	}
+	if raw := styles["shape"]; len(raw) > 0 {
+		value, err := decodeStringLiteral(raw)
+		if err != nil {
+			return style, err
+		}
+		shape, ok, err := parseButtonShapeValue(value)
+		if err != nil {
+			return style, err
+		}
+		if ok {
+			style.Shape = shape
+		}
+	}
 	assignInt(styles, "radius", &style.CornerRadius)
 	assignInt(styles, "imageSize", &style.ImageSizeDP)
 	assignInt(styles, "textInset", &style.TextInsetDP)

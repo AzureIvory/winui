@@ -273,6 +273,7 @@ JSON 样式直接映射到现有控件样式结构，而不是再造一套渲染
 - `pressedBg`
 - `hoverBorder`
 - `focusBorder`
+- `shape`
 - `radius`
 - `pad`
 - `gap`
@@ -281,6 +282,7 @@ JSON 样式直接映射到现有控件样式结构，而不是再造一套渲染
 - `indicatorStyle`
 
 按钮图片槽位按 contain 方式缩放，不会强行拉伸成正方形。
+按钮轮廓可通过 `ButtonStyle.Shape` 指定，当前支持 `ButtonShapeDefault` 和 `ButtonShapePill`；`pill` 会自动使用按钮高度一半作为圆角，适合高曲率胶囊按钮。
 
 ## 10. 文件对话框控件
 

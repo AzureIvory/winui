@@ -24,6 +24,18 @@ type TextStyle struct {
 	Format uint32
 }
 
+// ButtonShape 表示按钮轮廓的几何形状。
+type ButtonShape uint8
+
+const (
+	// ButtonShapeAuto 表示沿用主题或控件默认的按钮形状。
+	ButtonShapeAuto ButtonShape = iota
+	// ButtonShapeDefault 表示使用常规圆角矩形按钮。
+	ButtonShapeDefault
+	// ButtonShapePill 表示使用高度一半作为圆角的胶囊按钮。
+	ButtonShapePill
+)
+
 // ButtonStyle 描述按钮控件的外观样式。
 type ButtonStyle struct {
 	// Font 指定按钮文本使用的字体规格。
@@ -46,6 +58,8 @@ type ButtonStyle struct {
 	Disabled core.Color
 	// Border 指定边框颜色。
 	Border core.Color
+	// Shape 指定按钮轮廓形状。
+	Shape ButtonShape
 	// CornerRadius 指定圆角半径。
 	CornerRadius int32
 	// ImageSizeDP 指定按钮图片槽位尺寸。
@@ -278,6 +292,7 @@ func DefaultTheme() *Theme {
 			Pressed:      core.RGB(37, 99, 235),
 			Disabled:     core.RGB(241, 245, 249),
 			Border:       core.RGB(191, 219, 254),
+			Shape:        ButtonShapeDefault,
 			CornerRadius: 10,
 			TextInsetDP:  18,
 			GapDP:        8,

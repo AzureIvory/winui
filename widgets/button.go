@@ -225,10 +225,7 @@ func (b *Button) Paint(ctx *PaintCtx) {
 		bgColor = style.Hover
 	}
 
-	radius := scaleValueForWidget(b, scaleSlotRadius, style.CornerRadius)
-	if radius < 0 {
-		radius = 0
-	}
+	radius := resolveButtonCornerRadius(b, bounds, style)
 
 	_ = ctx.FillRoundRect(bounds, radius, bgColor)
 	if borderColor != 0 {
@@ -402,6 +399,9 @@ func (b *Button) resolveStyle(ctx *PaintCtx) ButtonStyle {
 	if b.Style.Border != 0 {
 		style.Border = b.Style.Border
 	}
+	if b.Style.Shape != ButtonShapeAuto {
+		style.Shape = b.Style.Shape
+	}
 	if b.Style.CornerRadius != 0 {
 		style.CornerRadius = b.Style.CornerRadius
 	}
@@ -418,6 +418,20 @@ func (b *Button) resolveStyle(ctx *PaintCtx) ButtonStyle {
 		style.PadDP = b.Style.PadDP
 	}
 	return style
+}
+
+// resolveButtonCornerRadius 返回按钮在当前尺寸下应使用的实际圆角半径。
+func resolveButtonCornerRadius(widget Widget, bounds Rect, style ButtonStyle) int32 {
+	switch style.Shape {
+	case ButtonShapePill:
+		return max32(1, min32(bounds.W, bounds.H)/2)
+	default:
+		radius := scaleValueForWidget(widget, scaleSlotRadius, style.CornerRadius)
+		if radius < 0 {
+			return 0
+		}
+		return radius
+	}
 }
 
 // drawButtonText 绘制按钮文本内容。

@@ -344,6 +344,7 @@ JSON 样式不是另一套渲染系统，而是直接映射到现有控件样式
 - `disabledBg`
 - `hoverBorder`
 - `focusBorder`
+- `shape`
 - `radius`
 - `borderW`
 - `pad`
@@ -357,6 +358,7 @@ JSON 样式不是另一套渲染系统，而是直接映射到现有控件样式
 - `indicator`
 - `indicatorStyle`
 - `imageSize` 表示按钮图片槽位尺寸，按 contain 方式适配，不会强制拉伸成正方形。
+- `shape` 支持 `default` 和 `pill`；`pill` 会自动使用按钮高度一半作为圆角，适合胶囊按钮。
 
 文件选择器支持嵌套按钮样式：
 

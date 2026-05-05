@@ -91,7 +91,10 @@
                   "id": "saveBtn",
                   "text": "Save changes",
                   "image": "assets/save.png",
-                  "imagePos": "left"
+                  "imagePos": "left",
+                  "style": {
+                    "shape": "pill"
+                  }
                 },
                 {
                   "type": "button",
@@ -450,7 +453,10 @@
                 {
                   "type": "button",
                   "id": "miniScrollBtn2",
-                  "text": "Card B"
+                  "text": "Card B",
+                  "style": {
+                    "shape": "pill"
+                  }
                 },
                 {
                   "type": "button",
@@ -465,7 +471,10 @@
                 {
                   "type": "button",
                   "id": "miniScrollBtn5",
-                  "text": "Card E"
+                  "text": "Card E",
+                  "style": {
+                    "shape": "pill"
+                  }
                 },
                 {
                   "type": "button",

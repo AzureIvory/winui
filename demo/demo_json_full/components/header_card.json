@@ -78,6 +78,9 @@
         "type": "button",
         "id": "languageToggleBtn",
         "text": "\u4e2d\u6587",
+        "style": {
+          "shape": "pill"
+        },
         "frame": {
           "r": 372,
           "y": 16,
@@ -91,6 +94,9 @@
         "text": "Run widget API tests",
         "image": "assets/save.png",
         "imagePos": "left",
+        "style": {
+          "shape": "pill"
+        },
         "frame": {
           "r": 164,
           "y": 16,
@@ -102,6 +108,9 @@
         "type": "button",
         "id": "openModalBtn",
         "text": "Show modal",
+        "style": {
+          "shape": "pill"
+        },
         "frame": {
           "r": 20,
           "y": 16,

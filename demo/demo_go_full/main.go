@@ -206,6 +206,7 @@ func (d *goDemo) buildRoot() *widgets.Panel {
 	d.subtitleLabel.SetStyle(widgets.TextStyle{Font: widgets.FontSpec{Face: "Microsoft YaHei UI", SizeDP: 13}, Color: core.RGB(100, 116, 139), Format: core.DTVCenter | core.DTSingleLine | core.DTEndEllipsis})
 
 	d.modeButton = widgets.NewButton("toggleControlModeBtn", "", d.mode)
+	d.modeButton.SetStyle(widgets.ButtonStyle{Shape: widgets.ButtonShapePill})
 	d.modeButton.SetOnClick(func() {
 		if d.mode == widgets.ModeNative {
 			d.mode = widgets.ModeCustom
@@ -217,6 +218,7 @@ func (d *goDemo) buildRoot() *widgets.Panel {
 	})
 
 	d.langButton = widgets.NewButton("languageToggleBtn", "", d.mode)
+	d.langButton.SetStyle(widgets.ButtonStyle{Shape: widgets.ButtonShapePill})
 	d.langButton.SetOnClick(func() {
 		if normalizeDemoLocale(d.locale) == "en" {
 			d.locale = "zh"
@@ -229,6 +231,7 @@ func (d *goDemo) buildRoot() *widgets.Panel {
 
 	d.runButton = widgets.NewButton("runAllBtn", "", d.mode)
 	d.runButton.SetKind(widgets.BtnLeft)
+	d.runButton.SetStyle(widgets.ButtonStyle{Shape: widgets.ButtonShapePill})
 	d.runButton.SetOnClick(func() {
 		next := d.uploadBar.Value() + 17
 		if next > 100 {
@@ -299,6 +302,7 @@ func (d *goDemo) buildRoot() *widgets.Panel {
 	})
 
 	d.openFile = widgets.NewFilePicker("openFile", d.mode)
+	d.openFile.SetButtonStyle(widgets.ButtonStyle{Shape: widgets.ButtonShapePill})
 	d.openFile.SetOnChange(func(paths []string) {
 		if len(paths) == 0 {
 			d.setStatus(d.tr("status.pickerCleared", "%s cleared", "openFile"))

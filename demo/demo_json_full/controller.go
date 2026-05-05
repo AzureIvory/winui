@@ -680,16 +680,16 @@ func (c *demoController) applyPalette(p demoPalette) {
 	c.mustModal("helpModal").SetBlurRadiusDP(p.modalBlurDP)
 	c.mustPanel("modalSurface").SetStyle(p.modalSurface)
 
-	c.mustButton("togglePaletteBtn").SetStyle(p.buttonNeutral)
-	c.mustButton("toggleControlModeBtn").SetStyle(p.buttonNeutral)
-	c.mustButton("languageToggleBtn").SetStyle(p.buttonNeutral)
-	c.mustButton("runAllBtn").SetStyle(p.buttonPrimary)
-	c.mustButton("openModalBtn").SetStyle(p.buttonGhost)
-	c.mustButton("closeModalBtn").SetStyle(p.buttonNeutral)
-	c.mustButton("saveBtn").SetStyle(p.buttonPrimary)
-	c.mustButton("imageTopBtn").SetStyle(p.buttonNeutral)
-	c.mustButton("ghostBtn").SetStyle(p.buttonGhost)
-	c.mustButton("disabledBtn").SetStyle(p.buttonNeutral)
+	c.applyButtonPaletteStyle("togglePaletteBtn", p.buttonNeutral)
+	c.applyButtonPaletteStyle("toggleControlModeBtn", p.buttonNeutral)
+	c.applyButtonPaletteStyle("languageToggleBtn", p.buttonNeutral)
+	c.applyButtonPaletteStyle("runAllBtn", p.buttonPrimary)
+	c.applyButtonPaletteStyle("openModalBtn", p.buttonGhost)
+	c.applyButtonPaletteStyle("closeModalBtn", p.buttonNeutral)
+	c.applyButtonPaletteStyle("saveBtn", p.buttonPrimary)
+	c.applyButtonPaletteStyle("imageTopBtn", p.buttonNeutral)
+	c.applyButtonPaletteStyle("ghostBtn", p.buttonGhost)
+	c.applyButtonPaletteStyle("disabledBtn", p.buttonNeutral)
 	for _, id := range []string{
 		"miniScrollBtn1",
 		"miniScrollBtn2",
@@ -698,7 +698,7 @@ func (c *demoController) applyPalette(p demoPalette) {
 		"miniScrollBtn5",
 		"miniScrollBtn6",
 	} {
-		c.mustButton(id).SetStyle(p.buttonNeutral)
+		c.applyButtonPaletteStyle(id, p.buttonNeutral)
 	}
 
 	for _, id := range []string{"nameInput", "passwordInput", "notesBox"} {
@@ -882,6 +882,20 @@ func makeButtonStyle(bg, border, hover, pressed, fg, downFG core.Color) widgets.
 		GapDP:        8,
 		PadDP:        12,
 	}
+}
+
+// applyButtonPaletteStyle 应用调色板按钮样式，同时保留 JSON 声明的轮廓语义。
+func (c *demoController) applyButtonPaletteStyle(id string, base widgets.ButtonStyle) {
+	button := c.mustButton(id)
+	button.SetStyle(mergeButtonPaletteStyle(base, button.Style))
+}
+
+// mergeButtonPaletteStyle 将调色板配色与声明式按钮轮廓合并。
+func mergeButtonPaletteStyle(base, declared widgets.ButtonStyle) widgets.ButtonStyle {
+	if declared.Shape != widgets.ButtonShapeAuto {
+		base.Shape = declared.Shape
+	}
+	return base
 }
 
 func makeEditStyle(bg, border, hoverBorder, focusBorder, fg, ph, caret core.Color) widgets.EditStyle {
