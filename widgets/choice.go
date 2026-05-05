@@ -177,7 +177,7 @@ func (c *CheckBox) Paint(ctx *PaintCtx) {
 
 	boxSize := choiceIndicatorBoxSize(c, style)
 	gap := choiceIndicatorGap(c, style)
-	radius := choiceIndicatorRadius(c, style)
+	indicatorStyle := resolveChoiceIndicatorStyle(style, false)
 
 	boxRect := Rect{
 		X: content.X,
@@ -204,19 +204,20 @@ func (c *CheckBox) Paint(ctx *PaintCtx) {
 		borderColor = style.HoverBorder
 	}
 
+	radius := choiceIndicatorVisualRadius(c, boxRect, style, false)
 	_ = ctx.FillRoundRect(boxRect, radius, background)
 	if c.Checked {
-		if resolveChoiceIndicatorStyle(style, false) == ChoiceIndicatorCheck {
+		if indicatorStyle == ChoiceIndicatorCheck {
 			borderColor = style.IndicatorColor
 			_ = ctx.FillRoundRect(
 				boxRect,
 				radius,
-				choiceIndicatorCheckFill(background, style.IndicatorColor),
+				choiceIndicatorCheckedFill(background, style.IndicatorColor, indicatorStyle),
 			)
 		} else {
-			_ = ctx.FillRoundRect(boxRect, radius, style.IndicatorColor)
+			borderColor = style.IndicatorColor
 		}
-		drawChoiceMark(ctx, c, boxRect, style, false)
+		drawChoiceMark(ctx, c, boxRect, style, background, false)
 	}
 	_ = ctx.StrokeRoundRect(boxRect, radius, borderColor, 1)
 
@@ -583,6 +584,7 @@ func (r *RadioButton) Paint(ctx *PaintCtx) {
 
 	boxSize := choiceIndicatorBoxSize(r, style)
 	gap := choiceIndicatorGap(r, style)
+	indicatorStyle := resolveChoiceIndicatorStyle(style, true)
 
 	boxRect := Rect{
 		X: content.X,
@@ -609,18 +611,20 @@ func (r *RadioButton) Paint(ctx *PaintCtx) {
 		borderColor = style.HoverBorder
 	}
 
-	radius := max32(1, boxSize/2)
+	radius := choiceIndicatorVisualRadius(r, boxRect, style, true)
 	_ = ctx.FillRoundRect(boxRect, radius, background)
 	if r.Checked {
-		if resolveChoiceIndicatorStyle(style, true) == ChoiceIndicatorCheck {
+		if indicatorStyle == ChoiceIndicatorCheck {
 			borderColor = style.IndicatorColor
 			_ = ctx.FillRoundRect(
 				boxRect,
 				radius,
-				choiceIndicatorCheckFill(background, style.IndicatorColor),
+				choiceIndicatorCheckedFill(background, style.IndicatorColor, indicatorStyle),
 			)
+		} else {
+			borderColor = style.IndicatorColor
 		}
-		drawChoiceMark(ctx, r, boxRect, style, true)
+		drawChoiceMark(ctx, r, boxRect, style, background, true)
 	}
 	_ = ctx.StrokeRoundRect(boxRect, radius, borderColor, 1)
 
@@ -868,33 +872,32 @@ func resolveChoiceIndicatorStyle(style ChoiceStyle, isRadio bool) ChoiceIndicato
 	return ChoiceIndicatorCheck
 }
 
+// choiceIndicatorVisualRadius 返回当前指示器实际绘制时应使用的圆角半径。
+func choiceIndicatorVisualRadius(widget Widget, boxRect Rect, style ChoiceStyle, isRadio bool) int32 {
+	if isRadio || resolveChoiceIndicatorStyle(style, isRadio) == ChoiceIndicatorDot {
+		return max32(1, min32(boxRect.W, boxRect.H)/2)
+	}
+	return choiceIndicatorRadius(widget, style)
+}
+
 // drawChoiceMark 按给定样式绘制选择类控件的选中标记。
-func drawChoiceMark(ctx *PaintCtx, widget Widget, boxRect Rect, style ChoiceStyle, isRadio bool) {
+func drawChoiceMark(ctx *PaintCtx, widget Widget, boxRect Rect, style ChoiceStyle, background core.Color, isRadio bool) {
 	switch resolveChoiceIndicatorStyle(style, isRadio) {
 	case ChoiceIndicatorCheck:
 		drawChoiceCheck(ctx, widget, boxRect, resolveChoiceCheckMarkColor(style))
 	default:
-		color := style.CheckColor
-		if isRadio {
-			color = style.IndicatorColor
-		}
-		drawChoiceDot(ctx, widget, boxRect, color)
+		drawChoiceDot(ctx, widget, boxRect, style.IndicatorColor, background)
 	}
 }
 
-// drawChoiceDot 在选择框内部绘制圆点选中标记。
-func drawChoiceDot(ctx *PaintCtx, widget Widget, boxRect Rect, color core.Color) {
+// drawChoiceDot 在选择框内部绘制圆环样式的选中标记。
+func drawChoiceDot(ctx *PaintCtx, widget Widget, boxRect Rect, color, background core.Color) {
 	if ctx == nil || boxRect.Empty() {
 		return
 	}
-	dotSize := choiceIndicatorDotSize(widget, boxRect)
-	dotRect := Rect{
-		X: boxRect.X + (boxRect.W-dotSize)/2,
-		Y: boxRect.Y + (boxRect.H-dotSize)/2,
-		W: dotSize,
-		H: dotSize,
-	}
-	_ = ctx.FillRoundRect(dotRect, max32(1, dotSize/2), color)
+	_ = ctx.FillRoundRect(boxRect, max32(1, min32(boxRect.W, boxRect.H)/2), color)
+	cutout := choiceIndicatorDotCutoutRect(widget, boxRect)
+	_ = ctx.FillRoundRect(cutout, max32(1, min32(cutout.W, cutout.H)/2), background)
 }
 
 // drawChoiceCheck 在选择框内部绘制打钩选中标记。
@@ -908,23 +911,11 @@ func drawChoiceCheck(ctx *PaintCtx, widget Widget, boxRect Rect, color core.Colo
 		return
 	}
 
-	stroke := choiceIndicatorCheckStroke(widget, boxRect)
-	start := core.Point{
-		X: boxRect.X + boxRect.W/5,
-		Y: boxRect.Y + boxRect.H*11/20,
-	}
-	mid := core.Point{
-		X: boxRect.X + boxRect.W*9/20,
-		Y: boxRect.Y + boxRect.H*7/10,
-	}
-	end := core.Point{
-		X: boxRect.X + boxRect.W*4/5,
-		Y: boxRect.Y + boxRect.H*3/10,
-	}
+	geometry := choiceCheckGeometry(widget, boxRect)
 
 	for _, quad := range [][]core.Point{
-		choiceStrokeQuad(start, mid, stroke),
-		choiceStrokeQuad(mid, end, stroke),
+		choiceStrokeQuad(geometry.Start, geometry.Mid, geometry.Stroke),
+		choiceStrokeQuad(geometry.Mid, geometry.End, geometry.Stroke),
 	} {
 		if len(quad) == 0 {
 			continue
@@ -932,21 +923,64 @@ func drawChoiceCheck(ctx *PaintCtx, widget Widget, boxRect Rect, color core.Colo
 		_ = canvas.FillPolygon(quad, color)
 	}
 
-	joint := Rect{
-		X: mid.X - stroke/2,
-		Y: mid.Y - stroke/2,
-		W: max32(1, stroke),
-		H: max32(1, stroke),
+	for _, point := range []core.Point{geometry.Start, geometry.Mid, geometry.End} {
+		capRect := choiceCheckCapRect(point, geometry.Stroke)
+		_ = ctx.FillRoundRect(capRect, max32(1, geometry.Stroke/2), color)
 	}
-	_ = ctx.FillRoundRect(joint, max32(1, stroke/2), color)
 }
 
-func choiceIndicatorDotSize(widget Widget, boxRect Rect) int32 {
-	return max32(scaleValueForWidget(widget, scaleSlotImage, 6), boxRect.W/2)
+// choiceIndicatorDotCutoutRect 返回圆环指示器中间镂空区域的矩形。
+func choiceIndicatorDotCutoutRect(widget Widget, boxRect Rect) Rect {
+	size := choiceIndicatorDotCutoutSize(widget, boxRect)
+	return choiceCenteredSquareRect(boxRect, size)
+}
+
+func choiceIndicatorDotCutoutSize(widget Widget, boxRect Rect) int32 {
+	size := max32(scaleValueForWidget(widget, scaleSlotImage, 8), min32(boxRect.W, boxRect.H)/2)
+	limit := min32(boxRect.W, boxRect.H) - 2
+	if limit > 0 && size > limit {
+		size = limit
+	}
+	return choiceMatchParity(size, min32(boxRect.W, boxRect.H))
 }
 
 func choiceIndicatorCheckStroke(widget Widget, boxRect Rect) int32 {
 	return max32(scaleValueForWidget(widget, scaleSlotImage, 2), min32(boxRect.W, boxRect.H)/8)
+}
+
+type choiceCheckMarkGeometry struct {
+	Start  core.Point
+	Mid    core.Point
+	End    core.Point
+	Stroke int32
+}
+
+// choiceCheckGeometry 返回勾选标记的关键折点和线宽。
+func choiceCheckGeometry(widget Widget, boxRect Rect) choiceCheckMarkGeometry {
+	return choiceCheckMarkGeometry{
+		Start: core.Point{
+			X: boxRect.X + boxRect.W*2/9,
+			Y: boxRect.Y + boxRect.H/2,
+		},
+		Mid: core.Point{
+			X: boxRect.X + boxRect.W*7/18,
+			Y: boxRect.Y + boxRect.H*2/3,
+		},
+		End: core.Point{
+			X: boxRect.X + boxRect.W*13/18,
+			Y: boxRect.Y + boxRect.H/3,
+		},
+		Stroke: choiceIndicatorCheckStroke(widget, boxRect),
+	}
+}
+
+func choiceCheckCapRect(point core.Point, stroke int32) Rect {
+	return Rect{
+		X: point.X - stroke/2,
+		Y: point.Y - stroke/2,
+		W: max32(1, stroke),
+		H: max32(1, stroke),
+	}
 }
 
 // mergeChoiceStyle 把多选框或单选按钮样式覆盖合并到基础样式中。
@@ -1000,15 +1034,21 @@ func mergeChoiceStyle(base, override ChoiceStyle) ChoiceStyle {
 	return base
 }
 
-func choiceIndicatorCheckFill(background, indicator core.Color) core.Color {
+func choiceIndicatorCheckedFill(background, indicator core.Color, style ChoiceIndicatorStyle) core.Color {
+	if style == ChoiceIndicatorCheck {
+		return indicator
+	}
 	return blendChoiceColor(background, indicator, 40)
 }
 
 func resolveChoiceCheckMarkColor(style ChoiceStyle) core.Color {
-	if style.CheckColor == 0 || isChoiceNearWhite(style.CheckColor) {
-		return style.IndicatorColor
+	if style.CheckColor != 0 && style.CheckColor != style.IndicatorColor {
+		return style.CheckColor
 	}
-	return style.CheckColor
+	if isChoiceNearWhite(style.IndicatorColor) {
+		return core.RGB(15, 23, 42)
+	}
+	return core.RGB(255, 255, 255)
 }
 
 func blendChoiceColor(background, indicator core.Color, alpha byte) core.Color {
@@ -1066,4 +1106,27 @@ func choiceStrokePoint(x, y float64) core.Point {
 		X: int32(math.Round(x)),
 		Y: int32(math.Round(y)),
 	}
+}
+
+func choiceCenteredSquareRect(bounds Rect, size int32) Rect {
+	size = max32(1, size)
+	return Rect{
+		X: bounds.X + (bounds.W-size)/2,
+		Y: bounds.Y + (bounds.H-size)/2,
+		W: size,
+		H: size,
+	}
+}
+
+func choiceMatchParity(value, reference int32) int32 {
+	if value <= 0 {
+		return 0
+	}
+	if value%2 == reference%2 {
+		return value
+	}
+	if value > 1 {
+		return value - 1
+	}
+	return value + 1
 }
