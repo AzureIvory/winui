@@ -227,7 +227,7 @@ func (c *CheckBox) Paint(ctx *PaintCtx) {
 		W: max32(0, content.W-boxRect.W-gap),
 		H: content.H,
 	}
-	_ = ctx.DrawText(c.Text, textRect, TextStyle{
+	_ = ctx.DrawWidgetText(c, c.Text, textRect, TextStyle{
 		Font:   style.Font,
 		Color:  textColor,
 		Format: core.DTVCenter | core.DTSingleLine | core.DTEndEllipsis,
@@ -634,7 +634,7 @@ func (r *RadioButton) Paint(ctx *PaintCtx) {
 		W: max32(0, content.W-boxRect.W-gap),
 		H: content.H,
 	}
-	_ = ctx.DrawText(r.Text, textRect, TextStyle{
+	_ = ctx.DrawWidgetText(r, r.Text, textRect, TextStyle{
 		Font:   style.Font,
 		Color:  textColor,
 		Format: core.DTVCenter | core.DTSingleLine | core.DTEndEllipsis,

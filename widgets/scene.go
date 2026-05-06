@@ -129,6 +129,11 @@ func (p *PaintCtx) MeasureWidgetText(widget Widget, text string, spec FontSpec) 
 
 // DrawProgress 在当前画布上绘制进度条。
 func (p *PaintCtx) DrawProgress(rect Rect, value int32, style ProgressStyle) error {
+	return p.DrawWidgetProgress(nil, rect, value, style)
+}
+
+// DrawWidgetProgress 在当前画布上绘制进度条，并使用给定控件解析字体缩放。
+func (p *PaintCtx) DrawWidgetProgress(widget Widget, rect Rect, value int32, style ProgressStyle) error {
 	if p == nil || p.canvas == nil || rect.Empty() {
 		return nil
 	}
@@ -235,7 +240,7 @@ func (p *PaintCtx) DrawProgress(rect Rect, value int32, style ProgressStyle) err
 		}
 	}
 
-	return p.DrawText(
+	return p.DrawWidgetText(widget,
 		fmt.Sprintf("%d%%", value),
 		bubbleRect,
 		TextStyle{

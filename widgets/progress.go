@@ -80,7 +80,7 @@ func (p *ProgressBar) Paint(ctx *PaintCtx) {
 		return
 	}
 	style := p.resolveStyle(ctx)
-	_ = ctx.DrawProgress(p.Bounds(), p.value, style)
+	_ = ctx.DrawWidgetProgress(p, p.Bounds(), p.value, style)
 }
 
 // resolveStyle 解析进度条最终样式。

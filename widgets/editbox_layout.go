@@ -120,7 +120,9 @@ func (e *EditBox) textLineHeight(style EditStyle) int32 {
 	if scene := e.scene(); scene != nil && scene.app != nil {
 		size = scene.app.DP(size)
 	}
-	return max32(size+6, 18)
+	// 1.4× font height provides proportional leading.
+	// Floor of 9 DIP prevents collapse for tiny fonts while scaling with DPI.
+	return max32(size*7/5, e.dp(9))
 }
 
 func (e *EditBox) measureRune(style EditStyle, ch rune) int32 {

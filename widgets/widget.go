@@ -346,6 +346,12 @@ type boundsMovable interface {
 	moveBoundsBy(dx, dy int32)
 }
 
+// nativeAfterMove 由包含原生子控件的控件实现，在 translateWidgetTree
+// 移动控件树后同步原生窗口位置。
+type nativeAfterMove interface {
+	syncNativeAfterTreeMove()
+}
+
 func (b *widgetBase) moveBoundsBy(dx, dy int32) {
 	if dx == 0 && dy == 0 {
 		return
@@ -360,6 +366,9 @@ func translateWidgetTree(widget Widget, dx, dy int32) {
 	}
 	if movable, ok := widget.(boundsMovable); ok {
 		movable.moveBoundsBy(dx, dy)
+	}
+	if syncer, ok := widget.(nativeAfterMove); ok {
+		syncer.syncNativeAfterTreeMove()
 	}
 	if container, ok := widget.(Container); ok {
 		for _, child := range container.Children() {

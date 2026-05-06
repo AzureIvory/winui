@@ -333,7 +333,7 @@ func (c *ComboBox) Paint(ctx *PaintCtx) {
 		W: arrowW,
 		H: bounds.H,
 	}
-	_ = ctx.DrawText(text, textRect, TextStyle{
+	_ = ctx.DrawWidgetText(c, text, textRect, TextStyle{
 		Font:   style.Font,
 		Color:  textColor,
 		Format: core.DTVCenter | core.DTSingleLine | core.DTEndEllipsis,
@@ -342,7 +342,7 @@ func (c *ComboBox) Paint(ctx *PaintCtx) {
 	if c.open {
 		arrow = "^"
 	}
-	_ = ctx.DrawText(arrow, arrowRect, TextStyle{
+	_ = ctx.DrawWidgetText(c, arrow, arrowRect, TextStyle{
 		Font: FontSpec{
 			Face:   style.Font.Face,
 			SizeDP: style.Font.SizeDP,
@@ -403,7 +403,7 @@ func (c *ComboBox) PaintOverlay(ctx *PaintCtx) {
 			W: max32(0, rowRect.W-ctx.DP(20)),
 			H: rowRect.H,
 		}
-		_ = ctx.DrawText(item.displayText(), textRect, TextStyle{
+		_ = ctx.DrawWidgetText(c, item.displayText(), textRect, TextStyle{
 			Font:   style.Font,
 			Color:  textColor,
 			Format: core.DTVCenter | core.DTSingleLine | core.DTEndEllipsis,
@@ -451,19 +451,19 @@ func (c *ComboBox) paintRichField(ctx *PaintCtx, style ComboStyle, bounds Rect) 
 	}
 
 	if subtitleText == "" {
-		_ = ctx.DrawText(titleText, textRect, TextStyle{
+		_ = ctx.DrawWidgetText(c, titleText, textRect, TextStyle{
 			Font:   comboRichTitleFont(style),
 			Color:  titleColor,
 			Format: core.DTVCenter | core.DTSingleLine | core.DTEndEllipsis,
 		})
 	} else {
 		titleRect, subtitleRect := comboRichTextLineRects(ctx, style, textRect)
-		_ = ctx.DrawText(titleText, titleRect, TextStyle{
+		_ = ctx.DrawWidgetText(c, titleText, titleRect, TextStyle{
 			Font:   comboRichTitleFont(style),
 			Color:  titleColor,
 			Format: core.DTVCenter | core.DTSingleLine | core.DTEndEllipsis,
 		})
-		_ = ctx.DrawText(subtitleText, subtitleRect, TextStyle{
+		_ = ctx.DrawWidgetText(c, subtitleText, subtitleRect, TextStyle{
 			Font:   comboRichSubtitleFont(style),
 			Color:  style.SubtitleColor,
 			Format: core.DTVCenter | core.DTSingleLine | core.DTEndEllipsis,
@@ -474,7 +474,7 @@ func (c *ComboBox) paintRichField(ctx *PaintCtx, style ComboStyle, bounds Rect) 
 	if c.open {
 		arrow = "^"
 	}
-	_ = ctx.DrawText(arrow, arrowRect, TextStyle{
+	_ = ctx.DrawWidgetText(c, arrow, arrowRect, TextStyle{
 		Font: FontSpec{
 			Face:   style.Font.Face,
 			SizeDP: style.Font.SizeDP,
@@ -517,19 +517,19 @@ func (c *ComboBox) paintRichPopup(ctx *PaintCtx, style ComboStyle, layout comboP
 		}
 
 		if item.Subtitle == "" {
-			_ = ctx.DrawText(item.displayText(), textRect, TextStyle{
+			_ = ctx.DrawWidgetText(c, item.displayText(), textRect, TextStyle{
 				Font:   comboRichTitleFont(style),
 				Color:  titleColor,
 				Format: core.DTVCenter | core.DTSingleLine | core.DTEndEllipsis,
 			})
 		} else {
 			titleRect, subtitleRect := comboRichTextLineRects(ctx, style, textRect)
-			_ = ctx.DrawText(item.displayText(), titleRect, TextStyle{
+			_ = ctx.DrawWidgetText(c, item.displayText(), titleRect, TextStyle{
 				Font:   comboRichTitleFont(style),
 				Color:  titleColor,
 				Format: core.DTVCenter | core.DTSingleLine | core.DTEndEllipsis,
 			})
-			_ = ctx.DrawText(item.Subtitle, subtitleRect, TextStyle{
+			_ = ctx.DrawWidgetText(c, item.Subtitle, subtitleRect, TextStyle{
 				Font:   comboRichSubtitleFont(style),
 				Color:  subtitleColor,
 				Format: core.DTVCenter | core.DTSingleLine | core.DTEndEllipsis,

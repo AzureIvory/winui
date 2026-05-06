@@ -37,6 +37,7 @@ var (
 	procGetStockObject    = nativeGdi32.NewProc("GetStockObject")
 	procLoadCursorW       = nativeUser32.NewProc("LoadCursorW")
 	procSetCursor         = nativeUser32.NewProc("SetCursor")
+	procGetParent         = nativeUser32.NewProc("GetParent")
 )
 
 var (
@@ -185,6 +186,8 @@ const (
 const (
 	// nativeWindowKeyDown 表示键盘按下消息。
 	nativeWindowKeyDown uint32 = 0x0100
+	// nativeWindowMouseWheel 表示鼠标滚轮消息。
+	nativeWindowMouseWheel uint32 = 0x020A
 )
 
 const (
@@ -594,6 +597,9 @@ func nativeEditProc(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr {
 	}
 	edit, _ := value.(*EditBox)
 	if edit == nil {
+		return 0
+	}
+	if msg == nativeWindowMouseWheel && !edit.multiline {
 		return 0
 	}
 	if msg == nativeWindowKeyDown && uint32(wParam) == core.KeyReturn {

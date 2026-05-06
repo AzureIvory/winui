@@ -302,7 +302,7 @@ func (l *ListBox) Paint(ctx *PaintCtx) {
 			W: max32(0, rowRect.W-ctx.DP(20)),
 			H: rowRect.H,
 		}
-		_ = ctx.DrawText(item.displayText(), textRect, TextStyle{
+		_ = ctx.DrawWidgetText(l, item.displayText(), textRect, TextStyle{
 			Font:   style.Font,
 			Color:  textColor,
 			Format: core.DTVCenter | core.DTSingleLine | core.DTEndEllipsis,

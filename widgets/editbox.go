@@ -448,9 +448,6 @@ func (e *EditBox) Paint(ctx *PaintCtx) {
 		return
 	}
 
-	restore := ctx.PushClipRect(textRect)
-	defer restore()
-
 	displayText := e.visualText()
 	if displayText == "" {
 		displayText = e.Placeholder
@@ -458,16 +455,23 @@ func (e *EditBox) Paint(ctx *PaintCtx) {
 	}
 
 	if !e.multiline {
+		// Single-line: text is drawn in full-bounds height with vertical
+		// centering via DT_VCENTER. Clip must match the draw rect so the
+		// top and bottom of the text are not clipped by the padding inset.
 		textRect.Y = bounds.Y
 		textRect.H = bounds.H
+		restore := ctx.PushClipRect(textRect)
+		defer restore()
 		drawRect := textRect
 		drawRect.X -= e.scrollX
-		_ = ctx.DrawText(displayText, drawRect, TextStyle{
+		_ = ctx.DrawWidgetText(e, displayText, drawRect, TextStyle{
 			Font:   style.Font,
 			Color:  textColor,
 			Format: alignTextFormat(style.TextAlign, core.DTVCenter|core.DTSingleLine|core.DTEndEllipsis),
 		})
 	} else {
+		restore := ctx.PushClipRect(textRect)
+		defer restore()
 		layout := e.textLayout(style, textRect.W)
 		lineHeight := layout.lineHeight
 		baseY := textRect.Y - e.scrollY
@@ -477,14 +481,14 @@ func (e *EditBox) Paint(ctx *PaintCtx) {
 			if lineRect.Y+lineRect.H < textRect.Y || lineRect.Y > textRect.Y+textRect.H {
 				continue
 			}
-			_ = ctx.DrawText(line.text, lineRect, TextStyle{
+			_ = ctx.DrawWidgetText(e, line.text, lineRect, TextStyle{
 				Font:   style.Font,
 				Color:  textColor,
 				Format: alignTextFormat(style.TextAlign, 0),
 			})
 		}
 		if displayText == e.Placeholder {
-			_ = ctx.DrawText(displayText, Rect{X: textRect.X, Y: textRect.Y, W: textRect.W, H: lineHeight}, TextStyle{
+			_ = ctx.DrawWidgetText(e, displayText, Rect{X: textRect.X, Y: textRect.Y, W: textRect.W, H: lineHeight}, TextStyle{
 				Font:   style.Font,
 				Color:  textColor,
 				Format: alignTextFormat(style.TextAlign, 0),
@@ -709,28 +713,76 @@ func (e *EditBox) syncNativeInsets() {
 	}
 
 	b := e.Bounds()
+	nb := e.nativeHostBounds()
+	// 格式矩形坐标相对于内缩后的原生窗口，需要减去四周内缩量。
+	hInset := nb.X - b.X
+	vInset := nb.Y - b.Y
+	w := nb.W
+	h := nb.H
+	nLeft := max32(0, padding-hInset)
+	nRight := max32(nLeft+1, b.W-padding-hInset)
+	if nRight > w {
+		nRight = w
+	}
+	nTopPad := max32(0, padding-vInset)
+	nBottomPad := b.H - padding - vInset
+	if nBottomPad > h {
+		nBottomPad = h
+	}
+	if nBottomPad < nTopPad {
+		nBottomPad = nTopPad
+	}
+
 	if e.multiline {
 		setNativeEditRect(e.native.handle, nativeRect{
-			Left:   padding,
-			Top:    padding,
-			Right:  max32(padding, b.W-padding),
-			Bottom: max32(padding, b.H-padding),
+			Left:   nLeft,
+			Top:    nTopPad,
+			Right:  nRight,
+			Bottom: nBottomPad,
 		})
 		return
 	}
 
 	lineHeight := e.textLineHeight(style)
 	top := max32(0, (b.H-lineHeight)/2)
+	nTop := max32(0, top-vInset)
+	nBottom := b.H - top - vInset
+	if nBottom > h {
+		nBottom = h
+	}
+	if nBottom < nTop {
+		nBottom = nTop
+	}
 	setNativeEditRect(e.native.handle, nativeRect{
-		Left:   padding,
-		Top:    top,
-		Right:  max32(padding, b.W-padding),
-		Bottom: max32(top, b.H-top),
+		Left:   nLeft,
+		Top:    nTop,
+		Right:  nRight,
+		Bottom: nBottom,
 	})
 }
 
+// syncNativeAfterTreeMove satisfies nativeAfterMove so that ScrollView
+// translateWidgetTree reparents native child HWNDs alongside bounds.
+func (e *EditBox) syncNativeAfterTreeMove() {
+	e.syncNativeBounds()
+}
+
 func (e *EditBox) nativeHostBounds() Rect {
-	return e.Bounds()
+	b := e.Bounds()
+	style := e.resolveStyle(&PaintCtx{scene: e.scene()})
+	radius := style.CornerRadius
+	if scene := e.scene(); scene != nil && scene.app != nil {
+		radius = scene.app.DP(radius)
+	}
+	// 四周内缩，避免原生矩形窗口遮挡自绘外壳的圆角。
+	hInset := max32(radius*2/3, e.dp(4))
+	vInset := max32(radius/3, e.dp(2))
+	return Rect{
+		X: b.X + hInset,
+		Y: b.Y + vInset,
+		W: max32(0, b.W-hInset*2),
+		H: max32(0, b.H-vInset*2),
+	}
 }
 
 func (e *EditBox) syncNativeFont() {
@@ -742,7 +794,7 @@ func (e *EditBox) syncNativeFont() {
 		return
 	}
 	style := e.resolveStyle(&PaintCtx{scene: scene})
-	font, err := scene.font(style.Font)
+	font, err := scene.fontForWidget(e, style.Font)
 	if err != nil || font == nil {
 		return
 	}
