@@ -1279,7 +1279,13 @@ func (c *ComboBox) invalidateStateChange(oldRect Rect) {
 }
 
 func (c *ComboBox) dirtyRect() Rect {
-	return unionRect(c.Bounds(), c.popupRect())
+	rect := unionRect(c.Bounds(), c.popupRect())
+	if !c.open || rect.Empty() {
+		return rect
+	}
+	// The popup overlay border is antialiased and can touch pixels just outside
+	// popupRect, so keep one extra device pixel dirty while the popup is open.
+	return insetRect(rect, -1, -1)
 }
 
 func mergeComboStyle(base, override ComboStyle) ComboStyle {
