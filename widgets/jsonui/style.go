@@ -277,7 +277,21 @@ func parseComboStyle(raw json.RawMessage) (widgets.ComboStyle, error) {
 		return style, err
 	}
 	style.Font = font
+	if raw := styles["layout"]; len(raw) > 0 {
+		value, err := decodeStringLiteral(raw)
+		if err != nil {
+			return style, err
+		}
+		layout, ok, err := parseComboLayoutValue(value)
+		if err != nil {
+			return style, err
+		}
+		if ok {
+			style.Layout = layout
+		}
+	}
 	assignColor(styles, "fg", &style.TextColor)
+	assignColor(styles, "subtitleFg", &style.SubtitleColor)
 	assignColor(styles, "ph", &style.PlaceholderColor)
 	assignColor(styles, "bg", &style.Background)
 	assignColor(styles, "border", &style.BorderColor)
@@ -285,12 +299,15 @@ func parseComboStyle(raw json.RawMessage) (widgets.ComboStyle, error) {
 	assignColor(styles, "focusBorder", &style.FocusBorder)
 	assignColor(styles, "arrow", &style.ArrowColor)
 	assignColor(styles, "popupBg", &style.PopupBackground)
+	assignColor(styles, "iconBg", &style.IconBackground)
 	assignColor(styles, "itemHoverBg", &style.ItemHoverColor)
 	assignColor(styles, "itemSelectedBg", &style.ItemSelectedColor)
 	assignColor(styles, "itemFg", &style.ItemTextColor)
+	assignColor(styles, "mark", &style.SelectedMarkColor)
 	assignInt(styles, "radius", &style.CornerRadius)
 	assignInt(styles, "pad", &style.PaddingDP)
 	assignInt(styles, "itemH", &style.ItemHeightDP)
+	assignInt(styles, "imageSize", &style.ImageSizeDP)
 	assignInt(styles, "maxItems", &style.MaxVisibleItems)
 	return style, nil
 }

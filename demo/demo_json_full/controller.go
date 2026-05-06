@@ -312,6 +312,9 @@ func (c *demoController) bindCallbacks() {
 	c.mustCombo("citySelect").SetOnChange(func(index int, item widgets.ListItem) {
 		c.setStatus(c.trf("status.comboSelected", "%s selected: %d / %s", c.tr("i18n.data.comboLabel", "City combo box"), index, item.Value))
 	})
+	c.mustCombo("localeSelect").SetOnChange(func(index int, item widgets.ListItem) {
+		c.setStatus(c.trf("status.comboSelected", "%s selected: %d / %s", c.tr("i18n.data.localeComboLabel", "Locale combo box"), index, item.Value))
+	})
 	c.mustListBox("cityList").SetOnChange(func(index int, item widgets.ListItem) {
 		c.setStatus(c.trf("status.listChanged", "%s changed: %d / %s", c.tr("i18n.data.listLabel", "Rollout list"), index, item.Value))
 	})
@@ -723,7 +726,8 @@ func (c *demoController) applyPalette(p demoPalette) {
 	c.mustRadio("radioCheckA").SetStyle(p.radioCheck)
 	c.mustRadio("radioCheckB").SetStyle(p.radioCheck)
 
-	c.mustCombo("citySelect").SetStyle(p.combo)
+	c.applyComboPaletteStyle("localeSelect", p.combo)
+	c.applyComboPaletteStyle("citySelect", p.combo)
 	c.mustListBox("cityList").SetStyle(p.list)
 	c.mustProgress("uploadProgress").SetStyle(p.progressMain)
 	c.mustProgress("syncProgress").SetStyle(p.progressAlt)
@@ -905,6 +909,86 @@ func mergeButtonPaletteStyle(base, declared widgets.ButtonStyle) widgets.ButtonS
 	return base
 }
 
+// applyComboPaletteStyle 应用调色板组合框样式，同时保留 JSON 声明的布局语义。
+func (c *demoController) applyComboPaletteStyle(id string, base widgets.ComboStyle) {
+	combo := c.mustCombo(id)
+	combo.SetStyle(mergeComboPaletteStyle(base, combo.Style))
+}
+
+// mergeComboPaletteStyle 将调色板配色与声明式组合框样式合并。
+func mergeComboPaletteStyle(base, declared widgets.ComboStyle) widgets.ComboStyle {
+	if declared.Font.Face != "" {
+		base.Font.Face = declared.Font.Face
+	}
+	if declared.Font.SizeDP != 0 {
+		base.Font.SizeDP = declared.Font.SizeDP
+	}
+	if declared.Font.Weight != 0 {
+		base.Font.Weight = declared.Font.Weight
+	}
+	if declared.Layout != widgets.ComboLayoutAuto {
+		base.Layout = declared.Layout
+	}
+	if declared.TextColor != 0 {
+		base.TextColor = declared.TextColor
+	}
+	if declared.SubtitleColor != 0 {
+		base.SubtitleColor = declared.SubtitleColor
+	}
+	if declared.PlaceholderColor != 0 {
+		base.PlaceholderColor = declared.PlaceholderColor
+	}
+	if declared.Background != 0 {
+		base.Background = declared.Background
+	}
+	if declared.BorderColor != 0 {
+		base.BorderColor = declared.BorderColor
+	}
+	if declared.HoverBorder != 0 {
+		base.HoverBorder = declared.HoverBorder
+	}
+	if declared.FocusBorder != 0 {
+		base.FocusBorder = declared.FocusBorder
+	}
+	if declared.ArrowColor != 0 {
+		base.ArrowColor = declared.ArrowColor
+	}
+	if declared.PopupBackground != 0 {
+		base.PopupBackground = declared.PopupBackground
+	}
+	if declared.IconBackground != 0 {
+		base.IconBackground = declared.IconBackground
+	}
+	if declared.ItemHoverColor != 0 {
+		base.ItemHoverColor = declared.ItemHoverColor
+	}
+	if declared.ItemSelectedColor != 0 {
+		base.ItemSelectedColor = declared.ItemSelectedColor
+	}
+	if declared.ItemTextColor != 0 {
+		base.ItemTextColor = declared.ItemTextColor
+	}
+	if declared.SelectedMarkColor != 0 {
+		base.SelectedMarkColor = declared.SelectedMarkColor
+	}
+	if declared.ItemHeightDP != 0 {
+		base.ItemHeightDP = declared.ItemHeightDP
+	}
+	if declared.PaddingDP != 0 {
+		base.PaddingDP = declared.PaddingDP
+	}
+	if declared.CornerRadius != 0 {
+		base.CornerRadius = declared.CornerRadius
+	}
+	if declared.ImageSizeDP != 0 {
+		base.ImageSizeDP = declared.ImageSizeDP
+	}
+	if declared.MaxVisibleItems != 0 {
+		base.MaxVisibleItems = declared.MaxVisibleItems
+	}
+	return base
+}
+
 func makeEditStyle(bg, border, hoverBorder, focusBorder, fg, ph, caret core.Color) widgets.EditStyle {
 	return widgets.EditStyle{
 		Font: widgets.FontSpec{
@@ -961,7 +1045,9 @@ func makeComboStyle(bg, border, hoverBorder, focusBorder, accent core.Color) wid
 			Face:   "Microsoft YaHei UI",
 			SizeDP: 15,
 		},
+		Layout:            widgets.ComboLayoutDefault,
 		TextColor:         core.RGB(31, 41, 55),
+		SubtitleColor:     core.RGB(100, 116, 139),
 		PlaceholderColor:  core.RGB(148, 163, 184),
 		Background:        bg,
 		BorderColor:       border,
@@ -969,12 +1055,15 @@ func makeComboStyle(bg, border, hoverBorder, focusBorder, accent core.Color) wid
 		FocusBorder:       focusBorder,
 		ArrowColor:        accent,
 		PopupBackground:   bg,
+		IconBackground:    core.RGB(241, 245, 249),
 		ItemHoverColor:    core.RGB(239, 246, 255),
 		ItemSelectedColor: accent,
 		ItemTextColor:     core.RGB(255, 255, 255),
+		SelectedMarkColor: core.RGB(15, 23, 42),
 		CornerRadius:      12,
 		PaddingDP:         10,
 		ItemHeightDP:      34,
+		ImageSizeDP:       18,
 		MaxVisibleItems:   6,
 	}
 }

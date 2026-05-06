@@ -35,6 +35,8 @@ type nodeSpec struct {
 	Type             string          `json:"type"`
 	ID               string          `json:"id"`
 	Input            string          `json:"input"`
+	Title            json.RawMessage `json:"title"`
+	Tag              json.RawMessage `json:"tag"`
 	Text             json.RawMessage `json:"text"`
 	Value            json.RawMessage `json:"value"`
 	Placeholder      json.RawMessage `json:"placeholder"`
@@ -48,6 +50,7 @@ type nodeSpec struct {
 	HorizontalScroll json.RawMessage `json:"horizontalScroll"`
 	Checked          json.RawMessage `json:"checked"`
 	Items            json.RawMessage `json:"items"`
+	Buttons          json.RawMessage `json:"buttons"`
 	Sel              json.RawMessage `json:"sel"`
 	Layout           json.RawMessage `json:"layout"`
 	Scale            json.RawMessage `json:"scale"`
@@ -653,16 +656,31 @@ func (b *builder) buildSelect(window *Window, spec nodeSpec) (widgets.Widget, er
 		return nil, err
 	}
 	combo.SetStyle(style)
+	var ownedImages []*core.Image
+	setItems := func(items []widgets.ListItem) error {
+		resolved, loaded, err := b.materializeComboItems(items)
+		if err != nil {
+			return err
+		}
+		closeComboItemImages(ownedImages)
+		ownedImages = loaded
+		combo.SetItems(resolved)
+		return nil
+	}
 	items := resolveItemsSource(itemsSource, b.opts.Data)
-	combo.SetItems(items)
+	if err := setItems(items); err != nil {
+		return nil, err
+	}
 	combo.SetPlaceholder(resolveStringSource(placeholderSource, b.opts.Data))
 	combo.SetSelected(resolveSelectionSource(selSource, items, selectedLiteral, b.opts.Data))
-	widgets.SetPreferredSize(combo, core.Size{Width: 220, Height: 36})
+	widgets.SetPreferredSize(combo, core.Size{Width: 220, Height: comboPreferredHeight(style, b.opts.DefaultMode)})
 	b.applyCommonState(window, combo, spec)
 	if itemsSource.Binding != "" {
 		b.addBinding(window, []string{itemsSource.Binding}, func(ctx *bindingContext) {
 			items := resolveItemsSource(itemsSource, ctx.data)
-			combo.SetItems(items)
+			if err := setItems(items); err != nil {
+				return
+			}
 			combo.SetSelected(resolveSelectionSource(selSource, items, selectedLiteral, ctx.data))
 		})
 	}
@@ -1154,6 +1172,39 @@ func resolveItemsSource(source itemsSource, data DataSource) []widgets.ListItem 
 		}
 	}
 	return cloneListItems(source.Default)
+}
+
+func comboPreferredHeight(style widgets.ComboStyle, mode widgets.ControlMode) int32 {
+	if style.Layout == widgets.ComboLayoutRich && mode == widgets.ModeCustom {
+		return 60
+	}
+	return 36
+}
+
+func closeComboItemImages(images []*core.Image) {
+	for _, image := range images {
+		if image != nil {
+			_ = image.Close()
+		}
+	}
+}
+
+func (b *builder) materializeComboItems(items []widgets.ListItem) ([]widgets.ListItem, []*core.Image, error) {
+	resolved := cloneListItems(items)
+	loaded := make([]*core.Image, 0, len(resolved))
+	for index := range resolved {
+		if resolved[index].Image != nil || strings.TrimSpace(resolved[index].ImagePath) == "" {
+			continue
+		}
+		image, err := b.loadImage(resolved[index].ImagePath)
+		if err != nil {
+			closeComboItemImages(loaded)
+			return nil, nil, err
+		}
+		resolved[index].Image = image
+		loaded = append(loaded, image)
+	}
+	return resolved, loaded, nil
 }
 
 func resolveSelectionSource(source selectionSource, items []widgets.ListItem, selectedLiteral any, data DataSource) int {

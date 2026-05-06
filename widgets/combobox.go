@@ -307,6 +307,11 @@ func (c *ComboBox) Paint(ctx *PaintCtx) {
 	_ = ctx.FillRoundRect(bounds, ctx.DP(style.CornerRadius), style.Background)
 	_ = ctx.StrokeRoundRect(bounds, ctx.DP(style.CornerRadius), borderColor, 1)
 
+	if c.usesRichLayout(style) {
+		c.paintRichField(ctx, style, bounds)
+		return
+	}
+
 	text := c.Placeholder
 	textColor := style.PlaceholderColor
 	if item, ok := c.SelectedItem(); ok {
@@ -364,6 +369,12 @@ func (c *ComboBox) PaintOverlay(ctx *PaintCtx) {
 	radius := ctx.DP(style.CornerRadius)
 	_ = ctx.FillRoundRect(popup, radius, style.PopupBackground)
 	_ = ctx.StrokeRoundRect(popup, radius, style.FocusBorder, 1)
+
+	if c.usesRichLayout(style) {
+		c.paintRichPopup(ctx, style, layout)
+		return
+	}
+
 	itemRadius := radius - ctx.DP(2)
 	if itemRadius < 0 {
 		itemRadius = 0
@@ -397,6 +408,138 @@ func (c *ComboBox) PaintOverlay(ctx *PaintCtx) {
 			Color:  textColor,
 			Format: core.DTVCenter | core.DTSingleLine | core.DTEndEllipsis,
 		})
+	}
+}
+
+func (c *ComboBox) usesRichLayout(style ComboStyle) bool {
+	return !isNativeMode(c.mode) && style.Layout == ComboLayoutRich
+}
+
+// paintRichField 负责绘制左图标和双行文本的组合框主区域。
+func (c *ComboBox) paintRichField(ctx *PaintCtx, style ComboStyle, bounds Rect) {
+	padding := ctx.DP(style.PaddingDP)
+	arrowW := ctx.DP(28)
+	contentRect := Rect{
+		X: bounds.X + padding,
+		Y: bounds.Y + padding/2,
+		W: max32(0, bounds.W-padding*2-arrowW),
+		H: max32(0, bounds.H-padding),
+	}
+	arrowRect := Rect{
+		X: bounds.X + bounds.W - arrowW - padding/2,
+		Y: bounds.Y,
+		W: arrowW,
+		H: bounds.H,
+	}
+
+	slotRect, textRect := comboRichContentRects(ctx, contentRect, 0)
+	item, hasItem := c.SelectedItem()
+	if slotRect.W > 0 && slotRect.H > 0 {
+		_ = ctx.FillRoundRect(slotRect, max32(1, slotRect.W/3), style.IconBackground)
+		if hasItem {
+			_ = drawComboItemImage(ctx, item, comboRichImageRect(ctx, style, slotRect))
+		}
+	}
+
+	titleColor := style.PlaceholderColor
+	titleText := c.Placeholder
+	subtitleText := ""
+	if hasItem {
+		titleColor = style.TextColor
+		titleText = item.displayText()
+		subtitleText = item.Subtitle
+	}
+
+	if subtitleText == "" {
+		_ = ctx.DrawText(titleText, textRect, TextStyle{
+			Font:   comboRichTitleFont(style),
+			Color:  titleColor,
+			Format: core.DTVCenter | core.DTSingleLine | core.DTEndEllipsis,
+		})
+	} else {
+		titleRect, subtitleRect := comboRichTextLineRects(ctx, style, textRect)
+		_ = ctx.DrawText(titleText, titleRect, TextStyle{
+			Font:   comboRichTitleFont(style),
+			Color:  titleColor,
+			Format: core.DTVCenter | core.DTSingleLine | core.DTEndEllipsis,
+		})
+		_ = ctx.DrawText(subtitleText, subtitleRect, TextStyle{
+			Font:   comboRichSubtitleFont(style),
+			Color:  style.SubtitleColor,
+			Format: core.DTVCenter | core.DTSingleLine | core.DTEndEllipsis,
+		})
+	}
+
+	arrow := "v"
+	if c.open {
+		arrow = "^"
+	}
+	_ = ctx.DrawText(arrow, arrowRect, TextStyle{
+		Font: FontSpec{
+			Face:   style.Font.Face,
+			SizeDP: style.Font.SizeDP,
+			Weight: 700,
+		},
+		Color:  style.ArrowColor,
+		Format: core.DTCenter | core.DTVCenter | core.DTSingleLine,
+	})
+}
+
+// paintRichPopup 负责绘制富样式下拉层，包含右侧选中勾标记。
+func (c *ComboBox) paintRichPopup(ctx *PaintCtx, style ComboStyle, layout comboPopupLayout) {
+	itemRadius := max32(0, ctx.DP(style.CornerRadius)-ctx.DP(2))
+	for index := layout.start; index < layout.end; index++ {
+		item := c.items[index]
+		rowRect := c.popupRowRectForLayout(index, layout)
+		if rowRect.Empty() {
+			continue
+		}
+
+		titleColor := style.TextColor
+		subtitleColor := style.SubtitleColor
+		if item.Disabled {
+			titleColor = style.PlaceholderColor
+			subtitleColor = style.PlaceholderColor
+		}
+		if index == c.selected {
+			_ = ctx.FillRoundRect(rowRect, itemRadius, style.ItemSelectedColor)
+			if style.ItemTextColor != 0 {
+				titleColor = style.ItemTextColor
+			}
+		} else if index == c.hover {
+			_ = ctx.FillRoundRect(rowRect, itemRadius, style.ItemHoverColor)
+		}
+
+		slotRect, textRect := comboRichContentRects(ctx, insetRect(rowRect, ctx.DP(10), 0), ctx.DP(34))
+		if slotRect.W > 0 && slotRect.H > 0 {
+			_ = ctx.FillRoundRect(slotRect, max32(1, slotRect.W/3), style.IconBackground)
+			_ = drawComboItemImage(ctx, item, comboRichImageRect(ctx, style, slotRect))
+		}
+
+		if item.Subtitle == "" {
+			_ = ctx.DrawText(item.displayText(), textRect, TextStyle{
+				Font:   comboRichTitleFont(style),
+				Color:  titleColor,
+				Format: core.DTVCenter | core.DTSingleLine | core.DTEndEllipsis,
+			})
+		} else {
+			titleRect, subtitleRect := comboRichTextLineRects(ctx, style, textRect)
+			_ = ctx.DrawText(item.displayText(), titleRect, TextStyle{
+				Font:   comboRichTitleFont(style),
+				Color:  titleColor,
+				Format: core.DTVCenter | core.DTSingleLine | core.DTEndEllipsis,
+			})
+			_ = ctx.DrawText(item.Subtitle, subtitleRect, TextStyle{
+				Font:   comboRichSubtitleFont(style),
+				Color:  subtitleColor,
+				Format: core.DTVCenter | core.DTSingleLine | core.DTEndEllipsis,
+			})
+		}
+		if index == c.selected {
+			markRect := comboSelectedMarkRect(ctx, rowRect)
+			_ = ctx.FillRoundRect(markRect, max32(1, markRect.W/2), style.SelectedMarkColor)
+			drawComboSelectedMark(ctx, markRect, core.RGB(255, 255, 255))
+		}
 	}
 }
 
@@ -777,7 +920,7 @@ func (c *ComboBox) popupLayout() comboPopupLayout {
 	}
 
 	style := c.popupStyle()
-	layout.itemHeight = max32(1, c.dp(style.ItemHeightDP))
+	layout.itemHeight = comboPopupItemHeight(c, style)
 	layout.padding = max32(0, c.dp(style.PaddingDP))
 
 	maxVisible := int(style.MaxVisibleItems)
@@ -917,6 +1060,204 @@ func (c *ComboBox) popupVisibleCountForSpace(space, padding, itemHeight int32) i
 	return int(contentHeight / itemHeight)
 }
 
+func comboPopupItemHeight(widget *ComboBox, style ComboStyle) int32 {
+	height := max32(1, widget.dp(style.ItemHeightDP))
+	if style.Layout == ComboLayoutRich {
+		height = max32(height, widget.dp(60))
+	}
+	return height
+}
+
+func comboRichTitleFont(style ComboStyle) FontSpec {
+	font := style.Font
+	if font.Weight < 700 {
+		font.Weight = 700
+	}
+	return font
+}
+
+func comboRichSubtitleFont(style ComboStyle) FontSpec {
+	font := style.Font
+	if font.SizeDP > 12 {
+		font.SizeDP--
+	}
+	if font.Weight > 500 {
+		font.Weight = 500
+	}
+	return font
+}
+
+func comboRichContentRects(ctx *PaintCtx, bounds Rect, markWidth int32) (Rect, Rect) {
+	if ctx == nil || bounds.Empty() {
+		return Rect{}, Rect{}
+	}
+	slotSize := clampValue(
+		bounds.H-ctx.DP(10),
+		ctx.DP(30),
+		ctx.DP(36),
+	)
+	slotRect := Rect{
+		X: bounds.X,
+		Y: bounds.Y + (bounds.H-slotSize)/2,
+		W: slotSize,
+		H: slotSize,
+	}
+	textRect := Rect{
+		X: slotRect.X + slotRect.W + ctx.DP(12),
+		Y: bounds.Y,
+		W: max32(0, bounds.W-slotRect.W-ctx.DP(12)-markWidth),
+		H: bounds.H,
+	}
+	return slotRect, textRect
+}
+
+func comboRichTextLineRects(ctx *PaintCtx, style ComboStyle, bounds Rect) (Rect, Rect) {
+	if ctx == nil || bounds.Empty() {
+		return Rect{}, Rect{}
+	}
+	titleH := comboRichLineHeight(ctx, comboRichTitleFont(style), ctx.DP(20))
+	subtitleH := comboRichLineHeight(ctx, comboRichSubtitleFont(style), ctx.DP(16))
+	gap := max32(0, ctx.DP(1))
+	if total := titleH + subtitleH + gap; total > bounds.H {
+		available := max32(2, bounds.H-gap)
+		titleH = max32(1, available*11/20)
+		subtitleH = max32(1, available-titleH)
+	}
+	totalH := titleH + gap + subtitleH
+	top := bounds.Y + (bounds.H-totalH)/2
+	if top < bounds.Y {
+		top = bounds.Y
+	}
+	return Rect{
+			X: bounds.X,
+			Y: top,
+			W: bounds.W,
+			H: titleH,
+		}, Rect{
+			X: bounds.X,
+			Y: top + titleH + gap,
+			W: bounds.W,
+			H: subtitleH,
+		}
+}
+
+func comboRichLineHeight(ctx *PaintCtx, spec FontSpec, fallback int32) int32 {
+	if ctx == nil {
+		return fallback
+	}
+	if spec.SizeDP <= 0 {
+		return fallback
+	}
+	return max32(fallback, ctx.DP(spec.SizeDP+6))
+}
+
+func comboRichImageRect(ctx *PaintCtx, style ComboStyle, slot Rect) Rect {
+	if ctx == nil || slot.Empty() {
+		return Rect{}
+	}
+	size := ctx.DP(style.ImageSizeDP)
+	if size <= 0 {
+		size = ctx.DP(18)
+	}
+	size = min32(size, min32(slot.W, slot.H))
+	return Rect{
+		X: slot.X + (slot.W-size)/2,
+		Y: slot.Y + (slot.H-size)/2,
+		W: size,
+		H: size,
+	}
+}
+
+func drawComboItemImage(ctx *PaintCtx, item ListItem, rect Rect) error {
+	if ctx == nil || rect.Empty() || item.Image == nil {
+		return nil
+	}
+	canvas := ctx.Canvas()
+	if canvas == nil {
+		return nil
+	}
+	src := item.Image.NaturalSize()
+	fitted := core.FitContain(src, rect.W, rect.H)
+	if fitted.Width <= 0 || fitted.Height <= 0 {
+		return nil
+	}
+	bitmap, err := item.Image.BitmapFor(
+		fitted.Width,
+		fitted.Height,
+		core.ChooseScaleQuality(src, fitted),
+	)
+	if err != nil {
+		return err
+	}
+	return canvas.DrawBitmapAlpha(bitmap, Rect{
+		X: rect.X + (rect.W-fitted.Width)/2,
+		Y: rect.Y + (rect.H-fitted.Height)/2,
+		W: fitted.Width,
+		H: fitted.Height,
+	}, 255)
+}
+
+func comboSelectedMarkRect(ctx *PaintCtx, rowRect Rect) Rect {
+	size := clampValue(rowRect.H-ctx.DP(30), ctx.DP(18), ctx.DP(22))
+	return Rect{
+		X: rowRect.X + rowRect.W - ctx.DP(14) - size,
+		Y: rowRect.Y + (rowRect.H-size)/2,
+		W: size,
+		H: size,
+	}
+}
+
+func drawComboSelectedMark(ctx *PaintCtx, rect Rect, color core.Color) {
+	if ctx == nil || rect.Empty() {
+		return
+	}
+	stroke := max32(ctx.DP(2), rect.W/7)
+	geometry := choiceCheckMarkGeometry{
+		Start: core.Point{
+			X: rect.X + rect.W*5/22,
+			Y: rect.Y + rect.H*11/22,
+		},
+		Mid: core.Point{
+			X: rect.X + rect.W*9/22,
+			Y: rect.Y + rect.H*15/22,
+		},
+		End: core.Point{
+			X: rect.X + rect.W*16/22,
+			Y: rect.Y + rect.H*7/22,
+		},
+		Stroke: stroke,
+	}
+	canvas := ctx.Canvas()
+	if canvas == nil {
+		return
+	}
+	for _, quad := range [][]core.Point{
+		choiceStrokeQuad(geometry.Start, geometry.Mid, geometry.Stroke),
+		choiceStrokeQuad(geometry.Mid, geometry.End, geometry.Stroke),
+	} {
+		if len(quad) == 0 {
+			continue
+		}
+		_ = canvas.FillPolygon(quad, color)
+	}
+	for _, point := range []core.Point{geometry.Start, geometry.Mid, geometry.End} {
+		_ = ctx.FillRoundRect(
+			choiceCheckCapRect(point, geometry.Stroke),
+			max32(1, geometry.Stroke/2),
+			color,
+		)
+	}
+}
+
+func insetRect(rect Rect, dx, dy int32) Rect {
+	return Rect{
+		X: rect.X + dx,
+		Y: rect.Y + dy,
+		W: max32(0, rect.W-dx*2),
+		H: max32(0, rect.H-dy*2),
+	}
+}
+
 func (c *ComboBox) updateState(fn func() bool) {
 	if fn == nil {
 		return
@@ -943,8 +1284,14 @@ func (c *ComboBox) dirtyRect() Rect {
 
 func mergeComboStyle(base, override ComboStyle) ComboStyle {
 	base.Font = mergeFontSpec(base.Font, override.Font)
+	if override.Layout != ComboLayoutAuto {
+		base.Layout = override.Layout
+	}
 	if override.TextColor != 0 {
 		base.TextColor = override.TextColor
+	}
+	if override.SubtitleColor != 0 {
+		base.SubtitleColor = override.SubtitleColor
 	}
 	if override.PlaceholderColor != 0 {
 		base.PlaceholderColor = override.PlaceholderColor
@@ -967,6 +1314,9 @@ func mergeComboStyle(base, override ComboStyle) ComboStyle {
 	if override.PopupBackground != 0 {
 		base.PopupBackground = override.PopupBackground
 	}
+	if override.IconBackground != 0 {
+		base.IconBackground = override.IconBackground
+	}
 	if override.ItemHoverColor != 0 {
 		base.ItemHoverColor = override.ItemHoverColor
 	}
@@ -976,6 +1326,9 @@ func mergeComboStyle(base, override ComboStyle) ComboStyle {
 	if override.ItemTextColor != 0 {
 		base.ItemTextColor = override.ItemTextColor
 	}
+	if override.SelectedMarkColor != 0 {
+		base.SelectedMarkColor = override.SelectedMarkColor
+	}
 	if override.ItemHeightDP != 0 {
 		base.ItemHeightDP = override.ItemHeightDP
 	}
@@ -984,6 +1337,9 @@ func mergeComboStyle(base, override ComboStyle) ComboStyle {
 	}
 	if override.CornerRadius != 0 {
 		base.CornerRadius = override.CornerRadius
+	}
+	if override.ImageSizeDP != 0 {
+		base.ImageSizeDP = override.ImageSizeDP
 	}
 	if override.MaxVisibleItems != 0 {
 		base.MaxVisibleItems = override.MaxVisibleItems

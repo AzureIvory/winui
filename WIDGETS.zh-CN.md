@@ -143,6 +143,8 @@
 - `frame`
 - `style`
 - `text`
+- `title`
+- `tag`
 - `value`
 - `readOnly`
 - `multiline`
@@ -151,6 +153,7 @@
 - `verticalScroll`
 - `horizontalScroll`
 - `items`
+- `buttons`
 - `sel`
 
 布尔字段需要保持控件语义默认值：`visible` / `enabled` 缺省时保持 `true`，`checked` 缺省时保持 `false`，`ScrollView` 缺省时保持 `verticalScroll=true` / `horizontalScroll=false`。
@@ -284,6 +287,20 @@ JSON 样式直接映射到现有控件样式结构，而不是再造一套渲染
 按钮图片槽位按 contain 方式缩放，不会强行拉伸成正方形。
 按钮轮廓可通过 `ButtonStyle.Shape` 指定，当前支持 `ButtonShapeDefault` 和 `ButtonShapePill`；`pill` 会自动使用按钮高度一半作为圆角，适合高曲率胶囊按钮。
 按钮边框可通过 `ButtonStyle.Border` 控制；将其显式设为 `0` 可绘制无边框按钮。
+
+### `ComboBox` 富样式扩展
+
+- 新增 `ComboStyle.Layout`，支持 `ComboLayoutDefault` 和 `ComboLayoutRich`。
+- `ComboLayoutRich` 只在 `ModeCustom` 下生效，绘制为「左图标 + 主标题 + 副标题 + 下拉选中勾标记」。
+- `ListItem` 新增可选字段：
+  - `Subtitle`：副标题文本
+  - `Image`：条目图标资源
+  - `ImagePath`：JSON 字面量声明的图标路径
+- `ComboStyle` 新增富样式配套字段：
+  - `SubtitleColor`
+  - `IconBackground`
+  - `SelectedMarkColor`
+  - `ImageSizeDP`
 
 ## 10. 文件对话框控件
 

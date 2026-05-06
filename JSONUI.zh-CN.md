@@ -379,6 +379,19 @@ JSON 样式不是另一套渲染系统，而是直接映射到现有控件样式
 }
 ```
 
+### `select` 富样式扩展
+
+- `style.layout` 支持 `default` 和 `rich`。
+- 当 `layout = "rich"` 且控件运行在 `ModeCustom` 时，组合框按「左图标 + 主标题 + 副标题」绘制。
+- `items` 数组新增可选字段：
+  - `subtitle`：副标题文本
+  - `image`：条目左侧图标路径（相对 `assetsDir`）
+- 富样式常用样式键：
+  - `subtitleFg`：副标题颜色
+  - `iconBg`：图标槽背景色
+  - `mark`：选中项右侧勾标记底色
+  - `imageSize`：图标绘制尺寸（DP）
+
 ## 9. 文件选择器
 
 `type: "file"` 映射到 `widgets.FilePicker`。

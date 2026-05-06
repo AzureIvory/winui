@@ -86,6 +86,7 @@
         "title": "\u8fdb\u5ea6\u548c\u9009\u62e9",
         "hint": "\u4e24\u4e2a\u8fdb\u5ea6\u6761\u3001\u4e00\u4e2a\u4e0b\u62c9\u6846\u548c\u4e00\u4e2a\u5217\u8868\u6846\u8986\u76d6\u4e86\u9009\u62e9\u548c\u6570\u636e\u5c55\u793a\u63a7\u4ef6\u3002",
         "comboLabel": "\u57ce\u5e02\u4e0b\u62c9\u6846",
+        "localeComboLabel": "\u5730\u533a\u4e0b\u62c9\u6846",
         "comboPlaceholder": "\u9009\u62e9\u4e00\u4e2a\u57ce\u5e02",
         "comboItems": [
           {"value": "bj", "text": "\u5317\u4eac"},
@@ -263,6 +264,7 @@
         "title": "Progress and selection",
         "hint": "Two progress bars, one combo box, and one list box cover the selection and data-display widgets.",
         "comboLabel": "City combo box",
+        "localeComboLabel": "Locale combo box",
         "comboPlaceholder": "Select a city",
         "comboItems": [
           {"value": "bj", "text": "Beijing"},

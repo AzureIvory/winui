@@ -326,6 +326,8 @@ func decodeInt32Literal(raw json.RawMessage) (int32, error) {
 type itemLiteral struct {
 	Value    string `json:"value"`
 	Text     string `json:"text"`
+	Subtitle string `json:"subtitle"`
+	Image    string `json:"image"`
 	Disabled bool   `json:"disabled"`
 	Selected bool   `json:"selected"`
 }
@@ -341,9 +343,11 @@ func decodeListItemsLiteral(raw json.RawMessage) ([]widgets.ListItem, error) {
 			item.Value = item.Text
 		}
 		out = append(out, widgets.ListItem{
-			Value:    item.Value,
-			Text:     item.Text,
-			Disabled: item.Disabled,
+			Value:     item.Value,
+			Text:      item.Text,
+			Subtitle:  item.Subtitle,
+			ImagePath: item.Image,
+			Disabled:  item.Disabled,
 		})
 	}
 	return out, nil
@@ -443,12 +447,21 @@ func bindingListItemsValue(value any) ([]widgets.ListItem, bool) {
 				if val == "" {
 					val = text
 				}
+				subtitle, _ := bindingStringValue(entry["subtitle"])
+				imagePath, _ := bindingStringValue(entry["image"])
 				disabled, _ := bindingBoolValue(entry["disabled"])
-				out = append(out, widgets.ListItem{
-					Value:    val,
-					Text:     text,
-					Disabled: disabled,
-				})
+				listItem := widgets.ListItem{
+					Value:     val,
+					Text:      text,
+					Subtitle:  subtitle,
+					ImagePath: imagePath,
+					Disabled:  disabled,
+				}
+				if image, ok := entry["image"].(*core.Image); ok {
+					listItem.Image = image
+					listItem.ImagePath = ""
+				}
+				out = append(out, listItem)
 			case string:
 				out = append(out, widgets.ListItem{Value: entry, Text: entry})
 			default:
@@ -625,6 +638,21 @@ func parseButtonShapeValue(value string) (widgets.ButtonShape, bool, error) {
 		return widgets.ButtonShapePill, true, nil
 	default:
 		return widgets.ButtonShapeAuto, false, fmt.Errorf("invalid button shape %q", value)
+	}
+}
+
+func parseComboLayoutValue(value string) (widgets.ComboLayout, bool, error) {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "":
+		return widgets.ComboLayoutAuto, false, nil
+	case "auto":
+		return widgets.ComboLayoutAuto, true, nil
+	case "default", "single":
+		return widgets.ComboLayoutDefault, true, nil
+	case "rich":
+		return widgets.ComboLayoutRich, true, nil
+	default:
+		return widgets.ComboLayoutAuto, false, fmt.Errorf("invalid combo layout %q", value)
 	}
 }
 

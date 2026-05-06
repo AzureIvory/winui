@@ -47,6 +47,7 @@ type goDemo struct {
 	radioDotA     *widgets.RadioButton
 	radioDotB     *widgets.RadioButton
 	citySelect    *widgets.ComboBox
+	localeSelect  *widgets.ComboBox
 	cityList      *widgets.ListBox
 	openFile      *widgets.FilePicker
 	uploadBar     *widgets.ProgressBar
@@ -354,6 +355,38 @@ func (d *goDemo) buildRoot() *widgets.Panel {
 	})
 	widgets.SetPreferredSize(d.citySelect, core.Size{Height: 40})
 
+	d.localeSelect = widgets.NewComboBox("localeSelect", d.mode)
+	d.localeSelect.SetStyle(widgets.ComboStyle{
+		Layout:            widgets.ComboLayoutRich,
+		TextColor:         core.RGB(15, 23, 42),
+		SubtitleColor:     core.RGB(100, 116, 139),
+		PlaceholderColor:  core.RGB(148, 163, 184),
+		Background:        core.RGB(255, 255, 255),
+		BorderColor:       core.RGB(203, 213, 225),
+		HoverBorder:       core.RGB(148, 163, 184),
+		FocusBorder:       core.RGB(15, 23, 42),
+		ArrowColor:        core.RGB(15, 23, 42),
+		PopupBackground:   core.RGB(255, 255, 255),
+		IconBackground:    core.RGB(241, 245, 249),
+		ItemHoverColor:    core.RGB(241, 245, 249),
+		ItemSelectedColor: core.RGB(226, 232, 240),
+		ItemTextColor:     core.RGB(15, 23, 42),
+		SelectedMarkColor: core.RGB(15, 23, 42),
+		CornerRadius:      16,
+		PaddingDP:         12,
+		ItemHeightDP:      58,
+		ImageSizeDP:       18,
+		MaxVisibleItems:   4,
+	})
+	d.localeSelect.SetOnChange(func(index int, item widgets.ListItem) {
+		d.setStatus(d.tr("status.comboSelected", "%s selected: %d / %s", d.tr("i18n.data.localeComboLabel", "Locale combo box"), index, item.Value))
+	})
+	localeHeight := int32(60)
+	if d.mode == widgets.ModeNative {
+		localeHeight = 40
+	}
+	widgets.SetPreferredSize(d.localeSelect, core.Size{Height: localeHeight})
+
 	d.cityList = widgets.NewListBox("cityList")
 	d.cityList.SetOnChange(func(index int, item widgets.ListItem) {
 		d.setStatus(d.tr("status.listChanged", "%s changed: %d / %s", d.tr("i18n.data.listLabel", "Rollout list"), index, item.Value))
@@ -385,7 +418,7 @@ func (d *goDemo) buildRoot() *widgets.Panel {
 	d.statusLabel.SetStyle(widgets.TextStyle{Font: widgets.FontSpec{Face: "Microsoft YaHei UI", SizeDP: 14}, Color: core.RGB(51, 65, 85), Format: core.DTWordBreak})
 	widgets.SetPreferredSize(d.statusLabel, core.Size{Height: 58})
 
-	d.rightCard.AddAll(rightTitle, d.citySelect, d.cityList, mediaTitle, mediaRow, d.emojiLabel, d.statusLabel)
+	d.rightCard.AddAll(rightTitle, d.localeSelect, d.citySelect, d.cityList, mediaTitle, mediaRow, d.emojiLabel, d.statusLabel)
 
 	root.AddAll(d.headerCard, d.leftCard, d.rightCard)
 	return root
@@ -454,8 +487,32 @@ func (d *goDemo) applyLocalizedTexts() {
 		{Value: "hz", Text: "Hangzhou"},
 		{Value: "cd", Text: "Chengdu"},
 	}
+	localeItems := []widgets.ListItem{
+		{
+			Value:    "cn",
+			Text:     "中国大陆",
+			Subtitle: "简体中文、本地化服务",
+			Image:    d.appIcon,
+		},
+		{
+			Value:    "jp",
+			Text:     "日本",
+			Subtitle: "日语界面、东京时区",
+			Image:    d.appIcon,
+		},
+		{
+			Value:    "global",
+			Text:     "全球",
+			Subtitle: "多语言、多区域配置",
+			Image:    d.appIcon,
+		},
+	}
 	if d.lang != nil {
 		comboItems = d.lang.listItems(d.locale, "i18n.data.comboItems", comboItems)
+	}
+	if d.localeSelect != nil {
+		d.localeSelect.SetItems(localeItems)
+		d.localeSelect.SetSelected(1)
 	}
 	if d.citySelect != nil {
 		d.citySelect.SetItems(comboItems)

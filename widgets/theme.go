@@ -36,6 +36,18 @@ const (
 	ButtonShapePill
 )
 
+// ComboLayout 表示组合框在自绘模式下的内容布局。
+type ComboLayout uint8
+
+const (
+	// ComboLayoutAuto 表示沿用主题或控件默认布局。
+	ComboLayoutAuto ComboLayout = iota
+	// ComboLayoutDefault 表示使用单行文本布局。
+	ComboLayoutDefault
+	// ComboLayoutRich 表示使用左图标和双行文本布局。
+	ComboLayoutRich
+)
+
 // ButtonStyle 描述按钮控件的外观样式。
 type ButtonStyle struct {
 	// Font 指定按钮文本使用的字体规格。
@@ -174,8 +186,12 @@ type ListStyle struct {
 type ComboStyle struct {
 	// Font 指定组合框文本使用的字体规格。
 	Font FontSpec
+	// Layout 指定组合框在自绘模式下的布局风格。
+	Layout ComboLayout
 	// TextColor 指定已选文本颜色。
 	TextColor core.Color
+	// SubtitleColor 指定富样式副标题颜色。
+	SubtitleColor core.Color
 	// PlaceholderColor 指定占位文本颜色。
 	PlaceholderColor core.Color
 	// Background 指定输入框背景色。
@@ -190,18 +206,24 @@ type ComboStyle struct {
 	ArrowColor core.Color
 	// PopupBackground 指定弹出层背景色。
 	PopupBackground core.Color
+	// IconBackground 指定富样式左侧图标槽背景色。
+	IconBackground core.Color
 	// ItemHoverColor 指定弹出项悬停背景色。
 	ItemHoverColor core.Color
 	// ItemSelectedColor 指定弹出项选中背景色。
 	ItemSelectedColor core.Color
 	// ItemTextColor 指定弹出项选中文本颜色。
 	ItemTextColor core.Color
+	// SelectedMarkColor 指定富样式选中标记底色。
+	SelectedMarkColor core.Color
 	// ItemHeightDP 指定弹出项高度。
 	ItemHeightDP int32
 	// PaddingDP 指定控件和弹出层内边距。
 	PaddingDP int32
 	// CornerRadius 指定圆角半径。
 	CornerRadius int32
+	// ImageSizeDP 指定富样式图标尺寸。
+	ImageSizeDP int32
 	// MaxVisibleItems 指定弹出层最多可见条目数。
 	MaxVisibleItems int32
 }
@@ -378,7 +400,9 @@ func DefaultTheme() *Theme {
 				Face:   "Microsoft YaHei UI",
 				SizeDP: 15,
 			},
+			Layout:            ComboLayoutDefault,
 			TextColor:         core.RGB(31, 41, 55),
+			SubtitleColor:     core.RGB(100, 116, 139),
 			PlaceholderColor:  core.RGB(156, 163, 175),
 			Background:        core.RGB(255, 255, 255),
 			BorderColor:       core.RGB(203, 213, 225),
@@ -386,12 +410,15 @@ func DefaultTheme() *Theme {
 			FocusBorder:       core.RGB(37, 99, 235),
 			ArrowColor:        core.RGB(37, 99, 235),
 			PopupBackground:   core.RGB(255, 255, 255),
+			IconBackground:    core.RGB(241, 245, 249),
 			ItemHoverColor:    core.RGB(239, 246, 255),
 			ItemSelectedColor: core.RGB(37, 99, 235),
 			ItemTextColor:     core.RGB(255, 255, 255),
+			SelectedMarkColor: core.RGB(15, 23, 42),
 			ItemHeightDP:      34,
 			PaddingDP:         10,
 			CornerRadius:      10,
+			ImageSizeDP:       18,
 			MaxVisibleItems:   6,
 		},
 		Edit: EditStyle{

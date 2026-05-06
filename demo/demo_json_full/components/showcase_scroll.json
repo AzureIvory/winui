@@ -254,6 +254,43 @@
             },
             {
               "type": "select",
+              "id": "localeSelect",
+              "style": {
+                "layout": "rich",
+                "radius": 16,
+                "pad": 12,
+                "itemH": 58,
+                "imageSize": 18,
+                "subtitleFg": "#64748b",
+                "iconBg": "#eef2f7",
+                "itemSelectedBg": "#e2e8f0",
+                "itemFg": "#0f172a",
+                "mark": "#0f172a"
+              },
+              "items": [
+                {
+                  "value": "cn",
+                  "text": "中国大陆",
+                  "subtitle": "简体中文、本地化服务",
+                  "image": "assets/app.png"
+                },
+                {
+                  "value": "jp",
+                  "text": "日本",
+                  "subtitle": "日语界面、东京时区",
+                  "image": "assets/app.png",
+                  "selected": true
+                },
+                {
+                  "value": "global",
+                  "text": "全球",
+                  "subtitle": "多语言、多区域配置",
+                  "image": "assets/app.png"
+                }
+              ]
+            },
+            {
+              "type": "select",
               "id": "citySelect",
               "placeholder": "Select a city",
               "items": [
