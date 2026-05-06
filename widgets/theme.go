@@ -70,6 +70,8 @@ type ButtonStyle struct {
 	GapDP int32
 	// PadDP 指定按钮内容内边距。
 	PadDP int32
+
+	borderSet bool
 }
 
 // ProgressStyle 描述进度条控件的外观样式。

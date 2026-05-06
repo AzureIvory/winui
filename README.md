@@ -149,6 +149,7 @@ store.Set("page.title", "Updated Title")
 - `window.image`, `button.image`, and `image` controls accept static PNG / JPG / JPEG / GIF input; GIF uses the first frame only
 - `LoadOptions.ImageSizeDP`, per-window `imageSizeDP`, per-node `imageSizeDP`, and `style.imageSize` control the image slot size
 - `style.shape` now supports `default` and `pill` for buttons; `pill` uses half the button height as the final corner radius
+- Button borders can be removed by setting `style.border` to `transparent` in JSON, or `ButtonStyle.Border` to `0` in an explicit override
 - Image rendering keeps the original aspect ratio and fits with contain semantics instead of stretching to a square
 - Images are cached by target pixel size and quality; Direct2D bitmaps are preferred, with GDI as fallback when needed
 - Use `animimg` when you need animated GIF playback

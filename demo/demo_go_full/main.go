@@ -35,6 +35,7 @@ type goDemo struct {
 	statusLabel   *widgets.Label
 	emojiLabel    *widgets.Label
 
+	appButton  *widgets.Button
 	modeButton *widgets.Button
 	langButton *widgets.Button
 	runButton  *widgets.Button
@@ -205,6 +206,15 @@ func (d *goDemo) buildRoot() *widgets.Panel {
 	d.subtitleLabel = widgets.NewLabel("goSubtitle", "")
 	d.subtitleLabel.SetStyle(widgets.TextStyle{Font: widgets.FontSpec{Face: "Microsoft YaHei UI", SizeDP: 13}, Color: core.RGB(100, 116, 139), Format: core.DTVCenter | core.DTSingleLine | core.DTEndEllipsis})
 
+	d.appButton = widgets.NewButton("appIconBtn", "", d.mode)
+	d.appButton.SetStyle(widgets.ButtonStyleWithBorder(widgets.ButtonStyle{
+		Shape:       widgets.ButtonShapePill,
+		ImageSizeDP: 22,
+	}, 0))
+	d.appButton.SetOnClick(func() {
+		d.setStatus(d.tr("status.appIconClicked", "App icon button clicked"))
+	})
+
 	d.modeButton = widgets.NewButton("toggleControlModeBtn", "", d.mode)
 	d.modeButton.SetStyle(widgets.ButtonStyle{Shape: widgets.ButtonShapePill})
 	d.modeButton.SetOnClick(func() {
@@ -246,7 +256,7 @@ func (d *goDemo) buildRoot() *widgets.Panel {
 		d.setStatus(d.tr("status.apiCheckComplete", "API check complete: %s", summary))
 	})
 
-	d.headerCard.AddAll(d.titleLabel, d.subtitleLabel, d.modeButton, d.langButton, d.runButton)
+	d.headerCard.AddAll(d.appButton, d.titleLabel, d.subtitleLabel, d.modeButton, d.langButton, d.runButton)
 
 	d.leftCard = widgets.NewPanel("goLeftCard")
 	d.leftCard.SetStyle(widgets.PanelStyle{
@@ -382,6 +392,9 @@ func (d *goDemo) buildRoot() *widgets.Panel {
 }
 
 func (d *goDemo) applySharedVisuals() {
+	if d.appButton != nil && d.appIcon != nil {
+		d.appButton.SetImage(d.appIcon)
+	}
 	if d.runButton != nil && d.runIcon != nil {
 		d.runButton.SetImage(d.runIcon)
 	}
@@ -544,6 +557,7 @@ func (d *goDemo) layout(size core.Size) {
 	headerInnerX := d.headerCard.Bounds().X + d.app.DP(20)
 	headerInnerY := d.headerCard.Bounds().Y + d.app.DP(16)
 	headerRight := d.headerCard.Bounds().X + d.headerCard.Bounds().W - d.app.DP(20)
+	appButtonSize := d.app.DP(40)
 	buttonH := d.app.DP(40)
 	runW := d.app.DP(206)
 	langW := d.app.DP(96)
@@ -553,12 +567,14 @@ func (d *goDemo) layout(size core.Size) {
 	langX := runX - d.app.DP(12) - langW
 	modeX := langX - d.app.DP(12) - modeW
 
-	d.titleLabel.SetBounds(widgets.Rect{X: headerInnerX, Y: headerInnerY - d.app.DP(4), W: d.app.DP(440), H: d.app.DP(30)})
-	subtitleW := modeX - d.app.DP(16) - headerInnerX
+	d.appButton.SetBounds(widgets.Rect{X: headerInnerX, Y: headerInnerY, W: appButtonSize, H: appButtonSize})
+	textX := headerInnerX + appButtonSize + d.app.DP(12)
+	d.titleLabel.SetBounds(widgets.Rect{X: textX, Y: headerInnerY - d.app.DP(4), W: d.app.DP(388), H: d.app.DP(30)})
+	subtitleW := modeX - d.app.DP(16) - textX
 	if subtitleW < d.app.DP(280) {
 		subtitleW = d.app.DP(280)
 	}
-	d.subtitleLabel.SetBounds(widgets.Rect{X: headerInnerX, Y: headerInnerY + d.app.DP(26), W: subtitleW, H: d.app.DP(20)})
+	d.subtitleLabel.SetBounds(widgets.Rect{X: textX, Y: headerInnerY + d.app.DP(26), W: subtitleW, H: d.app.DP(20)})
 
 	d.modeButton.SetBounds(widgets.Rect{X: modeX, Y: headerInnerY, W: modeW, H: buttonH})
 	d.langButton.SetBounds(widgets.Rect{X: langX, Y: headerInnerY, W: langW, H: buttonH})

@@ -246,6 +246,9 @@ func (c *demoController) showModal(visible bool) {
 }
 
 func (c *demoController) bindCallbacks() {
+	c.mustButton("appIconBtn").SetOnClick(func() {
+		c.setStatus(c.tr("status.appIconClicked", "App icon button clicked"))
+	})
 	c.mustButton("togglePaletteBtn").SetOnClick(func() {
 		c.togglePalette()
 	})
@@ -680,6 +683,7 @@ func (c *demoController) applyPalette(p demoPalette) {
 	c.mustModal("helpModal").SetBlurRadiusDP(p.modalBlurDP)
 	c.mustPanel("modalSurface").SetStyle(p.modalSurface)
 
+	c.applyButtonPaletteStyle("appIconBtn", p.buttonNeutral)
 	c.applyButtonPaletteStyle("togglePaletteBtn", p.buttonNeutral)
 	c.applyButtonPaletteStyle("toggleControlModeBtn", p.buttonNeutral)
 	c.applyButtonPaletteStyle("languageToggleBtn", p.buttonNeutral)
@@ -894,6 +898,9 @@ func (c *demoController) applyButtonPaletteStyle(id string, base widgets.ButtonS
 func mergeButtonPaletteStyle(base, declared widgets.ButtonStyle) widgets.ButtonStyle {
 	if declared.Shape != widgets.ButtonShapeAuto {
 		base.Shape = declared.Shape
+	}
+	if border, ok := widgets.ButtonStyleBorder(declared); ok {
+		base = widgets.ButtonStyleWithBorder(base, border)
 	}
 	return base
 }

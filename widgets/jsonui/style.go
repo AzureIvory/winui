@@ -154,8 +154,18 @@ func parseButtonStyle(raw json.RawMessage) (widgets.ButtonStyle, error) {
 	if err := assignColor(styles, "disabledBg", &style.Disabled); err != nil {
 		return style, err
 	}
-	if err := assignColor(styles, "border", &style.Border); err != nil {
-		return style, err
+	if raw := styles["border"]; len(raw) > 0 {
+		text, err := decodeStringLiteral(raw)
+		if err != nil {
+			return style, err
+		}
+		color, ok, err := parseColorValue(text)
+		if err != nil {
+			return style, err
+		}
+		if ok {
+			style = widgets.ButtonStyleWithBorder(style, color)
+		}
 	}
 	if raw := styles["shape"]; len(raw) > 0 {
 		value, err := decodeStringLiteral(raw)

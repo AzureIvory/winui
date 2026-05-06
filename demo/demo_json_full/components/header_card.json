@@ -18,6 +18,22 @@
     },
     "children": [
       {
+        "type": "button",
+        "id": "appIconBtn",
+        "image": "assets/app.png",
+        "style": {
+          "shape": "pill",
+          "border": "transparent",
+          "imageSize": 22
+        },
+        "frame": {
+          "x": 20,
+          "y": 16,
+          "w": 40,
+          "h": 40
+        }
+      },
+      {
         "type": "label",
         "id": "titleLabel",
         "text": "WinUI JSON Full Demo",
@@ -28,9 +44,9 @@
           "fg": "#0f172a"
         },
         "frame": {
-          "x": 20,
+          "x": 72,
           "y": 12,
-          "w": 420,
+          "w": 368,
           "h": 28
         }
       },
@@ -44,7 +60,7 @@
           "fg": "#64748b"
         },
         "frame": {
-          "x": 20,
+          "x": 72,
           "y": 42,
           "r": 820,
           "h": 18

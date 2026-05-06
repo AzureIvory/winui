@@ -112,7 +112,7 @@ func (b *Button) SetImage(img *core.Image) {
 // SetStyle 更新按钮样式覆盖。
 func (b *Button) SetStyle(style ButtonStyle) {
 	b.runOnUI(func() {
-		b.Style = style
+		b.Style = normalizeButtonStyleOverride(style)
 		b.invalidate(b)
 	})
 }
@@ -396,7 +396,7 @@ func (b *Button) resolveStyle(ctx *PaintCtx) ButtonStyle {
 	if b.Style.Disabled != 0 {
 		style.Disabled = b.Style.Disabled
 	}
-	if b.Style.Border != 0 {
+	if b.Style.borderSet || b.Style.Border != 0 {
 		style.Border = b.Style.Border
 	}
 	if b.Style.Shape != ButtonShapeAuto {
@@ -420,6 +420,18 @@ func (b *Button) resolveStyle(ctx *PaintCtx) ButtonStyle {
 	return style
 }
 
+// ButtonStyleWithBorder 返回显式指定边框颜色的按钮样式。
+func ButtonStyleWithBorder(style ButtonStyle, border core.Color) ButtonStyle {
+	style.Border = border
+	style.borderSet = true
+	return style
+}
+
+// ButtonStyleBorder 返回按钮样式里的边框颜色以及它是否被显式声明。
+func ButtonStyleBorder(style ButtonStyle) (core.Color, bool) {
+	return style.Border, style.borderSet
+}
+
 // resolveButtonCornerRadius 返回按钮在当前尺寸下应使用的实际圆角半径。
 func resolveButtonCornerRadius(widget Widget, bounds Rect, style ButtonStyle) int32 {
 	switch style.Shape {
@@ -432,6 +444,31 @@ func resolveButtonCornerRadius(widget Widget, bounds Rect, style ButtonStyle) in
 		}
 		return radius
 	}
+}
+
+func normalizeButtonStyleOverride(style ButtonStyle) ButtonStyle {
+	if style.Border == 0 && buttonStyleHasAnyNonBorderOverride(style) {
+		style.borderSet = true
+	}
+	return style
+}
+
+func buttonStyleHasAnyNonBorderOverride(style ButtonStyle) bool {
+	return style.Font != (FontSpec{}) ||
+		style.TextAlign != 0 ||
+		style.TextColor != 0 ||
+		style.DownText != 0 ||
+		style.DisabledText != 0 ||
+		style.Background != 0 ||
+		style.Hover != 0 ||
+		style.Pressed != 0 ||
+		style.Disabled != 0 ||
+		style.Shape != ButtonShapeAuto ||
+		style.CornerRadius != 0 ||
+		style.ImageSizeDP != 0 ||
+		style.TextInsetDP != 0 ||
+		style.GapDP != 0 ||
+		style.PadDP != 0
 }
 
 // drawButtonText 绘制按钮文本内容。
