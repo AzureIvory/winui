@@ -485,7 +485,7 @@ func (c *ComboBox) paintRichField(ctx *PaintCtx, style ComboStyle, bounds Rect) 
 	})
 }
 
-// paintRichPopup 负责绘制富样式下拉层，包含右侧选中勾标记。
+// paintRichPopup 负责绘制富样式下拉层。
 func (c *ComboBox) paintRichPopup(ctx *PaintCtx, style ComboStyle, layout comboPopupLayout) {
 	itemRadius := max32(0, ctx.DP(style.CornerRadius)-ctx.DP(2))
 	for index := layout.start; index < layout.end; index++ {
@@ -510,7 +510,7 @@ func (c *ComboBox) paintRichPopup(ctx *PaintCtx, style ComboStyle, layout comboP
 			_ = ctx.FillRoundRect(rowRect, itemRadius, style.ItemHoverColor)
 		}
 
-		slotRect, textRect := comboRichContentRects(ctx, insetRect(rowRect, ctx.DP(10), 0), ctx.DP(34))
+		slotRect, textRect := comboRichContentRects(ctx, insetRect(rowRect, ctx.DP(10), 0), 0)
 		if slotRect.W > 0 && slotRect.H > 0 {
 			_ = ctx.FillRoundRect(slotRect, max32(1, slotRect.W/3), style.IconBackground)
 			_ = drawComboItemImage(ctx, item, comboRichImageRect(ctx, style, slotRect))
@@ -534,11 +534,6 @@ func (c *ComboBox) paintRichPopup(ctx *PaintCtx, style ComboStyle, layout comboP
 				Color:  subtitleColor,
 				Format: core.DTVCenter | core.DTSingleLine | core.DTEndEllipsis,
 			})
-		}
-		if index == c.selected {
-			markRect := comboSelectedMarkRect(ctx, rowRect)
-			_ = ctx.FillRoundRect(markRect, max32(1, markRect.W/2), style.SelectedMarkColor)
-			drawComboSelectedMark(ctx, markRect, core.RGB(255, 255, 255))
 		}
 	}
 }
