@@ -280,6 +280,13 @@ func (b *widgetBase) setVisible(owner Widget, visible bool) {
 		return
 	}
 	b.visible = visible
+	// 可见性变化会影响父容器布局（例如按钮组里动态显示/隐藏按钮）。
+	// 这里主动触发父面板重新排版，避免控件从隐藏切换为显示时仍停留在默认 (0,0)。
+	if panel, ok := b.parentRef.(*Panel); ok {
+		panel.applyLayout()
+		panel.invalidate(panel)
+		return
+	}
 	if b.sceneRef != nil {
 		b.sceneRef.Invalidate(owner)
 	}
