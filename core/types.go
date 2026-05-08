@@ -257,17 +257,38 @@ const (
 )
 
 const (
+	// MessageBoxOK 表示确定按钮。
+	MessageBoxOK uint32 = 0x00000000
 	// MessageBoxOKCancel 表示确定和取消按钮组合。
 	MessageBoxOKCancel uint32 = 0x00000001
+	// MessageBoxYesNoCancel 表示是、否和取消按钮组合。
+	MessageBoxYesNoCancel uint32 = 0x00000003
 	// MessageBoxRetryCancel 表示重试和取消按钮组合。
 	MessageBoxRetryCancel uint32 = 0x00000005
 )
 
 const (
+	// MessageBoxIconWarning 表示警告图标。
+	MessageBoxIconWarning uint32 = 0x00000030
+	// MessageBoxIconError 表示错误图标。
+	MessageBoxIconError uint32 = 0x00000010
+	// MessageBoxIconInformation 表示信息图标。
+	MessageBoxIconInformation uint32 = 0x00000040
+	// MessageBoxIconQuestion 表示询问图标。
+	MessageBoxIconQuestion uint32 = 0x00000020
+)
+
+const (
 	// MessageBoxResultOK 表示用户点击了确定。
 	MessageBoxResultOK = 1
+	// MessageBoxResultCancel 表示用户点击了取消。
+	MessageBoxResultCancel = 2
 	// MessageBoxResultRetry 表示用户点击了重试。
 	MessageBoxResultRetry = 4
+	// MessageBoxResultYes 表示用户点击了是。
+	MessageBoxResultYes = 6
+	// MessageBoxResultNo 表示用户点击了否。
+	MessageBoxResultNo = 7
 )
 
 const (
