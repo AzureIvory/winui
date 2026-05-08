@@ -607,6 +607,11 @@ func applyFlexLayout(owner Widget, parent Rect, children []Widget, opts flexOpti
 		if child == nil {
 			continue
 		}
+		// 不可见控件不参与线性布局测量与排版。
+		// 典型场景：对话框按钮组里通过 visible 控制按钮显隐。
+		if !child.Visible() {
+			continue
+		}
 		size := measureWidgetNatural(child)
 		if opts.axis == AxisVertical {
 			size = preferredSizeForWidth(child, availableCross)
