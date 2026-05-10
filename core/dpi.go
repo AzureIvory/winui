@@ -45,31 +45,63 @@ const (
 
 // initProcessDPIAwareness 配置进程的 DPI 模式，并返回初始 DPI 信息。
 func initProcessDPIAwareness() DPIInfo {
-	info := queryScreenDPI()
-	info.Awareness = DPIAwarenessUnknown
+	awareness := DPIAwarenessUnknown
 
 	dpiInitOnce.Do(func() {
 		switch {
 		case trySetDpiAwarenessContext(dpiAwareContextPerMonitorAwareV2):
-			info.Awareness = DPIAwarenessPerMonitorV2
+			awareness = DPIAwarenessPerMonitorV2
 		case trySetDpiAwarenessContext(dpiAwareContextPerMonitorAware):
-			info.Awareness = DPIAwarenessPerMonitor
+			awareness = DPIAwarenessPerMonitor
 		case trySetProcessDpiAwareness(processDpiPerMonitor):
-			info.Awareness = DPIAwarenessPerMonitor
+			awareness = DPIAwarenessPerMonitor
 		case trySetProcessDpiAwareness(processDpiSystemAware):
-			info.Awareness = DPIAwarenessSystem
+			awareness = DPIAwarenessSystem
 		case trySetProcessDPIAware():
-			info.Awareness = DPIAwarenessSystem
+			awareness = DPIAwarenessSystem
 		default:
-			info.Awareness = currentDPIAwareness()
-			if info.Awareness == DPIAwarenessUnknown {
-				info.Awareness = DPIAwarenessSystem
+			awareness = currentDPIAwareness()
+			if awareness == DPIAwarenessUnknown {
+				awareness = DPIAwarenessSystem
 			}
 		}
 	})
 
 	if current := currentDPIAwareness(); current != DPIAwarenessUnknown {
-		info.Awareness = current
+		awareness = current
+	} else if awareness == DPIAwarenessUnknown {
+		awareness = DPIAwarenessSystem
+	}
+
+	// 先启用 DPI 感知，再查询一次主屏 DPI，避免初次窗口尺寸仍按 96 DPI 创建。
+	return resolveInitialDPIInfo(queryScreenDPI, awareness)
+}
+
+// resolveInitialDPIInfo 在 DPI 感知配置完成后重新查询主屏 DPI，
+// 并补齐 Awareness 与兜底值，供窗口初始尺寸计算使用。
+func resolveInitialDPIInfo(query func() DPIInfo, awareness DPIAwareness) DPIInfo {
+	info := DPIInfo{X: 96, Y: 96, Scale: 1, Awareness: awareness}
+	if query == nil {
+		return info
+	}
+
+	queried := query()
+	if queried.X > 0 {
+		info.X = queried.X
+	}
+	if queried.Y > 0 {
+		info.Y = queried.Y
+	}
+	if queried.Scale > 0 {
+		info.Scale = queried.Scale
+	} else if info.X > 0 {
+		info.Scale = float64(info.X) / 96.0
+	}
+	if info.Y <= 0 {
+		info.Y = info.X
+	}
+	if info.Scale <= 0 {
+		info.Scale = 1
 	}
 	return info
 }
