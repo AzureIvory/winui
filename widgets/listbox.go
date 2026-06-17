@@ -342,6 +342,18 @@ func (l *ListBox) Paint(ctx *PaintCtx) {
 		rightPad += checkSize + ctx.DP(10)
 	}
 
+	// 行绘制裁剪到列表框内部区域，避免最后一行（部分可见）的圆角背景
+	// 溢出到列表框底部边界之外。
+	padding := max32(0, ctx.DP(style.PaddingDP))
+	contentRect := Rect{
+		X: bounds.X + padding,
+		Y: bounds.Y + padding,
+		W: max32(0, bounds.W-padding*2),
+		H: max32(0, bounds.H-padding*2),
+	}
+	restore := ctx.PushClipRect(contentRect)
+	defer restore()
+
 	for index := start; index < end; index++ {
 		item := l.items[index]
 		rowRect := l.rowRect(index, ctx, style)
