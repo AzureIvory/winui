@@ -49,6 +49,8 @@ type goDemo struct {
 	citySelect    *widgets.ComboBox
 	localeSelect  *widgets.ComboBox
 	cityList      *widgets.ListBox
+	plainList     *widgets.ListBox
+	toggleDemo    *widgets.Toggle
 	openFile      *widgets.FilePicker
 	uploadBar     *widgets.ProgressBar
 	previewImage  *widgets.Image
@@ -295,6 +297,20 @@ func (d *goDemo) buildRoot() *widgets.Panel {
 		d.setStatus(d.tr("status.choiceChanged", "%s changed to %s", d.dotStyleBox.Text, d.checkedLabel(checked)))
 	})
 
+	d.toggleDemo = widgets.NewToggle("toggleDemo", true)
+	// 用自定义轨道与文字颜色演示开关的换色能力。
+	d.toggleDemo.SetStyle(widgets.ToggleStyle{
+		TrackOn:  core.RGB(22, 163, 74),
+		TrackOff: core.RGB(226, 232, 240),
+		Knob:     core.RGB(255, 255, 255),
+		TextOn:   core.RGB(255, 255, 255),
+		TextOff:  core.RGB(100, 116, 139),
+	})
+	d.toggleDemo.SetOnChange(func(checked bool) {
+		d.setStatus(d.tr("status.toggleChanged", "Toggle changed to %s", d.checkedLabel(checked)))
+	})
+	widgets.SetPreferredSize(d.toggleDemo, core.Size{Width: 74, Height: 34})
+
 	d.radioDotA = widgets.NewRadioButton("radioDotA", "", d.mode)
 	d.radioDotA.SetGroup("go-demo-mode")
 	d.radioDotA.SetChecked(true)
@@ -335,7 +351,7 @@ func (d *goDemo) buildRoot() *widgets.Panel {
 	})
 	widgets.SetPreferredSize(d.uploadBar, core.Size{Height: 22})
 
-	d.leftCard.AddAll(leftTitle, d.nameInput, d.passwordInput, d.notesBox, d.dotStyleBox, d.radioDotA, d.radioDotB, d.openFile, d.uploadBar)
+	d.leftCard.AddAll(leftTitle, d.nameInput, d.passwordInput, d.notesBox, d.dotStyleBox, d.toggleDemo, d.radioDotA, d.radioDotB, d.openFile, d.uploadBar)
 
 	d.rightCard = widgets.NewPanel("goRightCard")
 	d.rightCard.SetStyle(widgets.PanelStyle{
@@ -388,10 +404,21 @@ func (d *goDemo) buildRoot() *widgets.Panel {
 	widgets.SetPreferredSize(d.localeSelect, core.Size{Height: localeHeight})
 
 	d.cityList = widgets.NewListBox("cityList")
+	d.cityList.SetShowCheck(true)
 	d.cityList.SetOnChange(func(index int, item widgets.ListItem) {
 		d.setStatus(d.tr("status.listChanged", "%s changed: %d / %s", d.tr("i18n.data.listLabel", "Rollout list"), index, item.Value))
 	})
+	d.cityList.SetOnCheckChange(func(index int, item widgets.ListItem) {
+		d.setStatus(d.tr("status.listCheckChanged", "%s toggled: %s", item.Text, d.checkedLabel(item.Checked)))
+	})
 	widgets.SetPreferredSize(d.cityList, core.Size{Height: 140})
+
+	// 对照列表：不开启打勾列，仅展示每行独立底色与字体颜色。
+	d.plainList = widgets.NewListBox("plainList")
+	d.plainList.SetOnChange(func(index int, item widgets.ListItem) {
+		d.setStatus(d.tr("status.listChanged", "%s changed: %d / %s", d.tr("i18n.data.plainListLabel", "Status list"), index, item.Value))
+	})
+	widgets.SetPreferredSize(d.plainList, core.Size{Height: 140})
 
 	mediaTitle := widgets.NewLabel("mediaTitle", "")
 	mediaTitle.SetStyle(widgets.TextStyle{Font: widgets.FontSpec{Face: "Microsoft YaHei UI", SizeDP: 16, Weight: 700}, Color: core.RGB(15, 23, 42), Format: core.DTVCenter | core.DTSingleLine})
@@ -418,7 +445,7 @@ func (d *goDemo) buildRoot() *widgets.Panel {
 	d.statusLabel.SetStyle(widgets.TextStyle{Font: widgets.FontSpec{Face: "Microsoft YaHei UI", SizeDP: 14}, Color: core.RGB(51, 65, 85), Format: core.DTWordBreak})
 	widgets.SetPreferredSize(d.statusLabel, core.Size{Height: 58})
 
-	d.rightCard.AddAll(rightTitle, d.localeSelect, d.citySelect, d.cityList, mediaTitle, mediaRow, d.emojiLabel, d.statusLabel)
+	d.rightCard.AddAll(rightTitle, d.localeSelect, d.citySelect, d.cityList, d.plainList, mediaTitle, mediaRow, d.emojiLabel, d.statusLabel)
 
 	root.AddAll(d.headerCard, d.leftCard, d.rightCard)
 	return root
@@ -521,10 +548,10 @@ func (d *goDemo) applyLocalizedTexts() {
 	}
 
 	listItems := []widgets.ListItem{
-		{Value: "alpha", Text: "Alpha rollout"},
-		{Value: "beta", Text: "Beta rollout"},
-		{Value: "release", Text: "Release rollout"},
-		{Value: "hold", Text: "Hold rollout", Disabled: true},
+		{Value: "alpha", Text: "Alpha rollout", Background: core.RGB(219, 234, 254), TextColor: core.RGB(30, 64, 175), Checked: true},
+		{Value: "beta", Text: "Beta rollout", Background: core.RGB(220, 252, 231), TextColor: core.RGB(21, 128, 61)},
+		{Value: "release", Text: "Release rollout", Background: core.RGB(254, 243, 199), TextColor: core.RGB(161, 98, 7)},
+		{Value: "hold", Text: "Hold rollout", Disabled: true, Background: core.RGB(243, 244, 246), TextColor: core.RGB(100, 116, 139)},
 	}
 	if d.lang != nil {
 		listItems = d.lang.listItems(d.locale, "i18n.data.listItems", listItems)
@@ -532,6 +559,20 @@ func (d *goDemo) applyLocalizedTexts() {
 	if d.cityList != nil {
 		d.cityList.SetItems(listItems)
 		d.cityList.SetSelected(0)
+	}
+
+	plainItems := []widgets.ListItem{
+		{Value: "ok", Text: "All systems go", Background: core.RGB(220, 252, 231), TextColor: core.RGB(22, 101, 52)},
+		{Value: "warn", Text: "Latency rising", Background: core.RGB(254, 215, 170), TextColor: core.RGB(154, 52, 18)},
+		{Value: "err", Text: "Deploy failed", Background: core.RGB(254, 226, 226), TextColor: core.RGB(153, 27, 27)},
+		{Value: "info", Text: "Awaiting review", Background: core.RGB(226, 239, 254), TextColor: core.RGB(30, 58, 138)},
+	}
+	if d.lang != nil {
+		plainItems = d.lang.listItems(d.locale, "i18n.data.plainItems", plainItems)
+	}
+	if d.plainList != nil {
+		d.plainList.SetItems(plainItems)
+		d.plainList.SetSelected(0)
 	}
 
 	if d.openFile != nil {

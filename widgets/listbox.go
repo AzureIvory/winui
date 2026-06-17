@@ -37,6 +37,10 @@ type ListBox struct {
 	OnActivate func(int, ListItem)
 	// OnRightClick 保存右键回调。
 	OnRightClick func(int, ListItem, core.Point)
+	// showCheck 控制是否在每行右侧渲染打勾列。
+	showCheck bool
+	// OnCheckChange 保存打勾列勾选状态变更回调。
+	OnCheckChange func(int, ListItem)
 }
 
 // NewListBox 创建一个新的列表框。
@@ -157,6 +161,51 @@ func (l *ListBox) SetOnRightClick(fn func(int, ListItem, core.Point)) {
 	})
 }
 
+// SetShowCheck 控制是否在每行右侧渲染打勾列。
+func (l *ListBox) SetShowCheck(show bool) {
+	l.runOnUI(func() {
+		if l.showCheck == show {
+			return
+		}
+		l.showCheck = show
+		l.invalidate(l)
+	})
+}
+
+// ShowCheck 返回是否已开启打勾列。
+func (l *ListBox) ShowCheck() bool {
+	return l.showCheck
+}
+
+// SetOnCheckChange 注册打勾列勾选状态变更回调。
+func (l *ListBox) SetOnCheckChange(fn func(int, ListItem)) {
+	l.runOnUI(func() {
+		l.OnCheckChange = fn
+	})
+}
+
+// SetItemChecked 更新指定项的勾选状态。
+func (l *ListBox) SetItemChecked(index int, checked bool) {
+	l.runOnUI(func() {
+		if index < 0 || index >= len(l.items) {
+			return
+		}
+		if l.items[index].Checked == checked {
+			return
+		}
+		l.items[index].Checked = checked
+		l.invalidate(l)
+	})
+}
+
+// IsItemChecked 返回指定项是否处于勾选状态。
+func (l *ListBox) IsItemChecked(index int) bool {
+	if index < 0 || index >= len(l.items) {
+		return false
+	}
+	return l.items[index].Checked
+}
+
 // OnEvent 处理输入事件或生命周期事件。
 func (l *ListBox) OnEvent(evt Event) bool {
 	switch evt.Type {
@@ -200,17 +249,23 @@ func (l *ListBox) OnEvent(evt Event) bool {
 			return false
 		}
 		index := l.indexAt(evt.Point)
-		if index >= 0 {
-			now := time.Now()
-			activate := index == l.lastClickIndex && now.Sub(l.lastClickAt) <= 450*time.Millisecond
-			l.lastClickIndex = index
-			l.lastClickAt = now
-			l.selectIndex(index, true)
-			if activate && l.OnActivate != nil {
-				l.OnActivate(index, l.items[index])
-			}
+		if index < 0 {
+			return false
+		}
+		// 点击落在打勾列时切换勾选，与单选选中相互独立。
+		if l.showCheck && l.pointInCheckArea(evt.Point, index) {
+			l.toggleItemCheck(index, true)
 			return true
 		}
+		now := time.Now()
+		activate := index == l.lastClickIndex && now.Sub(l.lastClickAt) <= 450*time.Millisecond
+		l.lastClickIndex = index
+		l.lastClickAt = now
+		l.selectIndex(index, true)
+		if activate && l.OnActivate != nil {
+			l.OnActivate(index, l.items[index])
+		}
+		return true
 	case EventMouseWheel:
 		if !l.Enabled() {
 			return false
@@ -275,6 +330,18 @@ func (l *ListBox) Paint(ctx *PaintCtx) {
 		end = start + visible + 1
 	}
 
+	// 打勾列开启时，在每行右侧预留指示器宽度。
+	leftPad := ctx.DP(10)
+	rightPad := leftPad
+	checkSize := int32(0)
+	if l.showCheck {
+		checkSize = ctx.DP(style.CheckSizeDP)
+		if checkSize <= 0 {
+			checkSize = ctx.DP(18)
+		}
+		rightPad += checkSize + ctx.DP(10)
+	}
+
 	for index := start; index < end; index++ {
 		item := l.items[index]
 		rowRect := l.rowRect(index, ctx, style)
@@ -285,21 +352,38 @@ func (l *ListBox) Paint(ctx *PaintCtx) {
 			continue
 		}
 
-		textColor := style.TextColor
-		if item.Disabled {
-			textColor = style.DisabledText
+		// 行底色：优先使用项自定义底色，否则透出控件背景（不填）。
+		rowBg := item.Background
+		baseBg := rowBg
+		if baseBg == 0 {
+			baseBg = style.Background
 		}
-		if index == l.selected {
-			_ = ctx.FillRoundRect(rowRect, itemRadius, style.ItemSelectedColor)
+		// 选中/悬停态在行底色上按强度混合，保证自定义底色依旧可见。
+		switch {
+		case index == l.selected:
+			rowBg = BlendColor(baseBg, style.ItemSelectedColor, listSelectionAlpha)
+		case index == l.hover:
+			rowBg = BlendColor(baseBg, style.ItemHoverColor, listHoverAlpha)
+		}
+		if rowBg != 0 {
+			_ = ctx.FillRoundRect(rowRect, itemRadius, rowBg)
+		}
+
+		// 文字色：项自定义最优先，其次禁用、选中、默认。
+		textColor := style.TextColor
+		switch {
+		case item.TextColor != 0:
+			textColor = item.TextColor
+		case item.Disabled:
+			textColor = style.DisabledText
+		case index == l.selected:
 			textColor = style.ItemTextColor
-		} else if index == l.hover {
-			_ = ctx.FillRoundRect(rowRect, itemRadius, style.ItemHoverColor)
 		}
 
 		textRect := Rect{
-			X: rowRect.X + ctx.DP(10),
+			X: rowRect.X + leftPad,
 			Y: rowRect.Y,
-			W: max32(0, rowRect.W-ctx.DP(20)),
+			W: max32(0, rowRect.W-leftPad-rightPad),
 			H: rowRect.H,
 		}
 		_ = ctx.DrawWidgetText(l, item.displayText(), textRect, TextStyle{
@@ -307,6 +391,17 @@ func (l *ListBox) Paint(ctx *PaintCtx) {
 			Color:  textColor,
 			Format: core.DTVCenter | core.DTSingleLine | core.DTEndEllipsis,
 		})
+
+		// 打勾指示器画在行右侧，垂直居中。
+		if checkSize > 0 {
+			boxRect := Rect{
+				X: rowRect.X + rowRect.W - leftPad - checkSize,
+				Y: rowRect.Y + (rowRect.H-checkSize)/2,
+				W: checkSize,
+				H: checkSize,
+			}
+			l.paintRowCheck(ctx, boxRect, item.Checked, style)
+		}
 	}
 
 	if maxScroll := l.maxScroll(style); maxScroll > 0 {
@@ -501,6 +596,18 @@ func mergeListStyle(base, override ListStyle) ListStyle {
 	if override.CornerRadius != 0 {
 		base.CornerRadius = override.CornerRadius
 	}
+	if override.CheckColor != 0 {
+		base.CheckColor = override.CheckColor
+	}
+	if override.CheckMarkColor != 0 {
+		base.CheckMarkColor = override.CheckMarkColor
+	}
+	if override.CheckBorder != 0 {
+		base.CheckBorder = override.CheckBorder
+	}
+	if override.CheckSizeDP != 0 {
+		base.CheckSizeDP = override.CheckSizeDP
+	}
 	return base
 }
 
@@ -589,4 +696,54 @@ func wheelSteps(delta int32) int {
 		return -1
 	}
 	return steps
+}
+
+// listSelectionAlpha 控制选中行高亮叠加强度（0-255），值越小自定义行底色越明显。
+const listSelectionAlpha byte = 180
+
+// listHoverAlpha 控制悬停行高亮叠加强度（0-255）。
+const listHoverAlpha byte = 85
+
+// paintRowCheck 在指定矩形内绘制打勾列指示器。
+func (l *ListBox) paintRowCheck(ctx *PaintCtx, box Rect, checked bool, style ListStyle) {
+	radius := ctx.DP(4)
+	if checked {
+		_ = ctx.FillRoundRect(box, radius, style.CheckColor)
+		// 复用复选框的打勾几何，保证视觉风格统一。
+		drawChoiceCheck(ctx, l, box, style.CheckMarkColor)
+		return
+	}
+	_ = ctx.StrokeRoundRect(box, radius, style.CheckBorder, 1)
+}
+
+// pointInCheckArea 判断指定坐标是否落在给定行的打勾列区域内。
+func (l *ListBox) pointInCheckArea(point core.Point, index int) bool {
+	if index < 0 || index >= len(l.items) {
+		return false
+	}
+	style := l.resolveStyle(nil)
+	checkSize := l.dp(style.CheckSizeDP)
+	if checkSize <= 0 {
+		checkSize = l.dp(18)
+	}
+	padding := max32(0, l.dp(style.PaddingDP))
+	itemHeight := max32(1, l.dp(style.ItemHeightDP))
+	rowW := max32(0, l.bounds.W-padding*2)
+	rowY := l.bounds.Y + padding + int32(index-l.scroll)*itemHeight
+	// 与 Paint 中保持一致：打勾区距行右边缘 leftPad（10dp）。
+	checkLeft := l.bounds.X + padding + rowW - l.dp(10) - checkSize
+	return point.X >= checkLeft && point.X <= checkLeft+checkSize &&
+		point.Y >= rowY && point.Y <= rowY+itemHeight
+}
+
+// toggleItemCheck 翻转指定项的勾选状态，并按需触发回调。
+func (l *ListBox) toggleItemCheck(index int, notify bool) {
+	if index < 0 || index >= len(l.items) {
+		return
+	}
+	l.items[index].Checked = !l.items[index].Checked
+	l.invalidate(l)
+	if notify && l.OnCheckChange != nil {
+		l.OnCheckChange(index, l.items[index])
+	}
 }

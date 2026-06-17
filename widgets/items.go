@@ -18,6 +18,12 @@ type ListItem struct {
 	ImagePath string
 	// Disabled 表示该项是否禁用。
 	Disabled bool
+	// Background 指定该项单独的背景色；为零值时回退到列表默认背景。
+	Background core.Color
+	// TextColor 指定该项单独的文本颜色；为零值时回退到列表默认文本色。
+	TextColor core.Color
+	// Checked 记录该项侧边打勾列的勾选状态，仅在列表开启打勾列时生效。
+	Checked bool
 }
 
 // displayText 返回列表项最合适的显示文本。

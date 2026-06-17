@@ -1038,44 +1038,17 @@ func choiceIndicatorCheckedFill(background, indicator core.Color, style ChoiceIn
 	if style == ChoiceIndicatorCheck {
 		return indicator
 	}
-	return blendChoiceColor(background, indicator, 40)
+	return BlendColor(background, indicator, 40)
 }
 
 func resolveChoiceCheckMarkColor(style ChoiceStyle) core.Color {
 	if style.CheckColor != 0 && style.CheckColor != style.IndicatorColor {
 		return style.CheckColor
 	}
-	if isChoiceNearWhite(style.IndicatorColor) {
+	if IsColorNearWhite(style.IndicatorColor) {
 		return core.RGB(15, 23, 42)
 	}
 	return core.RGB(255, 255, 255)
-}
-
-func blendChoiceColor(background, indicator core.Color, alpha byte) core.Color {
-	bgR, bgG, bgB := choiceColorChannels(background)
-	fgR, fgG, fgB := choiceColorChannels(indicator)
-
-	return core.RGB(
-		blendChoiceChannel(bgR, fgR, alpha),
-		blendChoiceChannel(bgG, fgG, alpha),
-		blendChoiceChannel(bgB, fgB, alpha),
-	)
-}
-
-func blendChoiceChannel(background, indicator, alpha byte) byte {
-	const scale = 255
-
-	value := int(background)*(scale-int(alpha)) + int(indicator)*int(alpha)
-	return byte((value + scale/2) / scale)
-}
-
-func choiceColorChannels(color core.Color) (byte, byte, byte) {
-	return byte(color), byte(color >> 8), byte(color >> 16)
-}
-
-func isChoiceNearWhite(color core.Color) bool {
-	r, g, b := choiceColorChannels(color)
-	return r >= 240 && g >= 240 && b >= 240
 }
 
 func choiceStrokeQuad(from, to core.Point, thickness int32) []core.Point {

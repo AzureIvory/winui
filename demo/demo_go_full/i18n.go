@@ -88,6 +88,11 @@ func (l *demoLang) listItems(locale string, path string, fallback []widgets.List
 	if !ok {
 		return append([]widgets.ListItem(nil), fallback...)
 	}
+	// 按 value 建立回退表，把自定义颜色和勾选状态带回到本地化条目上。
+	fallbackByValue := make(map[string]widgets.ListItem, len(fallback))
+	for _, item := range fallback {
+		fallbackByValue[item.Value] = item
+	}
 	items := make([]widgets.ListItem, 0, len(nodes))
 	for _, node := range nodes {
 		entry, ok := node.(map[string]any)
@@ -103,6 +108,15 @@ func (l *demoLang) listItems(locale string, path string, fallback []widgets.List
 		}
 		if disabled, ok := entry["disabled"].(bool); ok {
 			item.Disabled = disabled
+		}
+		// 继承回退项的自定义颜色与勾选状态，本地化只替换文本。
+		if base, ok := fallbackByValue[item.Value]; ok {
+			item.Background = base.Background
+			item.TextColor = base.TextColor
+			item.Checked = base.Checked
+			if !item.Disabled {
+				item.Disabled = base.Disabled
+			}
 		}
 		items = append(items, item)
 	}

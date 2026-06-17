@@ -328,8 +328,11 @@ type itemLiteral struct {
 	Text     string `json:"text"`
 	Subtitle string `json:"subtitle"`
 	Image    string `json:"image"`
+	Bg       string `json:"bg"`
+	Fg       string `json:"fg"`
 	Disabled bool   `json:"disabled"`
 	Selected bool   `json:"selected"`
+	Checked  bool   `json:"checked"`
 }
 
 func decodeListItemsLiteral(raw json.RawMessage) ([]widgets.ListItem, error) {
@@ -342,13 +345,29 @@ func decodeListItemsLiteral(raw json.RawMessage) ([]widgets.ListItem, error) {
 		if item.Value == "" {
 			item.Value = item.Text
 		}
-		out = append(out, widgets.ListItem{
+		listItem := widgets.ListItem{
 			Value:     item.Value,
 			Text:      item.Text,
 			Subtitle:  item.Subtitle,
 			ImagePath: item.Image,
 			Disabled:  item.Disabled,
-		})
+			Checked:   item.Checked,
+		}
+		if item.Bg != "" {
+			if color, ok, err := parseColorValue(item.Bg); err != nil {
+				return nil, err
+			} else if ok {
+				listItem.Background = color
+			}
+		}
+		if item.Fg != "" {
+			if color, ok, err := parseColorValue(item.Fg); err != nil {
+				return nil, err
+			} else if ok {
+				listItem.TextColor = color
+			}
+		}
+		out = append(out, listItem)
 	}
 	return out, nil
 }
@@ -450,12 +469,24 @@ func bindingListItemsValue(value any) ([]widgets.ListItem, bool) {
 				subtitle, _ := bindingStringValue(entry["subtitle"])
 				imagePath, _ := bindingStringValue(entry["image"])
 				disabled, _ := bindingBoolValue(entry["disabled"])
+				checked, _ := bindingBoolValue(entry["checked"])
 				listItem := widgets.ListItem{
 					Value:     val,
 					Text:      text,
 					Subtitle:  subtitle,
 					ImagePath: imagePath,
 					Disabled:  disabled,
+					Checked:   checked,
+				}
+				if bg, _ := bindingStringValue(entry["bg"]); bg != "" {
+					if color, ok, err := parseColorValue(bg); err == nil && ok {
+						listItem.Background = color
+					}
+				}
+				if fg, _ := bindingStringValue(entry["fg"]); fg != "" {
+					if color, ok, err := parseColorValue(fg); err == nil && ok {
+						listItem.TextColor = color
+					}
 				}
 				if image, ok := entry["image"].(*core.Image); ok {
 					listItem.Image = image

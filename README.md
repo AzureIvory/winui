@@ -223,6 +223,7 @@ go run ./demo/demo_go_full
 JSON full demo UI snapshots:
 
 ![JSON demo screenshot 1](./demo/demo_json_full/pic/main1.png)
+![JSON demo screenshot 4](./demo/demo_json_full/pic/main4.png)
 ![JSON demo screenshot 2](./demo/demo_json_full/pic/main2.png)
 ![JSON demo screenshot 3](./demo/demo_json_full/pic/main3.png)
 

@@ -30,6 +30,7 @@
 - `EditBox`
 - `CheckBox`
 - `RadioButton`
+- `Toggle`
 - `ComboBox`
 - `FilePicker`
 
@@ -60,6 +61,7 @@
 - `Button`
 - `CheckBox`
 - `RadioButton`
+- `Toggle`
 - `ComboBox`
 - `EditBox`
 - `FilePicker`
@@ -70,6 +72,10 @@
 - `ScrollView`
 
 `Button` 支持文本 + 图片内容，图片槽位尺寸由 `ButtonStyle.ImageSizeDP` 控制。
+
+`Toggle` 是滑动开关控件，仅自绘模式，通过 `ToggleStyle` 可自定义开关轨道色、滑块色以及 ON/OFF 文字颜色；JSON 中用 `type: "toggle"` 声明，样式键含 `trackOn` / `trackOff` / `knob` / `textOn` / `textOff`。
+
+`ListBox` 支持每行独立配色（`ListItem.Background` / `TextColor`）与右侧打勾列（`SetShowCheck` 开启，`ListItem.Checked` 记录勾选，回调 `OnCheckChange`）；勾选与单选选中互不影响，选中/悬停态以半透明叠加，自定义行底色依旧可见。JSON 侧 listbox 用 `check: true` 开启打勾列，每项可声明 `bg` / `fg` / `checked`。
 
 ## 5. JSON UI
 

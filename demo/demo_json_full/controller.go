@@ -308,6 +308,9 @@ func (c *demoController) bindCallbacks() {
 			c.setStatus(c.trf("status.radioSelected", "%s selected", c.mustRadio("radioCheckA").Text))
 		}
 	})
+	c.mustToggle("toggleDemo").SetOnChange(func(checked bool) {
+		c.setStatus(c.trf("status.toggleChanged", "Toggle changed to %s", c.checkedLabel(checked)))
+	})
 
 	c.mustCombo("citySelect").SetOnChange(func(index int, item widgets.ListItem) {
 		c.setStatus(c.trf("status.comboSelected", "%s selected: %d / %s", c.tr("i18n.data.comboLabel", "City combo box"), index, item.Value))
@@ -323,6 +326,12 @@ func (c *demoController) bindCallbacks() {
 	})
 	c.mustListBox("cityList").SetOnRightClick(func(index int, item widgets.ListItem, _ core.Point) {
 		c.setStatus(c.trf("status.listRightClick", "%s right-click: %d / %s", c.tr("i18n.data.listLabel", "Rollout list"), index, item.Value))
+	})
+	c.mustListBox("cityList").SetOnCheckChange(func(index int, item widgets.ListItem) {
+		c.setStatus(c.trf("status.listCheckChanged", "%s toggled: %s", item.Text, c.checkedLabel(item.Checked)))
+	})
+	c.mustListBox("plainList").SetOnChange(func(index int, item widgets.ListItem) {
+		c.setStatus(c.trf("status.listChanged", "%s changed: %d / %s", c.tr("i18n.data.plainListLabel", "Status list"), index, item.Value))
 	})
 
 	for _, id := range []string{"openFile", "saveFile", "folderPick", "multiFiles"} {
@@ -1137,6 +1146,9 @@ func (c *demoController) mustCheckBox(id string) *widgets.CheckBox {
 }
 func (c *demoController) mustRadio(id string) *widgets.RadioButton {
 	return mustWidget[*widgets.RadioButton](c.window, id)
+}
+func (c *demoController) mustToggle(id string) *widgets.Toggle {
+	return mustWidget[*widgets.Toggle](c.window, id)
 }
 func (c *demoController) mustCombo(id string) *widgets.ComboBox {
 	return mustWidget[*widgets.ComboBox](c.window, id)

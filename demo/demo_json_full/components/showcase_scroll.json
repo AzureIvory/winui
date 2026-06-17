@@ -221,6 +221,18 @@
               "style": {
                 "indicatorStyle": "check"
               }
+            },
+            {
+              "type": "toggle",
+              "id": "toggleDemo",
+              "checked": true,
+              "style": {
+                "trackOn": "#15803d",
+                "trackOff": "#e2e8f0",
+                "knob": "#ffffff",
+                "textOn": "#ffffff",
+                "textOff": "#64748b"
+              }
             }
           ]
         }
@@ -316,24 +328,69 @@
             {
               "type": "listbox",
               "id": "cityList",
+              "check": true,
+              "style": {
+                "checkColor": "#15803d",
+                "checkMark": "#ffffff",
+                "checkBorder": "#cbd5e1"
+              },
               "items": [
                 {
                   "value": "alpha",
-                  "text": "Alpha rollout"
+                  "text": "Alpha rollout",
+                  "bg": "#dbeafe",
+                  "fg": "#1e40af",
+                  "checked": true
                 },
                 {
                   "value": "beta",
                   "text": "Beta rollout",
+                  "bg": "#dcfce7",
+                  "fg": "#15803d",
                   "selected": true
                 },
                 {
                   "value": "release",
-                  "text": "Release rollout"
+                  "text": "Release rollout",
+                  "bg": "#fef3c7",
+                  "fg": "#a16207"
                 },
                 {
                   "value": "hold",
                   "text": "Hold rollout",
-                  "disabled": true
+                  "disabled": true,
+                  "bg": "#f3f4f6",
+                  "fg": "#64748b"
+                }
+              ]
+            },
+            {
+              "type": "listbox",
+              "id": "plainList",
+              "items": [
+                {
+                  "value": "ok",
+                  "text": "All systems go",
+                  "bg": "#dcfce7",
+                  "fg": "#166534"
+                },
+                {
+                  "value": "warn",
+                  "text": "Latency rising",
+                  "bg": "#fed7aa",
+                  "fg": "#9a3412"
+                },
+                {
+                  "value": "err",
+                  "text": "Deploy failed",
+                  "bg": "#fee2e2",
+                  "fg": "#991b1b"
+                },
+                {
+                  "value": "info",
+                  "text": "Awaiting review",
+                  "bg": "#dbeafe",
+                  "fg": "#1e3a8a"
                 }
               ]
             }

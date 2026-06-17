@@ -81,6 +81,9 @@ type nodeSpec struct {
 	OnChange   string `json:"onChange"`
 	OnSubmit   string `json:"onSubmit"`
 	OnActivate string `json:"onActivate"`
+	OnCheck    string `json:"onCheck"`
+
+	Check json.RawMessage `json:"check"`
 }
 
 type frameSpec struct {
@@ -272,6 +275,8 @@ func (b *builder) buildNode(window *Window, spec nodeSpec, parentLayout string) 
 		widget, err = b.buildCheckBox(window, spec)
 	case "radio":
 		widget, err = b.buildRadio(window, spec)
+	case "toggle":
+		widget, err = b.buildToggle(window, spec)
 	case "select":
 		widget, err = b.buildSelect(window, spec)
 	case "listbox":
@@ -637,6 +642,34 @@ func (b *builder) buildRadio(window *Window, spec nodeSpec) (widgets.Widget, err
 	return radio, nil
 }
 
+func (b *builder) buildToggle(window *Window, spec nodeSpec) (widgets.Widget, error) {
+	checkedSource, err := parseBoolSource(spec.Checked)
+	if err != nil {
+		return nil, err
+	}
+	toggle := widgets.NewToggle(nodeID(spec), resolveBoolSourceOrDefault(checkedSource, b.opts.Data, false))
+	style, err := parseToggleStyle(spec.Style)
+	if err != nil {
+		return nil, err
+	}
+	toggle.SetStyle(style)
+	widgets.SetPreferredSize(toggle, core.Size{Width: 74, Height: 34})
+	b.applyCommonState(window, toggle, spec)
+	if checkedSource.Binding != "" {
+		b.addBinding(window, []string{checkedSource.Binding}, func(ctx *bindingContext) {
+			toggle.SetChecked(resolveBoolSourceOrDefault(checkedSource, ctx.data, false))
+		})
+	}
+	if actionName := strings.TrimSpace(spec.OnChange); actionName != "" {
+		toggle.SetOnChange(func(checked bool) {
+			ctx := b.baseActionContext(window, actionName, toggle)
+			ctx.Checked = checked
+			b.dispatchAction(actionName, ctx)
+		})
+	}
+	return toggle, nil
+}
+
 func (b *builder) buildSelect(window *Window, spec nodeSpec) (widgets.Widget, error) {
 	itemsSource, selectedLiteral, err := b.parseItemsAndSelection(spec)
 	if err != nil {
@@ -724,6 +757,11 @@ func (b *builder) buildListBox(window *Window, spec nodeSpec) (widgets.Widget, e
 	items := resolveItemsSource(itemsSource, b.opts.Data)
 	list.SetItems(items)
 	list.SetSelected(resolveSelectionSource(selSource, items, selectedLiteral, b.opts.Data))
+	checkSource, err := parseBoolSource(spec.Check)
+	if err != nil {
+		return nil, err
+	}
+	list.SetShowCheck(resolveBoolSourceOrDefault(checkSource, b.opts.Data, false))
 	widgets.SetPreferredSize(list, core.Size{Width: 220, Height: 160})
 	b.applyCommonState(window, list, spec)
 	if itemsSource.Binding != "" {
@@ -752,6 +790,16 @@ func (b *builder) buildListBox(window *Window, spec nodeSpec) (widgets.Widget, e
 			ctx := b.baseActionContext(window, actionName, list)
 			ctx.Index = index
 			ctx.Item = item
+			ctx.Value = item.Value
+			b.dispatchAction(actionName, ctx)
+		})
+	}
+	if actionName := strings.TrimSpace(spec.OnCheck); actionName != "" {
+		list.SetOnCheckChange(func(index int, item widgets.ListItem) {
+			ctx := b.baseActionContext(window, actionName, list)
+			ctx.Index = index
+			ctx.Item = item
+			ctx.Checked = item.Checked
 			ctx.Value = item.Value
 			b.dispatchAction(actionName, ctx)
 		})

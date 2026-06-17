@@ -180,6 +180,42 @@ type ListStyle struct {
 	PaddingDP int32
 	// CornerRadius 指定列表圆角半径。
 	CornerRadius int32
+	// CheckColor 指定打勾列勾选时的填充色。
+	CheckColor core.Color
+	// CheckMarkColor 指定打勾列勾选标记的颜色。
+	CheckMarkColor core.Color
+	// CheckBorder 指定打勾列未勾选时的边框颜色。
+	CheckBorder core.Color
+	// CheckSizeDP 指定打勾列指示器尺寸。
+	CheckSizeDP int32
+}
+
+// ToggleStyle 描述开关控件的外观样式。
+type ToggleStyle struct {
+	// Font 指定轨道上 ON/OFF 文案使用的字体规格。
+	Font FontSpec
+	// TrackOff 指定关闭状态下轨道颜色。
+	TrackOff core.Color
+	// TrackOn 指定开启状态下轨道颜色。
+	TrackOn core.Color
+	// Knob 指定滑块颜色。
+	Knob core.Color
+	// TextOn 指定开启状态下的文案颜色。
+	TextOn core.Color
+	// TextOff 指定关闭状态下的文案颜色。
+	TextOff core.Color
+	// TrackWidthDP 指定轨道宽度。
+	TrackWidthDP int32
+	// TrackHeightDP 指定轨道高度。
+	TrackHeightDP int32
+	// KnobSizeDP 指定滑块边长。
+	KnobSizeDP int32
+	// KnobInsetDP 指定滑块相对轨道边缘的内边距，决定滑块行程。
+	KnobInsetDP int32
+	// LabelPaddingDP 指定 ON/OFF 文案与轨道两端的水平间距。
+	LabelPaddingDP int32
+	// CornerRadius 指定轨道圆角半径；为零时按胶囊（高度一半）处理。
+	CornerRadius int32
 }
 
 // ComboStyle 描述组合框控件的外观样式。
@@ -276,6 +312,8 @@ type Theme struct {
 	RadioButton ChoiceStyle
 	// ListBox 指定列表框默认样式。
 	ListBox ListStyle
+	// Toggle 指定开关默认样式。
+	Toggle ToggleStyle
 	// ComboBox 指定组合框默认样式。
 	ComboBox ComboStyle
 	// Edit 指定编辑框默认样式。
@@ -394,6 +432,27 @@ func DefaultTheme() *Theme {
 			ItemHeightDP:      34,
 			PaddingDP:         8,
 			CornerRadius:      10,
+			CheckColor:        core.RGB(37, 99, 235),
+			CheckMarkColor:    core.RGB(255, 255, 255),
+			CheckBorder:       core.RGB(203, 213, 225),
+			CheckSizeDP:       18,
+		},
+		Toggle: ToggleStyle{
+			Font: FontSpec{
+				Face:   "Microsoft YaHei UI",
+				SizeDP: 10,
+				Weight: 700,
+			},
+			TrackOff:       core.RGB(233, 233, 233),
+			TrackOn:        core.RGB(17, 17, 17),
+			Knob:           core.RGB(255, 255, 255),
+			TextOn:         core.RGB(255, 255, 255),
+			TextOff:        core.RGB(170, 170, 170),
+			TrackWidthDP:   74,
+			TrackHeightDP:  34,
+			KnobSizeDP:     26,
+			KnobInsetDP:    4,
+			LabelPaddingDP: 11,
 		},
 		ComboBox: ComboStyle{
 			Font: FontSpec{

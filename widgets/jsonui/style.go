@@ -335,9 +335,42 @@ func parseListStyle(raw json.RawMessage) (widgets.ListStyle, error) {
 	assignColor(styles, "itemHoverBg", &style.ItemHoverColor)
 	assignColor(styles, "itemSelectedBg", &style.ItemSelectedColor)
 	assignColor(styles, "itemFg", &style.ItemTextColor)
+	assignColor(styles, "checkColor", &style.CheckColor)
+	assignColor(styles, "checkMark", &style.CheckMarkColor)
+	assignColor(styles, "checkBorder", &style.CheckBorder)
 	assignInt(styles, "radius", &style.CornerRadius)
 	assignInt(styles, "pad", &style.PaddingDP)
 	assignInt(styles, "itemH", &style.ItemHeightDP)
+	assignInt(styles, "checkSize", &style.CheckSizeDP)
+	return style, nil
+}
+
+// parseToggleStyle 解析 JSON 样式映射为开关样式覆盖。
+func parseToggleStyle(raw json.RawMessage) (widgets.ToggleStyle, error) {
+	styles, err := decodeStyleMap(raw)
+	if err != nil {
+		return widgets.ToggleStyle{}, err
+	}
+	style := widgets.ToggleStyle{}
+	if styles == nil {
+		return style, nil
+	}
+	font, err := parseFontSpec(styles)
+	if err != nil {
+		return style, err
+	}
+	style.Font = font
+	assignColor(styles, "trackOff", &style.TrackOff)
+	assignColor(styles, "trackOn", &style.TrackOn)
+	assignColor(styles, "knob", &style.Knob)
+	assignColor(styles, "textOn", &style.TextOn)
+	assignColor(styles, "textOff", &style.TextOff)
+	assignInt(styles, "trackW", &style.TrackWidthDP)
+	assignInt(styles, "trackH", &style.TrackHeightDP)
+	assignInt(styles, "knobSize", &style.KnobSizeDP)
+	assignInt(styles, "knobInset", &style.KnobInsetDP)
+	assignInt(styles, "labelPad", &style.LabelPaddingDP)
+	assignInt(styles, "radius", &style.CornerRadius)
 	return style, nil
 }
 
