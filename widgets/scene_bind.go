@@ -34,8 +34,8 @@ type SceneHooks struct {
 	AfterPaint func(*core.App, *Scene, *core.Canvas)
 	// OnResize 在场景同步尺寸后执行额外逻辑。
 	OnResize func(*core.App, *Scene, core.Size)
-	// OnKeyPreview handles shortcuts before focused widgets and native children.
-	// Returning true consumes the key and prevents character generation.
+	// OnKeyPreview handles shortcuts after expanded popups' local keys and before
+	// ordinary focused widgets and native children. True prevents character generation.
 	OnKeyPreview func(*core.App, *Scene, core.KeyEvent) bool
 	// OnFocus 在场景处理焦点切换后执行额外逻辑。
 	OnFocus func(*core.App, *Scene, bool)

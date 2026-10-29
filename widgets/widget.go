@@ -75,6 +75,13 @@ type preTranslateKeyWidget interface {
 	handleKeyBeforeTranslate(core.KeyEvent) bool
 }
 
+// overlayKeyWidget gives an expanded popup first refusal of its local keys.
+// Unhandled keys continue through the scene's external shortcut preview.
+type overlayKeyWidget interface {
+	Widget
+	handleOverlayKey(core.KeyEvent) bool
+}
+
 // overlayWidget 表示支持在常规绘制后追加覆盖层的控件。
 type overlayWidget interface {
 	Widget

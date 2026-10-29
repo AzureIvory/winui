@@ -615,7 +615,7 @@ func (s *Scene) disposeTree(widget Widget) {
 	}
 }
 
-// routeEvent 沿目标控件的祖先链路由事件。
+// routeEvent 从目标控件向根节点冒泡，每个节点最多处理一次。
 func (s *Scene) routeEvent(target Widget, evt Event) bool {
 	if target == nil {
 		return false
@@ -625,12 +625,7 @@ func (s *Scene) routeEvent(target Widget, evt Event) bool {
 		return false
 	}
 
-	for _, widget := range path {
-		if widget.OnEvent(evt) {
-			return true
-		}
-	}
-	for i := len(path) - 2; i >= 0; i-- {
+	for i := len(path) - 1; i >= 0; i-- {
 		if path[i].OnEvent(evt) {
 			return true
 		}
@@ -652,7 +647,10 @@ func (s *Scene) dispatchKeyboard(evt Event) bool {
 }
 
 func (s *Scene) dispatchKeyboardAfterPreview(evt Event) bool {
-	if s.focus == nil {
+	if evt.Type == EventKeyDown && s.keyComposing(evt.Key) {
+		return false
+	}
+	if !s.canFocusWidget(s.focus) {
 		return false
 	}
 	evt.Source = s.focus

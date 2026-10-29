@@ -97,6 +97,12 @@ Recommended:
 - Keyboard preview belongs to the core message loop, before `TranslateMessage`,
   for the app HWND and its children. A consumed key is never translated or
   dispatched. Native edit subclasses must not run preview again.
+- Expanded, eligible popup targets receive their local keys before external
+  previews. Qualification reuses the focused/HWND target and full ancestor rules;
+  hidden or disabled ancestors cannot leave a popup intercepting a new page.
+  IME composition bypasses both previews and the later scene key dispatch.
+  Unhandled popup keys continue to external previews; do not deliver them again
+  in the after-preview stage. Tab and modified shortcuts remain application-owned.
 - `BindScene` runs the scene preview before a previously installed core preview;
   `SetKeyPreview` replaces the scene handler, including an initial scene hook.
   If neither preview consumes a native editor submit key, the existing default
@@ -107,6 +113,13 @@ Recommended:
   Unconsumed parent keys retain existing widget and `OnKeyDown` routing. Manual
   `Scene.DispatchKeyDown` also previews once. Synthetic `SendMessage(WM_KEYDOWN)`
   bypasses the queue preview by design; use posted key messages to test this path.
+- Scene routing bubbles once from target to root. Overlay hit testing, mouse
+  capture/release and non-revealing mouse focus keep their existing paths. An inner
+  scroll consumer gets first refusal; unsupported axes and ordinary scroll edges
+  can bubble. An open combo list consumes vertical wheel input at its own edges to keep the
+  form still; its first visible row is independent of selection. Only opening and
+  selection navigation reveal the selected row. Enter/Space repeats do not toggle
+  repeatedly or generate a translated activation character.
 - IMM composition text, unresolved `VK_PROCESSKEY` and native RichEdit composition lifetime
   prevent shortcuts from consuming candidate input. Native Enter submission also
   preserves pre-translation composition state and bypasses composition. Before

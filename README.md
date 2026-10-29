@@ -67,6 +67,15 @@ and `Composing`; IME composition bypasses shortcut handlers. Ordinary unconsumed
 keys continue through the existing callbacks and controls. Native window chrome
 and click-to-activate behavior remain available.
 
+Expanded custom combo boxes handle their local navigation and dismissal keys
+before scene/core shortcut previews. Escape closes the list first; a later Escape
+can reach the application. Tab and modified shortcuts retain application preview
+handling. Vertical wheel input within an open list scrolls its visible rows independently
+of the selected item and never scrolls the underlying form at a list boundary.
+Unsupported horizontal input can bubble to a capable ancestor.
+Scene events bubble once from the target to its ancestors, so an inner control
+can consume input before an outer scroll view handles it.
+
 For opt-in Tab navigation, call `scene.FocusNext(key.Shift)` from the UI-thread
 key preview when `key.Key == core.KeyTab` and neither Ctrl nor Alt is held. It
 wraps in depth-first child order, skips hidden/disabled ancestors, and stays in

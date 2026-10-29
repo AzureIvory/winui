@@ -143,8 +143,9 @@ func (s *Scene) revealWidget(widget Widget) {
 }
 
 // SetKeyPreview sets the scene-wide shortcut handler. True consumes the key
-// before it reaches a widget or produces a character. IME composition bypasses
-// shortcuts. Use BindScene to include keys from native child controls.
+// before ordinary focused-widget input or character generation. An expanded
+// popup handles its local keys first. IME composition bypasses shortcuts.
+// Use BindScene to include keys from native child controls.
 func (s *Scene) SetKeyPreview(fn func(core.KeyEvent) bool) {
 	if s != nil {
 		s.runOnUI(func() { s.keyPreview = fn })
@@ -154,6 +155,10 @@ func (s *Scene) SetKeyPreview(fn func(core.KeyEvent) bool) {
 func (s *Scene) previewKeyDown(ev core.KeyEvent) bool {
 	if s == nil || s.keyComposing(ev) {
 		return false
+	}
+	target := s.keyTarget(ev)
+	if popup, ok := target.(overlayKeyWidget); ok && s.canFocusWidget(target) && popup.handleOverlayKey(ev) {
+		return true
 	}
 	return s.keyPreview != nil && s.keyPreview(ev)
 }

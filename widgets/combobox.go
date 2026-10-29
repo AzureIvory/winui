@@ -27,6 +27,8 @@ type ComboBox struct {
 	focused bool
 	// open 记录弹出层是否展开。
 	open bool
+	// firstVisible 是弹出列表的首行，与当前选择独立。
+	firstVisible int
 	// Placeholder 保存未选中时显示的占位文本。
 	Placeholder string
 	// Style 保存样式覆盖。
@@ -96,6 +98,7 @@ func (c *ComboBox) SetItems(items []ListItem) {
 	c.runOnUI(func() {
 		c.updateState(func() bool {
 			c.items = cloneItems(items)
+			c.firstVisible = 0
 			if len(c.items) == 0 {
 				c.selected = -1
 				c.hover = -1
@@ -108,6 +111,7 @@ func (c *ComboBox) SetItems(items []ListItem) {
 					c.hover = -1
 				}
 			}
+			c.revealSelected()
 			return true
 		})
 		c.syncNativeItems()
@@ -233,31 +237,21 @@ func (c *ComboBox) OnEvent(evt Event) bool {
 			return false
 		}
 		if c.bounds.Contains(evt.Point.X, evt.Point.Y) {
-			c.updateState(func() bool {
-				open := !c.open && len(c.items) > 0
-				if c.open == open && (open || c.hover == -1) {
-					return false
-				}
-				c.open = open
-				if !c.open {
-					c.hover = -1
-				}
-				return true
-			})
+			c.setPopupOpen(!c.open)
 			return true
 		}
 		if c.open {
 			index := c.popupIndexAt(evt.Point)
 			if index >= 0 {
 				c.selectIndex(index, true)
-				c.updateState(func() bool {
-					changed := c.open || c.hover != -1
-					c.open = false
-					c.hover = -1
-					return changed
-				})
+				c.setPopupOpen(false)
 				return true
 			}
+		}
+	case EventMouseWheel:
+		if c.Enabled() && c.open && !evt.Horizontal {
+			c.scrollPopup(evt)
+			return true
 		}
 	case EventFocus:
 		c.updateState(func() bool {
@@ -714,43 +708,27 @@ func (c *ComboBox) resolveStyle(ctx *PaintCtx) ComboStyle {
 
 // handleKey 处理组合框的按键事件。
 func (c *ComboBox) handleKey(key core.KeyEvent) bool {
-	if !c.Enabled() {
+	modified := key.Ctrl || key.Alt || key.Shift || key.Flags&(1<<29) != 0
+	if !c.Enabled() || key.Composing || modified {
 		return false
 	}
 
 	switch key.Key {
 	case core.KeyReturn, core.KeySpace:
-		if len(c.items) == 0 {
-			return true
+		if !key.Repeat && key.Flags&(1<<30) == 0 {
+			c.setPopupOpen(!c.open)
 		}
-		c.updateState(func() bool {
-			c.open = !c.open
-			if !c.open {
-				c.hover = -1
-			}
-			return true
-		})
 		return true
 	case core.KeyEscape:
 		if c.open {
-			c.updateState(func() bool {
-				c.open = false
-				c.hover = -1
-				return true
-			})
+			c.setPopupOpen(false)
 			return true
 		}
 	case core.KeyDown:
 		if len(c.items) == 0 {
 			return true
 		}
-		c.updateState(func() bool {
-			if c.open {
-				return false
-			}
-			c.open = true
-			return true
-		})
+		c.setPopupOpen(true)
 		c.selectRelative(1)
 		c.updateState(func() bool {
 			if c.hover == c.selected {
@@ -764,13 +742,7 @@ func (c *ComboBox) handleKey(key core.KeyEvent) bool {
 		if len(c.items) == 0 {
 			return true
 		}
-		c.updateState(func() bool {
-			if c.open {
-				return false
-			}
-			c.open = true
-			return true
-		})
+		c.setPopupOpen(true)
 		c.selectRelative(-1)
 		c.updateState(func() bool {
 			if c.hover == c.selected {
@@ -810,6 +782,64 @@ func (c *ComboBox) handleKey(key core.KeyEvent) bool {
 	return false
 }
 
+func (c *ComboBox) handleOverlayKey(key core.KeyEvent) bool {
+	return !isNativeMode(c.mode) && c.open && c.handleKey(key)
+}
+
+func (c *ComboBox) handleKeyBeforeTranslate(key core.KeyEvent) bool {
+	activation := key.Key == core.KeyReturn || key.Key == core.KeySpace
+	if isNativeMode(c.mode) || !activation || !c.focused || !c.Visible() {
+		return false
+	}
+	if scene := c.scene(); scene != nil && !scene.canFocusWidget(c) {
+		return false
+	}
+	return c.handleKey(key)
+}
+
+func (c *ComboBox) setPopupOpen(open bool) {
+	c.updateState(func() bool {
+		oldOpen, oldHover, oldFirst := c.open, c.hover, c.firstVisible
+		c.open = open && len(c.items) > 0
+		c.hover = -1
+		c.revealSelected()
+		return c.open != oldOpen || c.hover != oldHover || c.firstVisible != oldFirst
+	})
+}
+
+func (c *ComboBox) revealSelected() {
+	if !c.open || c.selected < 0 {
+		return
+	}
+	layout := c.popupLayout()
+	visible := layout.end - layout.start
+	if visible <= 0 {
+		return
+	}
+	if c.selected < layout.start {
+		c.firstVisible = c.selected
+	} else if c.selected >= layout.end {
+		c.firstVisible = c.selected - visible + 1
+	}
+}
+
+func (c *ComboBox) scrollPopup(evt Event) {
+	if evt.Delta == 0 {
+		return
+	}
+	layout := c.popupLayout()
+	visible := layout.end - layout.start
+	if visible <= 0 {
+		return
+	}
+	c.updateState(func() bool {
+		oldFirst, oldHover := c.firstVisible, c.hover
+		c.firstVisible = max(0, min(len(c.items)-visible, layout.start-wheelSteps(evt.Delta)))
+		c.hover = c.popupIndexAt(evt.Point)
+		return c.firstVisible != oldFirst || c.hover != oldHover
+	})
+}
+
 // selectRelative 按给定步长移动当前选择，并跳过禁用项。
 func (c *ComboBox) selectRelative(step int) {
 	index := c.selected
@@ -837,15 +867,15 @@ func (c *ComboBox) selectIndex(index int, notify bool) {
 	if index < 0 || index >= len(c.items) || c.items[index].Disabled {
 		return
 	}
-	if c.selected == index {
-		return
-	}
+	changed := c.selected != index
 	c.updateState(func() bool {
+		oldFirst := c.firstVisible
 		c.selected = index
+		c.revealSelected()
 		c.syncNativeSelection()
-		return true
+		return changed || c.firstVisible != oldFirst
 	})
-	if notify && c.OnChange != nil {
+	if changed && notify && c.OnChange != nil {
 		c.OnChange(index, c.items[index])
 	}
 }
@@ -1032,19 +1062,8 @@ func (c *ComboBox) popupRangeForVisibleCount(visible int) (int, int) {
 	if visible > len(c.items) {
 		visible = len(c.items)
 	}
-	start := 0
-	if c.selected >= visible {
-		start = c.selected - visible + 1
-	}
-	end := start + visible
-	if end > len(c.items) {
-		end = len(c.items)
-		start = end - visible
-		if start < 0 {
-			start = 0
-		}
-	}
-	return start, end
+	start := max(0, min(c.firstVisible, len(c.items)-visible))
+	return start, start + visible
 }
 
 func (c *ComboBox) popupVisibleCountForSpace(space, padding, itemHeight int32) int {
