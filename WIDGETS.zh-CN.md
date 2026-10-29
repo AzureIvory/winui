@@ -92,6 +92,8 @@
 
 后代通过 setter 增删内容、修改布局/布局数据、显式几何、preferred size 或可见性时，会沿父树使祖先 ScrollView 的测量缓存失效；Label 的文本、换行、字体/格式变更也使用该路径。下次布局、绘制或滚动输入在相同视口下更新横纵范围，收缩时自动夹紧偏移，无需重复 resize。纯滚动、悬停和重绘继续复用测量结果；直接赋值公开字段不会代替 setter 的通知。
 
+行、列与线性布局的自然尺寸和受宽度约束测量遵循实际排版的显隐规则：隐藏子项不贡献尺寸或间距。滚动边界测量忽略隐藏节点保留的旧 Bounds；切换显隐无需由应用清空几何尺寸。
+
 原生 `WM_MOUSEWHEEL` 和 `WM_MOUSEHWHEEL` 共用 `OnMouseWheel`；`core.MouseEvent.Horizontal` / `widgets.Event.Horizontal` 默认为 false，true 表示真实横轴，独立于原始 `Flags`。有符号 `Delta` 原样保留：横轴正值向右、负值向左，纵轴正值向上。Shift + 纵滚保持既有横移优先行为；真实横滚不回退成纵滚，在轴未启用或到达边界时沿既有父树冒泡。ListBox 和 EditBox 的纵滚处理器不消费真实横滚。
 
 滚条轨道、滑块颜色由 `PanelStyle.Background` / `BorderColor` 派生。白色背景可省略 BorderColor，使用默认可辨认配色；同时将两色设白也会使滚条变白。

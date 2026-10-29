@@ -117,7 +117,7 @@ func measureFlexNatural(owner Widget, children []Widget, axis Axis, gap int32, p
 	cross := int32(0)
 	count := 0
 	for _, child := range children {
-		if child == nil {
+		if child == nil || !child.Visible() {
 			continue
 		}
 		size := measureWidgetNatural(child)
@@ -166,7 +166,7 @@ func measureFlexNaturalForWidth(owner Widget, children []Widget, axis Axis, gap 
 	cross := int32(0)
 	count := 0
 	for _, child := range children {
-		if child == nil {
+		if child == nil || !child.Visible() {
 			continue
 		}
 		size := preferredSizeForWidth(child, contentWidth)

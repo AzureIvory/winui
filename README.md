@@ -331,6 +331,8 @@ Existing explicit preferred dimensions remain authoritative. For an automaticall
 
 `ScrollView` invalidates its measured content size when descendants change children, layout data, explicit geometry or preferred size. Label text, wrapping and font/format changes also invalidate ancestor scroll measurements. The next layout, paint or scroll input recomputes both ranges at the existing viewport size; scrolling and hover keep using the measured cache. Use the setters on the UI thread rather than changing exported fields directly.
 
+Row, column and linear natural/constrained measurements follow their existing layout visibility rules: hidden children contribute neither size nor gaps. Scroll boundary measurement ignores hidden children's retained bounds; callers do not need to erase hidden geometry when toggling visibility.
+
 Both native wheel messages use `OnMouseWheel`. `core.MouseEvent.Horizontal` and `widgets.Event.Horizontal` distinguish `WM_MOUSEHWHEEL` from the default vertical axis without changing raw `Flags` or signed `Delta`. A positive horizontal delta moves right; a positive vertical delta moves up. Shift + vertical wheel keeps its existing horizontal preference. True horizontal input only moves the horizontal axis and bubbles when unsupported or at its edge; vertical-only ListBox and EditBox handlers leave it for a capable ancestor.
 
 Scrollbar track and thumb colors derive from `PanelStyle.Background` and `BorderColor`. Leave the border color unset to use the default contrasting palette when setting a white background; setting both colors to white also makes the derived scrollbar white.

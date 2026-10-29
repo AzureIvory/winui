@@ -518,7 +518,7 @@ func (s *ScrollView) measuredContentSize(viewport Rect, size core.Size) core.Siz
 	right := bounds.X
 	bottom := bounds.Y
 	for _, child := range container.Children() {
-		if child == nil {
+		if child == nil || !child.Visible() {
 			continue
 		}
 		childBounds := child.Bounds()

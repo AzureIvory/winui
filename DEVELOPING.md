@@ -201,6 +201,8 @@ Keep existing natural, nil and explicit preferred-size semantics. In particular,
 
 ## Scroll measurement invalidation and wheel axes
 
+Keep row, column and linear natural/constrained measurements aligned with their layout visibility rules. Hidden children contribute neither size nor gaps. Scroll boundary measurement ignores hidden children's retained bounds; do not require callers to clear hidden geometry to obtain the correct extent.
+
 Use `widgetBase.invalidateMeasurement` for intrinsic content, child-tree, layout or explicit geometry changes. It walks the existing parent tree, invalidates each ancestor ScrollView's existing `layoutDirty` cache and repaints its viewport. Do not route paint-only invalidation through this helper: cached layout must survive hover, paint and offset-only movement. Internal layout/suppressed positioning must not record measured geometry as a new preferred size or invalidate ancestor measurement. A dirty ScrollView reapplies content layout even when the measured outer size is unchanged, so descendant arrangements can update.
 
 Keep `WM_MOUSEWHEEL` and `WM_MOUSEHWHEEL` in the same `OnMouseWheel` path. Copy the independent `Horizontal` field through scene conversion, preserve raw low-word flags, signed delta and client coordinates, and do not encode the axis using Shift. Horizontal positive delta is right; vertical positive delta is up. True horizontal input has no vertical fallback; unsupported consumers return false so existing ancestor routing can handle it. Preserve the existing Shift + vertical-wheel preference and ordinary vertical behavior.

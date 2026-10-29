@@ -547,4 +547,6 @@ jsonui.RunApps(hosted)
 
 Go 宿主可在文档已挂到 scene 后，于 UI 线程调用 `widgets.MeasureForWidth(widget, width)`。宽度和结果均为物理像素，不能直接作为逻辑 DP 的 JSON frame 或 `SetPreferredSize` 值；需要按实际 theme、字体、DPI 测量并换算单位。Label 自动增长时使用既有多行/换行能力并留空显式 preferred height；显式高度仍优先。该 API 仅公开原有测量路径，不新增 JSON 字段、绑定或布局模式。完整语义见 [受宽测量](WIDGETS.zh-CN.md#受宽测量)。
 
+行、列和线性布局的隐藏子项不贡献测量尺寸或间距；滚动边界也忽略隐藏节点保留的旧几何。通过既有 `visible` 或 Go setter 切换显隐即可更新范围，无需新增 JSON 属性或清空节点边界。
+
 ScrollView 的动态后代通过现有 Go setter 更新内容、布局、preferred size 等度量后，会自动使祖先滚动测量失效，在相同视口下重新派生横纵范围；纯滚动和悬停继续复用缓存。原生横滚沿现有事件链进入启用了 `horizontalScroll` 的容器，正值向右；Shift + 纵滚保持既有横移优先行为。Go 事件的 `Horizontal` 字段与原始 `Flags`、有符号 `Delta` 独立，不新增 JSON 轴字段或第二套回调。白色背景省略边框色即可使用默认滚条配色；将背景和边框都设白会同时影响派生滚条颜色。
