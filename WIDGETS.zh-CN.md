@@ -383,3 +383,11 @@ go vet ./...
 `ListBox.SetShowCheck(true)` 时，聚焦的有效选中行可用不带修饰键的 Space 切换勾选。勾选通过现有 `OnCheckChange` 回调报告，不改变单选项，不触发 `OnChange` 或 `OnActivate`。按键自动重复只消费，不重复切换；Ctrl/Alt/Shift、IME 组合、禁用/隐藏项不参与勾选。该操作复用 Scene 的 TranslateMessage 前默认键阶段；即使回调转焦点到原生编辑器，旧 Space 也不会作为字符漏入新编辑器。应用不应模拟第二套勾选键盘循环。
 
 `EditBox.Composing() bool` 是 UI 线程上的只读原生 IME 状态查询。需要延迟搜索的宿主可在去抖回调中检查它，组合期间等待，组合结束后再按需发起后台工作。它复用已有原生组合状态，不执行网络/文件访问，也不启动额外消息循环。JSON UI 的 ListBox `showCheck` 自动采用上述通用 Space 行为；组合状态查询是 Go 宿主 API，无需新的 JSON 字段。
+
+## 受宽测量
+
+`widgets.MeasureForWidth(widget Widget, width int32) core.Size` 公开复用布局系统已有的受宽测量，不创建控件或原生窗口，也不修改控件状态。约束宽度与返回尺寸均为物理像素；逻辑列宽应先用 `app.DP(widthDP)` 换算。它应在 UI 线程调用，不自动跨线程调度；控件应已挂到真实 scene，才能解析当前 theme、字体和 DPI。未挂载时只能得到默认或控件自身已有的度量，不能把它当最终场景尺寸。
+
+`nil` 返回零尺寸；`width <= 0` 沿用自然测量。正宽度请求控件已有的受宽首选尺寸，不强制覆盖显式 preferred 尺寸或改变其它控件的既有布局语义。对 Label，先启用 `SetMultiline(true)`、`SetWordWrap(true)`；要按正文自动增长时不要预设 preferred height，显式高度会继续覆盖测量高度。现有换行测量支持多行中文与无空格长串，无需宿主手写换行。
+
+`SetPreferredSize` 接受逻辑 DP，不能将测得的像素直接填入；应按当前缩放向上换算，或在物理像素布局中直接消费测量结果。字体/theme/DPI 改变后应重测。测量是现有布局路径的尺寸契约，实际后端绘制仍遵从原有 Label 绘制能力。

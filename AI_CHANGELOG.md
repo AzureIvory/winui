@@ -58,3 +58,9 @@
 `ListBox.SetShowCheck(true)` 时，聚焦的有效选中行可用不带修饰键的 Space 切换勾选。勾选通过现有 `OnCheckChange` 回调报告，不改变单选项，不触发 `OnChange` 或 `OnActivate`。按键自动重复只消费，不重复切换；Ctrl/Alt/Shift、IME 组合、禁用/隐藏项不参与勾选。该操作复用 Scene 的 TranslateMessage 前默认键阶段；即使回调转焦点到原生编辑器，旧 Space 也不会作为字符漏入新编辑器。应用不应模拟第二套勾选键盘循环。
 
 `EditBox.Composing() bool` 是 UI 线程上的只读原生 IME 状态查询。需要延迟搜索的宿主可在去抖回调中检查它，组合期间等待，组合结束后再按需发起后台工作。它复用已有原生组合状态，不执行网络/文件访问，也不启动额外消息循环。JSON UI 的 ListBox `showCheck` 自动采用上述通用 Space 行为；组合状态查询是 Go 宿主 API，无需新的 JSON 字段。
+
+## 受宽测量公开入口（2026-10-29）
+
+- 新增 `widgets.MeasureForWidth(widget Widget, width int32) core.Size`，直接复用 `preferredSizeForWidth`，没有第二套换行或测量实现。
+- 契约：UI 线程、挂载到 scene 后使用当前 theme/font/DPI；约束与结果均为物理像素；nil 为零，非正宽度为自然测量；显式 preferred 尺寸保持原语义，Label 自动高度应留空 preferred height。
+- README、开发指南、控件指南和 JSON UI 指南同步单位换算与使用边界；未新增控件、HWND、JSON 字段或线程调度行为。

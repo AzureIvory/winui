@@ -542,3 +542,7 @@ jsonui.RunApps(hosted)
 `ListBox.SetShowCheck(true)` 时，聚焦的有效选中行可用不带修饰键的 Space 切换勾选。勾选通过现有 `OnCheckChange` 回调报告，不改变单选项，不触发 `OnChange` 或 `OnActivate`。按键自动重复只消费，不重复切换；Ctrl/Alt/Shift、IME 组合、禁用/隐藏项不参与勾选。该操作复用 Scene 的 TranslateMessage 前默认键阶段；即使回调转焦点到原生编辑器，旧 Space 也不会作为字符漏入新编辑器。应用不应模拟第二套勾选键盘循环。
 
 `EditBox.Composing() bool` 是 UI 线程上的只读原生 IME 状态查询。需要延迟搜索的宿主可在去抖回调中检查它，组合期间等待，组合结束后再按需发起后台工作。它复用已有原生组合状态，不执行网络/文件访问，也不启动额外消息循环。JSON UI 的 ListBox `showCheck` 自动采用上述通用 Space 行为；组合状态查询是 Go 宿主 API，无需新的 JSON 字段。
+
+## 宿主受宽测量
+
+Go 宿主可在文档已挂到 scene 后，于 UI 线程调用 `widgets.MeasureForWidth(widget, width)`。宽度和结果均为物理像素，不能直接作为逻辑 DP 的 JSON frame 或 `SetPreferredSize` 值；需要按实际 theme、字体、DPI 测量并换算单位。Label 自动增长时使用既有多行/换行能力并留空显式 preferred height；显式高度仍优先。该 API 仅公开原有测量路径，不新增 JSON 字段、绑定或布局模式。完整语义见 [受宽测量](WIDGETS.zh-CN.md#受宽测量)。

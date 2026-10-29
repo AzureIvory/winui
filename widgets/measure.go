@@ -9,6 +9,17 @@ func MeasureNatural(widget Widget) core.Size {
 	return measureWidgetNatural(widget)
 }
 
+// MeasureForWidth returns the widget's preferred layout size for a width in
+// physical pixels. The returned size is also in pixels. A nonpositive width
+// requests natural measurement; a nil widget returns zero size.
+//
+// Call on the UI thread after attaching the widget to its scene so theme and DPI
+// are available. Existing explicit preferred dimensions remain authoritative;
+// leave preferred height unset when measuring wrapped text for automatic height.
+func MeasureForWidth(widget Widget, width int32) core.Size {
+	return preferredSizeForWidth(widget, width)
+}
+
 func measureWidgetNatural(widget Widget) core.Size {
 	if widget == nil {
 		return core.Size{}
