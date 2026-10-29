@@ -136,6 +136,7 @@ func (l *ListBox) SelectedItem() (ListItem, bool) {
 func (l *ListBox) SetStyle(style ListStyle) {
 	l.runOnUI(func() {
 		l.Style = style
+		l.clampScroll()
 		l.invalidate(l)
 	})
 }
@@ -398,11 +399,10 @@ func (l *ListBox) Paint(ctx *PaintCtx) {
 			W: max32(0, rowRect.W-leftPad-rightPad),
 			H: rowRect.H,
 		}
-		_ = ctx.DrawWidgetText(l, item.displayText(), textRect, TextStyle{
-			Font:   style.Font,
-			Color:  textColor,
-			Format: core.DTVCenter | core.DTSingleLine | core.DTEndEllipsis,
-		})
+		if rowBg == 0 {
+			rowBg = baseBg
+		}
+		l.paintRowText(ctx, item, textRect, style, textColor, rowBg)
 
 		// 打勾指示器画在行右侧，垂直居中。
 		if checkSize > 0 {
@@ -440,6 +440,30 @@ func (l *ListBox) Paint(ctx *PaintCtx) {
 	}
 }
 
+// paintRowText keeps compact rows single-line; sufficiently tall rows show
+// Subtitle using the same two-line geometry as rich ComboBox items.
+func (l *ListBox) paintRowText(ctx *PaintCtx, item ListItem, bounds Rect, style ListStyle, color, background core.Color) {
+	subtitleFont := itemSubtitleFont(style.Font)
+	minimum := itemTextLineHeight(ctx, style.Font, ctx.DP(20)) +
+		itemTextLineHeight(ctx, subtitleFont, ctx.DP(16)) + ctx.DP(5)
+	titleRect := bounds
+	var subtitleRect Rect
+	if item.Subtitle != "" && bounds.H >= minimum {
+		titleRect, subtitleRect = itemTextLineRects(ctx, bounds, style.Font, subtitleFont)
+	}
+	format := core.DTVCenter | core.DTSingleLine | core.DTEndEllipsis
+	_ = ctx.DrawWidgetText(l, item.displayText(), titleRect, TextStyle{
+		Font: style.Font, Color: color, Format: format,
+	})
+	if !subtitleRect.Empty() {
+		// The secondary color inherits per-item, disabled and selection colors.
+		subtitleColor := BlendColor(background, color, 180)
+		_ = ctx.DrawWidgetText(l, item.Subtitle, subtitleRect, TextStyle{
+			Font: subtitleFont, Color: subtitleColor, Format: format,
+		})
+	}
+}
+
 // acceptsFocus 返回控件是否可接收键盘焦点。
 func (l *ListBox) acceptsFocus() bool {
 	return true
@@ -465,9 +489,30 @@ func (l *ListBox) resolveStyle(ctx *PaintCtx) ListStyle {
 }
 
 // handleKey 处理列表框的按键事件。
+// handleKeyBeforeTranslate participates in the existing scene default-key
+// stage, so a check callback may focus a native editor without receiving the
+// Space character generated for this activation.
+func (l *ListBox) handleKeyBeforeTranslate(key core.KeyEvent) bool {
+	if !l.showCheck || !l.focused || !l.Visible() || !l.Enabled() || key.Key != core.KeySpace ||
+		key.Composing || key.Ctrl || key.Alt || key.Shift || key.Flags&(1<<29) != 0 ||
+		l.selected < 0 || l.selected >= len(l.items) || l.items[l.selected].Disabled {
+		return false
+	}
+	if scene := l.scene(); scene != nil && (scene.Focus() != l || !scene.canFocusWidget(l)) {
+		return false
+	}
+	if !key.Repeat && key.Flags&(1<<30) == 0 {
+		l.toggleItemCheck(l.selected, true)
+	}
+	return true
+}
+
 func (l *ListBox) handleKey(key core.KeyEvent) bool {
 	if len(l.items) == 0 || !l.Enabled() {
 		return false
+	}
+	if key.Key == core.KeySpace && l.showCheck {
+		return l.handleKeyBeforeTranslate(key)
 	}
 
 	switch key.Key {

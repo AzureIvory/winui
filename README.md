@@ -26,6 +26,9 @@ Chinese version: [README.zh-CN.md](./README.zh-CN.md)
 - Declarative `scrollview` for JSON-authored nested scrolling surfaces
 - Runtime lookup helpers such as `Window.FindWidget`, `Document.FindWidget`, and `widgets.FindByID`
 - Single-window and multi-window helpers
+- Hidden startup and non-activating window placement, visibility and Z-order operations
+- Consumable scene keyboard previews, including native RichEdit input and IME-safe shortcuts
+- Two-line `ListBox` rows using `ListItem.Subtitle` and a configured item height
 - Demo apps in `demo/demo_json_full` and `demo/demo_go_full`
 
 ## Packages
@@ -38,6 +41,63 @@ Chinese version: [README.zh-CN.md](./README.zh-CN.md)
 - `demo/demo_go_full/`: full-surface Go UI demo with palette switching, mode toggling, and API checks
 
 ## Quick Start
+
+For companion windows, set `core.Options.StartHidden = true`, call `app.Init()`,
+then use `app.SetScreenBounds(core.Rect{...})`, `app.RaiseNoActivate()` and
+`app.ShowNoActivate()`. Screen bounds use physical pixels and include the window
+frame. These methods, `Hide()`, `ScreenBounds()` and `SetOwner(...)` run synchronously
+on the UI thread and return operation errors. `Init` starts the message pump;
+`Run` waits for its completion. A stopped pump returns `core.ErrAppClosed`.
+Avoid holding a lock needed by UI callbacks while calling a synchronous method.
+
+`App.Post` guarantees that a callback will never execute if posting returns an
+error. Success accepts the callback (or executes it inline on the UI thread);
+termination of the UI loop can still cancel accepted work.
+
+`SetOwner` uses ordinary Win32 ownership: minimizing the owner hides the owned
+window, and destroying the owner destroys it. Use `RaiseNoActivate` for independent
+windows that should stay alive after an external window closes. It raises within
+the current Z-order group without making a normal window globally topmost.
+
+Use `scene.FocusWidget(widget)` for explicit widget focus and
+`scene.SetKeyPreview(func(core.KeyEvent) bool)` (or `SceneHooks.OnKeyPreview`) for
+shortcuts. Returning `true` consumes the key before character generation, including
+when a native child owns focus. `KeyEvent` includes `Ctrl`, `Shift`, `Alt`, `Repeat`
+and `Composing`; IME composition bypasses shortcut handlers. Ordinary unconsumed
+keys continue through the existing callbacks and controls. Native window chrome
+and click-to-activate behavior remain available.
+
+For opt-in Tab navigation, call `scene.FocusNext(key.Shift)` from the UI-thread
+key preview when `key.Key == core.KeyTab` and neither Ctrl nor Alt is held. It
+wraps in depth-first child order, skips hidden/disabled ancestors, and stays in
+the topmost visible enabled modal. It returns false if no eligible target exists
+or it is called off the UI thread. No global Tab behavior is installed.
+
+`FocusWidget` and `FocusNext` reveal off-viewport targets through ancestor
+`ScrollView` offsets before transferring focus. Nested viewports use nearest-edge
+movement; fully visible targets stay still, including oversized targets already
+covering a viewport. Native editor hosts keep their full editing bounds and use
+cached window regions to clip drawing and clicks to those same ancestor viewports.
+Mouse focus uses the same native focus transfer as explicit and Tab focus.
+Only explicit/Tab focus scrolls to reveal a target; mouse focus keeps the clicked
+geometry unchanged until the original pointer event is interpreted. Editor text
+set before scene attachment is seeded into the new native host before change
+notifications are registered, preserving initial drafts in both editor modes.
+
+Custom buttons participate in focus traversal. A focused, enabled button invokes
+`OnClick` once for an unmodified Enter or Space press; repeats, modifiers and IME
+composition do not activate it. Its inset focus outline uses the resolved text
+color for contrast on both light and solid-color themes. Native buttons retain
+their Windows keyboard handling.
+
+Unconsumed native editor submit keys use that same pre-translation path, so
+`OnSubmit` cannot leave a translated CR/LF behind when key messages accumulate.
+`KeyEvent.Handle` identifies the source window. IME-wrapped ordinary keys are
+resolved before translation, while active composition still bypasses shortcuts.
+
+Set `ListStyle.ItemHeightDP` to a suitable two-line height (for example, 56 DP with
+the default font) to display `ListItem.Subtitle`. Compact rows keep single-line
+text. Existing selection, clipping, scrolling, checks and activation are shared.
 
 Imperative widgets:
 
@@ -254,3 +314,9 @@ GitHub Actions mirrors the Windows validation path in `.github/workflows/ci.yml`
 `Button`, `EditBox`, `CheckBox`, `RadioButton`, `ComboBox`, and `FilePicker` can switch between custom-drawn and native-system backends via the `mode` parameter.
 
 If you want `ModeNative` controls to render with Win10/Win11 visual styles, the final executable still needs a `Microsoft.Windows.Common-Controls` v6 manifest.
+
+## 紧凑知识工作台键盘语义（2026-10-29）
+
+`ListBox.SetShowCheck(true)` 时，聚焦的有效选中行可用不带修饰键的 Space 切换勾选。勾选通过现有 `OnCheckChange` 回调报告，不改变单选项，不触发 `OnChange` 或 `OnActivate`。按键自动重复只消费，不重复切换；Ctrl/Alt/Shift、IME 组合、禁用/隐藏项不参与勾选。该操作复用 Scene 的 TranslateMessage 前默认键阶段；即使回调转焦点到原生编辑器，旧 Space 也不会作为字符漏入新编辑器。应用不应模拟第二套勾选键盘循环。
+
+`EditBox.Composing() bool` 是 UI 线程上的只读原生 IME 状态查询。需要延迟搜索的宿主可在去抖回调中检查它，组合期间等待，组合结束后再按需发起后台工作。它复用已有原生组合状态，不执行网络/文件访问，也不启动额外消息循环。JSON UI 的 ListBox `showCheck` 自动采用上述通用 Space 行为；组合状态查询是 Go 宿主 API，无需新的 JSON 字段。

@@ -71,8 +71,12 @@ func (s *ScrollView) SetBounds(rect Rect) {
 		if bounds := s.Bounds(); bounds.W != rect.W || bounds.H != rect.H {
 			s.invalidateLayoutCache()
 		}
+		changed := s.Bounds() != rect
 		s.widgetBase.setBounds(s, rect)
 		s.layoutContent()
+		if changed {
+			syncNativeTreeGeometry(s.content)
+		}
 		s.invalidate(s)
 	})
 }
@@ -541,6 +545,38 @@ func (s *ScrollView) applyOffset(x, y int32) {
 		return
 	}
 	s.invalidate(s)
+}
+
+// revealRect uses the existing offset/layout path and the nearest exposed edge.
+// Oversized targets already spanning an axis stay still on that axis.
+func (s *ScrollView) revealRect(rect Rect) {
+	viewport := s.viewportRect()
+	if rect.Empty() || viewport.Empty() {
+		return
+	}
+	s.applyOffset(s.offsetX+revealAxisDelta(rect.X, rect.W, viewport.X, viewport.W),
+		s.offsetY+revealAxisDelta(rect.Y, rect.H, viewport.Y, viewport.H))
+}
+
+func revealAxisDelta(start, size, viewportStart, viewportSize int32) int32 {
+	end := start + size
+	viewportEnd := viewportStart + viewportSize
+	if size > viewportSize {
+		if start > viewportStart {
+			return start - viewportStart
+		}
+		if end < viewportEnd {
+			return end - viewportEnd
+		}
+		return 0
+	}
+	if start < viewportStart {
+		return start - viewportStart
+	}
+	if end > viewportEnd {
+		return end - viewportEnd
+	}
+	return 0
 }
 
 func (s *ScrollView) handleMouseMove(evt Event) bool {

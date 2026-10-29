@@ -22,6 +22,26 @@ func Walk(root Widget, visit func(Widget) bool) bool {
 	return true
 }
 
+// topmostVisibleWidget follows overlay Z order: reverse children, then parent,
+// excluding invisible or disabled subtrees.
+func topmostVisibleWidget(root Widget, match func(Widget) bool) Widget {
+	if root == nil || !root.Visible() || !root.Enabled() {
+		return nil
+	}
+	if container, ok := root.(Container); ok {
+		children := container.Children()
+		for index := len(children) - 1; index >= 0; index-- {
+			if widget := topmostVisibleWidget(children[index], match); widget != nil {
+				return widget
+			}
+		}
+	}
+	if match(root) {
+		return root
+	}
+	return nil
+}
+
 // FindByID looks up the first widget whose ID matches the provided value.
 func FindByID(root Widget, id string) Widget {
 	if root == nil || id == "" {

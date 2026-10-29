@@ -34,6 +34,9 @@ type SceneHooks struct {
 	AfterPaint func(*core.App, *Scene, *core.Canvas)
 	// OnResize 在场景同步尺寸后执行额外逻辑。
 	OnResize func(*core.App, *Scene, core.Size)
+	// OnKeyPreview handles shortcuts before focused widgets and native children.
+	// Returning true consumes the key and prevents character generation.
+	OnKeyPreview func(*core.App, *Scene, core.KeyEvent) bool
 	// OnFocus 在场景处理焦点切换后执行额外逻辑。
 	OnFocus func(*core.App, *Scene, bool)
 	// OnTimer 在场景处理定时器后执行额外逻辑。
@@ -60,6 +63,7 @@ func BindScene(opts *core.Options, hooks SceneHooks) *SceneRef {
 	prevMouseUp := opts.OnMouseUp
 	prevMouseWheel := opts.OnMouseWheel
 	prevKeyDown := opts.OnKeyDown
+	prevKeyPreview := opts.OnKeyPreview
 	prevChar := opts.OnChar
 	prevFocus := opts.OnFocus
 	prevTimer := opts.OnTimer
@@ -72,6 +76,9 @@ func BindScene(opts *core.Options, hooks SceneHooks) *SceneRef {
 		ref.scene.Store(scene)
 		if hooks.Theme != nil {
 			scene.SetTheme(hooks.Theme)
+		}
+		if hooks.OnKeyPreview != nil {
+			scene.SetKeyPreview(func(ev core.KeyEvent) bool { return hooks.OnKeyPreview(app, scene, ev) })
 		}
 		if prevCreate != nil {
 			if err := prevCreate(app); err != nil {
@@ -170,10 +177,38 @@ func BindScene(opts *core.Options, hooks SceneHooks) *SceneRef {
 		}
 	}
 
+	opts.OnKeyPreview = func(app *core.App, ev core.KeyEvent) bool {
+		scene := ref.Scene()
+		if scene != nil {
+			composing := scene.keyComposing(ev)
+			if edit := scene.nativeEditForKey(ev); edit != nil {
+				// Translation may synchronously end composition before the native
+				// subclass receives this same candidate-confirmation key.
+				edit.imeKeyComposing = composing
+			}
+			if composing {
+				return false
+			}
+			if scene.previewKeyDown(ev) {
+				return true
+			}
+		}
+		if prevKeyPreview != nil && prevKeyPreview(app, ev) {
+			return true
+		}
+		if scene != nil {
+			if target, ok := scene.keyTarget(ev).(preTranslateKeyWidget); ok {
+				return target.handleKeyBeforeTranslate(ev)
+			}
+		}
+		return false
+	}
+
 	opts.OnKeyDown = func(app *core.App, ev core.KeyEvent) {
 		scene := ref.Scene()
 		if scene != nil {
-			scene.DispatchKeyDown(ev)
+			// The message loop has already previewed this key before translation.
+			scene.dispatchKeyboardAfterPreview(Event{Type: EventKeyDown, Key: ev})
 		}
 		if prevKeyDown != nil {
 			prevKeyDown(app, ev)

@@ -49,3 +49,37 @@ func cloneItems(items []ListItem) []ListItem {
 	}
 	return cloned
 }
+
+func itemSubtitleFont(font FontSpec) FontSpec {
+	if font.SizeDP > 12 {
+		font.SizeDP--
+	}
+	if font.Weight > 500 {
+		font.Weight = 500
+	}
+	return font
+}
+
+func itemTextLineHeight(ctx *PaintCtx, spec FontSpec, fallback int32) int32 {
+	if ctx == nil || spec.SizeDP <= 0 {
+		return fallback
+	}
+	return max32(fallback, ctx.DP(spec.SizeDP+6))
+}
+
+func itemTextLineRects(ctx *PaintCtx, bounds Rect, titleFont, subtitleFont FontSpec) (Rect, Rect) {
+	if ctx == nil || bounds.Empty() {
+		return Rect{}, Rect{}
+	}
+	titleH := itemTextLineHeight(ctx, titleFont, ctx.DP(20))
+	subtitleH := itemTextLineHeight(ctx, subtitleFont, ctx.DP(16))
+	gap := max32(0, ctx.DP(1))
+	if total := titleH + subtitleH + gap; total > bounds.H {
+		available := max32(2, bounds.H-gap)
+		titleH = max32(1, available*11/20)
+		subtitleH = max32(1, available-titleH)
+	}
+	top := max32(bounds.Y, bounds.Y+(bounds.H-titleH-subtitleH-gap)/2)
+	return Rect{X: bounds.X, Y: top, W: bounds.W, H: titleH},
+		Rect{X: bounds.X, Y: top + titleH + gap, W: bounds.W, H: subtitleH}
+}

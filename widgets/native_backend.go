@@ -111,6 +111,7 @@ const (
 const (
 	// nativeWindowNoZOrder 表示移动窗口时保持 Z 序不变。
 	nativeWindowNoZOrder = 0x0004
+	nativeWindowNoRedraw = 0x0008
 	// nativeWindowNoActivate 表示移动窗口时不激活窗口。
 	nativeWindowNoActivate = 0x0010
 )
@@ -254,6 +255,8 @@ type nativeControlState struct {
 	commandID uint16
 	// oldWndProc 保存子类化前的原始窗口过程指针。
 	oldWndProc uintptr
+	// geometry caches native host bounds and ancestor clipping.
+	geometry nativeHostGeometry
 }
 
 // normalizeControlMode 将传入模式规整为受支持的枚举值。
@@ -341,7 +344,8 @@ func createNativeControl(scene *Scene, className, text string, style uint32, bou
 		0,
 		uintptr(unsafe.Pointer(classPtr)),
 		uintptr(unsafe.Pointer(textPtr)),
-		uintptr(style),
+		// Hosts are shown only after bounds and ancestor clipping are synced.
+		uintptr(style&^nativeWindowVisible),
 		uintptr(bounds.X),
 		uintptr(bounds.Y),
 		uintptr(bounds.W),
@@ -382,19 +386,20 @@ func destroyNativeControl(handle windows.Handle) {
 }
 
 // setNativeBounds 同步原生子控件边界。
-func setNativeBounds(handle windows.Handle, bounds Rect) {
+func setNativeBounds(handle windows.Handle, bounds Rect) bool {
 	if handle == 0 {
-		return
+		return false
 	}
-	procSetWindowPos.Call(
+	ok, _, _ := procSetWindowPos.Call(
 		uintptr(handle),
 		0,
 		uintptr(bounds.X),
 		uintptr(bounds.Y),
 		uintptr(bounds.W),
 		uintptr(bounds.H),
-		nativeWindowNoZOrder|nativeWindowNoActivate,
+		nativeWindowNoZOrder|nativeWindowNoActivate|nativeWindowNoRedraw,
 	)
+	return ok != 0
 }
 
 // setNativeVisible 同步原生子控件可见性。
@@ -602,12 +607,21 @@ func nativeEditProc(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr {
 	if msg == nativeWindowMouseWheel && !edit.multiline {
 		return 0
 	}
-	if msg == nativeWindowKeyDown && uint32(wParam) == core.KeyReturn {
-		shouldSubmit := !edit.multiline || !edit.acceptReturn || keyHasCtrlState()
-		if shouldSubmit {
-			if edit.OnSubmit != nil {
-				edit.OnSubmit(edit.TextValue())
-			}
+	switch msg {
+	case 0x010D: // WM_IME_STARTCOMPOSITION
+		edit.imeComposing = true
+	case 0x010E: // WM_IME_ENDCOMPOSITION
+		edit.imeComposing = false
+	case nativeWindowKeyDown:
+		composing := edit.imeComposing || edit.imeKeyComposing
+		edit.imeKeyComposing = false
+		// Queued submit keys were already consumed before TranslateMessage.
+		// This fallback preserves direct SendMessage(WM_KEYDOWN) semantics;
+		// it creates no state that could swallow a later unrelated WM_CHAR.
+		if edit.submitNativeKey(core.KeyEvent{
+			Key: uint32(wParam), Handle: windows.Handle(hwnd), Flags: lParam,
+			Ctrl: keyHasCtrlState(), Composing: composing,
+		}) {
 			return 0
 		}
 	}

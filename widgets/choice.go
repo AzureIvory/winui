@@ -260,7 +260,7 @@ func (c *CheckBox) handleNativeCommand(code uint16) bool {
 	switch code {
 	case nativeButtonSetFocus:
 		if scene := c.scene(); scene != nil {
-			scene.Blur()
+			scene.setFocus(c)
 		}
 		return true
 	case nativeButtonClicked:
@@ -313,24 +313,24 @@ func (c *CheckBox) ensureNativeControl(scene *Scene) {
 // destroyNativeControl 销毁复选框对应的原生系统子控件。
 func (c *CheckBox) destroyNativeControl(scene *Scene) {
 	if !c.native.valid() {
-		c.native.commandID = 0
+		c.native = nativeControlState{}
 		return
 	}
 	if scene != nil {
 		scene.unregisterNativeControl(c.native.handle)
 	}
 	destroyNativeControl(c.native.handle)
-	c.native.handle = 0
-	c.native.commandID = 0
-	c.native.oldWndProc = 0
+	c.native = nativeControlState{}
 }
 
 // syncNativeBounds 同步复选框原生控件边界。
 func (c *CheckBox) syncNativeBounds() {
 	if c.native.valid() {
-		setNativeBounds(c.native.handle, c.Bounds())
+		c.native.syncBounds(c, c.Bounds())
 	}
 }
+
+func (c *CheckBox) syncNativeAfterTreeMove() { c.syncNativeBounds() }
 
 // syncNativeVisible 同步复选框原生控件可见性。
 func (c *CheckBox) syncNativeVisible() {
@@ -667,7 +667,7 @@ func (r *RadioButton) handleNativeCommand(code uint16) bool {
 	switch code {
 	case nativeButtonSetFocus:
 		if scene := r.scene(); scene != nil {
-			scene.Blur()
+			scene.setFocus(r)
 		}
 		return true
 	case nativeButtonClicked:
@@ -718,24 +718,24 @@ func (r *RadioButton) ensureNativeControl(scene *Scene) {
 // destroyNativeControl 销毁单选按钮对应的原生系统子控件。
 func (r *RadioButton) destroyNativeControl(scene *Scene) {
 	if !r.native.valid() {
-		r.native.commandID = 0
+		r.native = nativeControlState{}
 		return
 	}
 	if scene != nil {
 		scene.unregisterNativeControl(r.native.handle)
 	}
 	destroyNativeControl(r.native.handle)
-	r.native.handle = 0
-	r.native.commandID = 0
-	r.native.oldWndProc = 0
+	r.native = nativeControlState{}
 }
 
 // syncNativeBounds 同步单选按钮原生控件边界。
 func (r *RadioButton) syncNativeBounds() {
 	if r.native.valid() {
-		setNativeBounds(r.native.handle, r.Bounds())
+		r.native.syncBounds(r, r.Bounds())
 	}
 }
+
+func (r *RadioButton) syncNativeAfterTreeMove() { r.syncNativeBounds() }
 
 // syncNativeVisible 同步单选按钮原生控件可见性。
 func (r *RadioButton) syncNativeVisible() {

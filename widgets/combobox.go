@@ -564,7 +564,7 @@ func (c *ComboBox) handleNativeCommand(code uint16) bool {
 	switch code {
 	case nativeComboSetFocus:
 		if scene := c.scene(); scene != nil {
-			scene.Blur()
+			scene.setFocus(c)
 		}
 		return true
 	case nativeComboSelectionChanged:
@@ -627,24 +627,24 @@ func (c *ComboBox) ensureNativeControl(scene *Scene) {
 // destroyNativeControl 销毁组合框对应的原生系统子控件。
 func (c *ComboBox) destroyNativeControl(scene *Scene) {
 	if !c.native.valid() {
-		c.native.commandID = 0
+		c.native = nativeControlState{}
 		return
 	}
 	if scene != nil {
 		scene.unregisterNativeControl(c.native.handle)
 	}
 	destroyNativeControl(c.native.handle)
-	c.native.handle = 0
-	c.native.commandID = 0
-	c.native.oldWndProc = 0
+	c.native = nativeControlState{}
 }
 
 // syncNativeBounds 同步组合框原生控件边界。
 func (c *ComboBox) syncNativeBounds() {
 	if c.native.valid() {
-		setNativeBounds(c.native.handle, c.Bounds())
+		c.native.syncBounds(c, c.Bounds())
 	}
 }
+
+func (c *ComboBox) syncNativeAfterTreeMove() { c.syncNativeBounds() }
 
 // syncNativeVisible 同步组合框原生控件可见性。
 func (c *ComboBox) syncNativeVisible() {
@@ -1072,14 +1072,7 @@ func comboRichTitleFont(style ComboStyle) FontSpec {
 }
 
 func comboRichSubtitleFont(style ComboStyle) FontSpec {
-	font := style.Font
-	if font.SizeDP > 12 {
-		font.SizeDP--
-	}
-	if font.Weight > 500 {
-		font.Weight = 500
-	}
-	return font
+	return itemSubtitleFont(style.Font)
 }
 
 func comboRichContentRects(ctx *PaintCtx, bounds Rect, markWidth int32) (Rect, Rect) {
@@ -1107,43 +1100,7 @@ func comboRichContentRects(ctx *PaintCtx, bounds Rect, markWidth int32) (Rect, R
 }
 
 func comboRichTextLineRects(ctx *PaintCtx, style ComboStyle, bounds Rect) (Rect, Rect) {
-	if ctx == nil || bounds.Empty() {
-		return Rect{}, Rect{}
-	}
-	titleH := comboRichLineHeight(ctx, comboRichTitleFont(style), ctx.DP(20))
-	subtitleH := comboRichLineHeight(ctx, comboRichSubtitleFont(style), ctx.DP(16))
-	gap := max32(0, ctx.DP(1))
-	if total := titleH + subtitleH + gap; total > bounds.H {
-		available := max32(2, bounds.H-gap)
-		titleH = max32(1, available*11/20)
-		subtitleH = max32(1, available-titleH)
-	}
-	totalH := titleH + gap + subtitleH
-	top := bounds.Y + (bounds.H-totalH)/2
-	if top < bounds.Y {
-		top = bounds.Y
-	}
-	return Rect{
-			X: bounds.X,
-			Y: top,
-			W: bounds.W,
-			H: titleH,
-		}, Rect{
-			X: bounds.X,
-			Y: top + titleH + gap,
-			W: bounds.W,
-			H: subtitleH,
-		}
-}
-
-func comboRichLineHeight(ctx *PaintCtx, spec FontSpec, fallback int32) int32 {
-	if ctx == nil {
-		return fallback
-	}
-	if spec.SizeDP <= 0 {
-		return fallback
-	}
-	return max32(fallback, ctx.DP(spec.SizeDP+6))
+	return itemTextLineRects(ctx, bounds, comboRichTitleFont(style), comboRichSubtitleFont(style))
 }
 
 func comboRichImageRect(ctx *PaintCtx, style ComboStyle, slot Rect) Rect {

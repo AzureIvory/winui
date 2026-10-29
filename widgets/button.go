@@ -34,6 +34,8 @@ type Button struct {
 	Hover bool
 	// Down 记录按钮是否处于按下状态。
 	Down bool
+	// Focused reports keyboard focus for the custom button backend.
+	Focused bool
 	// OnClick 保存按钮点击回调。
 	OnClick func()
 	// Style 保存按钮样式覆盖。
@@ -64,6 +66,9 @@ func (b *Button) SetVisible(visible bool) {
 	b.runOnUI(func() {
 		b.widgetBase.setVisible(b, visible)
 		b.syncNativeVisible()
+		if !visible && !isNativeMode(b.mode) {
+			b.clearFocus()
+		}
 	})
 }
 
@@ -72,6 +77,9 @@ func (b *Button) SetEnabled(enabled bool) {
 	b.runOnUI(func() {
 		b.widgetBase.setEnabled(b, enabled)
 		b.syncNativeEnabled()
+		if !enabled && !isNativeMode(b.mode) {
+			b.clearFocus()
+		}
 	})
 }
 
@@ -157,6 +165,33 @@ func (b *Button) cursor() CursorID {
 	return core.CursorHand
 }
 
+func (b *Button) acceptsFocus() bool {
+	return !isNativeMode(b.mode)
+}
+
+func (b *Button) clearFocus() {
+	if scene := b.scene(); scene != nil && scene.Focus() == b {
+		scene.Blur()
+	} else {
+		b.OnEvent(Event{Type: EventBlur})
+	}
+}
+
+func (b *Button) handleKeyBeforeTranslate(key core.KeyEvent) bool {
+	if isNativeMode(b.mode) || !b.Focused || !b.Visible() || !b.Enabled() ||
+		(key.Key != core.KeyReturn && key.Key != core.KeySpace) || key.Composing ||
+		key.Ctrl || key.Alt || key.Shift || key.Flags&(1<<29) != 0 {
+		return false
+	}
+	if scene := b.scene(); scene != nil && (scene.Focus() != b || !scene.canFocusWidget(b)) {
+		return false
+	}
+	if !key.Repeat && key.Flags&(1<<30) == 0 && b.OnClick != nil {
+		b.OnClick()
+	}
+	return true
+}
+
 // OnEvent 处理输入事件或生命周期事件。
 func (b *Button) OnEvent(evt Event) bool {
 	if isNativeMode(b.mode) {
@@ -192,6 +227,19 @@ func (b *Button) OnEvent(evt Event) bool {
 			b.OnClick()
 			return true
 		}
+	case EventFocus:
+		if !b.Focused {
+			b.Focused = true
+			b.invalidate(b)
+		}
+	case EventBlur:
+		if b.Focused || b.Down {
+			b.Focused = false
+			b.Down = false
+			b.invalidate(b)
+		}
+	case EventKeyDown:
+		return b.handleKeyBeforeTranslate(evt.Key)
 	}
 	return false
 }
@@ -248,12 +296,19 @@ func (b *Button) Paint(ctx *PaintCtx) {
 	default:
 		b.drawTopGraphicButton(ctx, bounds, style, textColor)
 	}
+	if b.Focused && b.Enabled() {
+		// Text already contrasts with the resolved background, including solid
+		// action buttons. Keep the focus outline inside the existing bounds.
+		inset := max32(1, scaleValueForWidget(b, scaleSlotPadding, 3))
+		_ = ctx.StrokeRoundRect(insetRect(bounds, inset, inset), max32(0, radius-inset), textColor, 1)
+	}
 }
 
 // setScene 更新按钮关联的场景，并在原生模式下同步子控件生命周期。
 func (b *Button) setScene(scene *Scene) {
 	current := b.scene()
 	if current != scene {
+		b.Focused = false
 		b.destroyNativeControl(current)
 	}
 	b.widgetBase.setScene(scene)
@@ -276,7 +331,7 @@ func (b *Button) handleNativeCommand(code uint16) bool {
 	switch code {
 	case nativeButtonSetFocus:
 		if scene := b.scene(); scene != nil {
-			scene.Blur()
+			scene.setFocus(b)
 		}
 		return true
 	case nativeButtonClicked:
@@ -325,24 +380,24 @@ func (b *Button) ensureNativeControl(scene *Scene) {
 // destroyNativeControl 销毁按钮对应的原生系统子控件。
 func (b *Button) destroyNativeControl(scene *Scene) {
 	if !b.native.valid() {
-		b.native.commandID = 0
+		b.native = nativeControlState{}
 		return
 	}
 	if scene != nil {
 		scene.unregisterNativeControl(b.native.handle)
 	}
 	destroyNativeControl(b.native.handle)
-	b.native.handle = 0
-	b.native.commandID = 0
-	b.native.oldWndProc = 0
+	b.native = nativeControlState{}
 }
 
 // syncNativeBounds 同步按钮原生控件边界。
 func (b *Button) syncNativeBounds() {
 	if b.native.valid() {
-		setNativeBounds(b.native.handle, b.Bounds())
+		b.native.syncBounds(b, b.Bounds())
 	}
 }
+
+func (b *Button) syncNativeAfterTreeMove() { b.syncNativeBounds() }
 
 // syncNativeVisible 同步按钮原生控件可见性。
 func (b *Button) syncNativeVisible() {

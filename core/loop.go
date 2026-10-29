@@ -152,10 +152,7 @@ func appWndProc(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr {
 
 	case wmKeyDown:
 		if app.opts.OnKeyDown != nil {
-			app.opts.OnKeyDown(app, KeyEvent{
-				Key:   uint32(wParam),
-				Flags: lParam,
-			})
+			app.opts.OnKeyDown(app, keyEvent(windows.Handle(hwnd), wParam, lParam))
 		}
 		return 0
 
@@ -180,7 +177,7 @@ func appWndProc(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr {
 		info, suggested := dpiChangeFromMessage(wParam, lParam, app.DPI())
 		app.setDPI(info)
 		app.applyWindowImage()
-		if suggested != nil {
+		if suggested != nil && !app.placingScreenBounds {
 			procSetWindowPos.Call(
 				uintptr(app.hwnd),
 				0,
@@ -241,6 +238,9 @@ func (a *App) runLoop() int {
 		case 0:
 			return int(message.WParam)
 		default:
+			if a.previewKeyMessage(&message) {
+				continue
+			}
 			procTranslateMessage.Call(uintptr(unsafe.Pointer(&message)))
 			procDispatchMessageW.Call(uintptr(unsafe.Pointer(&message)))
 		}

@@ -23,6 +23,10 @@ type EditBox struct {
 	mode ControlMode
 	// native 保存编辑框在原生后端下的运行时状态。
 	native nativeControlState
+	// imeComposing tracks native IME start/end messages, including empty composition.
+	imeComposing bool
+	// imeKeyComposing preserves composition across TranslateMessage ending it.
+	imeKeyComposing bool
 	// Text 保存当前文本内容。
 	Text string
 	// Placeholder 保存占位文本。
@@ -302,6 +306,11 @@ func (e *EditBox) SetOnChange(fn func(string)) {
 	})
 }
 
+// Composing reports the native IME composition state on the UI thread. It lets
+// debounced consumers defer work until composition has finished, including a
+// composition started or ended without another keyboard shortcut.
+func (e *EditBox) Composing() bool { return e.imeComposing }
+
 // SetOnSubmit 注册编辑框的提交回调。
 func (e *EditBox) SetOnSubmit(fn func(string)) {
 	e.runOnUI(func() {
@@ -534,11 +543,7 @@ func (e *EditBox) handleNativeCommand(code uint16) bool {
 	switch code {
 	case nativeEditSetFocus:
 		if scene := e.scene(); scene != nil {
-			if isNativeMode(e.mode) {
-				scene.Blur()
-			} else {
-				scene.setFocus(e)
-			}
+			scene.setFocus(e)
 		}
 		e.syncNativeVisible()
 		e.invalidate(e)
@@ -603,13 +608,16 @@ func (e *EditBox) ensureNativeControl(scene *Scene) {
 	}
 	e.native.handle = handle
 	e.native.commandID = commandID
+	// Seed the hidden HWND before native notifications can read it back.
+	// Geometry/theme initialization can send EN_CHANGE while creating a host;
+	// registering an empty host first would overwrite pre-attachment text.
+	e.syncNativeText()
 	scene.registerNativeControl(handle, e)
 	subclassNativeEdit(e)
 	e.syncNativeBounds()
 	e.syncNativeVisible()
 	e.syncNativeEnabled()
 	e.syncNativeTheme()
-	e.syncNativeText()
 	e.syncNativePlaceholder()
 	e.syncNativeReadOnly()
 	e.syncNativePassword()
@@ -618,7 +626,7 @@ func (e *EditBox) ensureNativeControl(scene *Scene) {
 // destroyNativeControl 销毁编辑框对应的原生系统子控件。
 func (e *EditBox) destroyNativeControl(scene *Scene) {
 	if !e.native.valid() {
-		e.native.commandID = 0
+		e.native = nativeControlState{}
 		return
 	}
 	unsubclassNativeEdit(e)
@@ -626,15 +634,15 @@ func (e *EditBox) destroyNativeControl(scene *Scene) {
 		scene.unregisterNativeControl(e.native.handle)
 	}
 	destroyNativeControl(e.native.handle)
-	e.native.handle = 0
-	e.native.commandID = 0
-	e.native.oldWndProc = 0
+	e.native = nativeControlState{}
+	e.imeComposing = false
+	e.imeKeyComposing = false
 }
 
 // syncNativeBounds 同步编辑框原生控件边界。
 func (e *EditBox) syncNativeBounds() {
 	if e.native.valid() {
-		setNativeBounds(e.native.handle, e.nativeHostBounds())
+		e.native.syncBounds(e, e.nativeHostBounds())
 		e.syncNativeInsets()
 	}
 }
@@ -762,9 +770,9 @@ func (e *EditBox) syncNativeInsets() {
 }
 
 // syncNativeAfterTreeMove satisfies nativeAfterMove so that ScrollView
-// translateWidgetTree reparents native child HWNDs alongside bounds.
+// translateWidgetTree moves native child HWNDs and updates ancestor clipping.
 func (e *EditBox) syncNativeAfterTreeMove() {
-	e.syncNativeBounds()
+	e.native.syncBounds(e, e.nativeHostBounds())
 }
 
 func (e *EditBox) nativeHostBounds() Rect {
@@ -842,7 +850,7 @@ func (e *EditBox) resolveStyle(ctx *PaintCtx) EditStyle {
 
 // handleKey 处理编辑框的按键事件。
 func (e *EditBox) handleKey(key core.KeyEvent) bool {
-	if !e.Enabled() {
+	if !e.Enabled() || key.Composing {
 		return false
 	}
 
@@ -1074,8 +1082,27 @@ func (e *EditBox) nativeEditStyle() uint32 {
 
 func (e *EditBox) submit() {
 	if e.OnSubmit != nil {
-		e.OnSubmit(e.Text)
+		e.OnSubmit(e.TextValue())
 	}
+}
+
+// handleKeyBeforeTranslate participates in the scene's default-key stage.
+func (e *EditBox) handleKeyBeforeTranslate(key core.KeyEvent) bool {
+	return e.submitNativeKey(key)
+}
+
+// submitNativeKey is shared by pre-translation dispatch and direct native
+// WM_KEYDOWN callers. Queued submissions are consumed before a WM_CHAR exists.
+func (e *EditBox) submitNativeKey(key core.KeyEvent) bool {
+	if !e.native.valid() || !e.Enabled() || key.Composing || key.Key != core.KeyReturn ||
+		key.Alt || key.Flags&(1<<29) != 0 {
+		return false
+	}
+	if e.multiline && e.acceptReturn && !keyHasCtrl(key) {
+		return false
+	}
+	e.submit()
+	return true
 }
 
 func (e *EditBox) insertRune(ch rune) {
@@ -1212,5 +1239,5 @@ func alignTextFormat(align Alignment, base uint32) uint32 {
 }
 
 func keyHasCtrl(key core.KeyEvent) bool {
-	return uint64(key.Flags)&editKeyFlagCtrl != 0 || keyHasCtrlState()
+	return key.Ctrl || uint64(key.Flags)&editKeyFlagCtrl != 0 || keyHasCtrlState()
 }

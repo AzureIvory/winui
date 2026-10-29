@@ -68,6 +68,13 @@ type focusableWidget interface {
 	acceptsFocus() bool
 }
 
+// preTranslateKeyWidget handles default keys that must not generate characters,
+// after external previews and before the existing native message translation.
+type preTranslateKeyWidget interface {
+	Widget
+	handleKeyBeforeTranslate(core.KeyEvent) bool
+}
+
 // overlayWidget 表示支持在常规绘制后追加覆盖层的控件。
 type overlayWidget interface {
 	Widget
@@ -280,6 +287,7 @@ func (b *widgetBase) setVisible(owner Widget, visible bool) {
 		return
 	}
 	b.visible = visible
+	defer syncNativeTreeGeometry(owner)
 	// 可见性变化会影响父容器布局（例如按钮组里动态显示/隐藏按钮）。
 	// 这里主动触发父面板重新排版，避免控件从隐藏切换为显示时仍停留在默认 (0,0)。
 	if panel, ok := b.parentRef.(*Panel); ok {

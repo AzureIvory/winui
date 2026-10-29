@@ -79,6 +79,8 @@ type App struct {
 	sizeMu sync.RWMutex
 	// clientSize 保存最新客户区尺寸。
 	clientSize Size
+	// placingScreenBounds keeps explicit physical geometry authoritative during DPI changes.
+	placingScreenBounds bool
 
 	// initOnce 保证初始化只执行一次。
 	initOnce sync.Once
@@ -86,6 +88,8 @@ type App struct {
 	ready chan struct{}
 	// done 用于返回消息循环退出码。
 	done chan int
+	// stopped broadcasts that the UI loop has exited, including initialization failure.
+	stopped chan struct{}
 	// initErr 保存初始化错误。
 	initErr error
 
@@ -152,6 +156,7 @@ func NewApp(opts Options) (*App, error) {
 		className:    opts.ClassName,
 		ready:        make(chan struct{}),
 		done:         make(chan int, 1),
+		stopped:      make(chan struct{}),
 		activeTimers: make(map[uintptr]struct{}),
 	}
 	app.currentCursor.Store(uint64(opts.Cursor))
@@ -205,6 +210,8 @@ func (a *App) IsUIThread() bool {
 }
 
 // Post 将回调调度到应用的 UI 线程执行。
+// If Post returns an error, fn has not executed and will never execute.
+// A nil result accepts the callback; UI-loop termination may still cancel it.
 func (a *App) Post(fn func()) error {
 	if a == nil || a.hwnd == 0 {
 		return ErrNotInitialized
@@ -229,15 +236,19 @@ func (a *App) enqueuePost(fn func()) error {
 	}
 
 	a.postMu.Lock()
+	defer a.postMu.Unlock()
 	if a.closed.Load() {
-		a.postMu.Unlock()
 		return ErrAppClosed
 	}
+	index := len(a.postQueue)
 	a.postQueue = append(a.postQueue, fn)
-	a.postMu.Unlock()
 
+	// Posting is nonblocking. Keep enqueue and notification atomic with respect
+	// to drainPosted so a failed notification cannot leave an executable callback.
 	r1, _, err := procPostMessageW.Call(uintptr(a.hwnd), wmAppInvoke, 0, 0)
 	if r1 == 0 {
+		a.postQueue[index] = nil
+		a.postQueue = a.postQueue[:index]
 		return wrapError("PostMessageW", err)
 	}
 	return nil
@@ -424,6 +435,10 @@ func MessageBeep() error {
 func (a *App) runUIThread() {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
+	defer func() {
+		a.closed.Store(true)
+		close(a.stopped)
+	}()
 	defer a.closeRenderer()
 
 	a.threadID = currentThreadID()
@@ -510,11 +525,15 @@ func (a *App) createWindow() error {
 	}
 
 	createRegistry.Store(a.threadID, a)
+	style := a.opts.Style
+	if a.opts.StartHidden {
+		style &^= 0x10000000 // WS_VISIBLE must not activate during CreateWindowExW.
+	}
 	hwnd, _, createErr := procCreateWindowExW.Call(
 		uintptr(a.opts.ExStyle),
 		uintptr(unsafe.Pointer(classNamePtr)),
 		uintptr(unsafe.Pointer(titlePtr)),
-		uintptr(a.opts.Style),
+		uintptr(style),
 		uintptr(x),
 		uintptr(y),
 		uintptr(winW),
@@ -547,8 +566,10 @@ func (a *App) createWindow() error {
 		return err
 	}
 
-	procShowWindow.Call(hwnd, showWindowNormal)
-	procUpdateWindow.Call(hwnd)
+	if !a.opts.StartHidden {
+		procShowWindow.Call(hwnd, showWindowNormal)
+		procUpdateWindow.Call(hwnd)
+	}
 	a.scheduleInitialRelayout()
 	return nil
 }

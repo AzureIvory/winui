@@ -379,6 +379,31 @@ JSON 样式不是另一套渲染系统，而是直接映射到现有控件样式
 }
 ```
 
+### `listbox` 双行条目与宿主交互
+
+`listbox` 也支持已有条目字段 `subtitle`。配置足够的 `style.itemH`（默认字体建议 56 DP）后显示双行条目；紧凑行高保留单行行为，无需新增 JSON 节点或布局类型：
+
+```json
+{
+  "type": "listbox",
+  "id": "entries",
+  "style": { "itemH": 56 },
+  "items": [
+    { "value": "one", "text": "主标题", "subtitle": "副标题预览" }
+  ]
+}
+```
+
+窗口隐藏启动、物理屏幕定位和快捷键消费属于宿主运行时能力：在 `core.Options` 设置 `StartHidden`，通过 `App.SetScreenBounds` / `ShowNoActivate` / `Hide` / `RaiseNoActivate` 控制窗口，通过 `Scene.FocusWidget` / `SetKeyPreview` 操作挂载后的场景。JSON 的 `frame` 仍按原有布局缩放规则解释；没有新增窗口定位或快捷键业务 DSL。
+
+表单需要 Tab / Shift+Tab 时，宿主可在当前场景的 UI 线程按键预览中调用 `Scene.FocusNext(key.Shift)`；资格判定、子控件树顺序和模态范围由场景统一管理，不需要在产品中维护另一份控件顺序，也没有新增 JSON Tab 配置。
+
+嵌套 `scrollview` 内的原生编辑输入层也按祖先视口交集裁剪，不会盖住视口外的固定页脚。宿主调用 `FocusWidget` / `FocusNext` 时会用既有滚动偏移显露离屏控件，无需另写 JSON 滚动动作或产品级原生窗口覆盖逻辑。
+
+鼠标点击仍按原始控件位置解释，不会在处理点击坐标前自动滚动。编辑控件的初始文本在原生输入层变更通知启用前写入，JSON/宿主预先设置的正文可在挂载后保留。
+
+自绘 `button` 同样参与这个焦点顺序，聚焦后无修饰键的 Enter / Space 触发其原有 `onClick` 动作一次，并显示按钮内部的主题文字色焦点轮廓；不需要添加单独的键盘动作或焦点样式字段。
+
 ### `select` 富样式扩展
 
 - `style.layout` 支持 `default` 和 `rich`。
@@ -511,3 +536,9 @@ jsonui.RunApps(hosted)
 - `font` / `image` / `padding` / `gap` / `radius` 控制渲染侧样式尺寸
 - `frame` 默认仍按逻辑 DP 解释；当节点 `scale.layout = "px"` 时，`frame` 表达式里的 `winW` / `winH` / `parentW` / `parentH` 会改用物理像素，结果也不再二次按 DPI 缩放
 - 不写 `scale` 时，旧页面行为保持不变
+
+## 紧凑知识工作台键盘语义（2026-10-29）
+
+`ListBox.SetShowCheck(true)` 时，聚焦的有效选中行可用不带修饰键的 Space 切换勾选。勾选通过现有 `OnCheckChange` 回调报告，不改变单选项，不触发 `OnChange` 或 `OnActivate`。按键自动重复只消费，不重复切换；Ctrl/Alt/Shift、IME 组合、禁用/隐藏项不参与勾选。该操作复用 Scene 的 TranslateMessage 前默认键阶段；即使回调转焦点到原生编辑器，旧 Space 也不会作为字符漏入新编辑器。应用不应模拟第二套勾选键盘循环。
+
+`EditBox.Composing() bool` 是 UI 线程上的只读原生 IME 状态查询。需要延迟搜索的宿主可在去抖回调中检查它，组合期间等待，组合结束后再按需发起后台工作。它复用已有原生组合状态，不执行网络/文件访问，也不启动额外消息循环。JSON UI 的 ListBox `showCheck` 自动采用上述通用 Space 行为；组合状态查询是 Go 宿主 API，无需新的 JSON 字段。

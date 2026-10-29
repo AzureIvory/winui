@@ -265,6 +265,8 @@ type Scene struct {
 	capture Widget
 	// focus 记录当前拥有键盘焦点的控件。
 	focus Widget
+	// keyPreview handles scene shortcuts before native or widget key handling.
+	keyPreview func(core.KeyEvent) bool
 
 	// fontMu 保护字体缓存。
 	fontMu sync.Mutex
@@ -638,6 +640,18 @@ func (s *Scene) routeEvent(target Widget, evt Event) bool {
 
 // dispatchKeyboard 在场景中分发键盘事件。
 func (s *Scene) dispatchKeyboard(evt Event) bool {
+	if evt.Type == EventKeyDown {
+		if s.keyComposing(evt.Key) {
+			return false
+		}
+		if s.previewKeyDown(evt.Key) {
+			return true
+		}
+	}
+	return s.dispatchKeyboardAfterPreview(evt)
+}
+
+func (s *Scene) dispatchKeyboardAfterPreview(evt Event) bool {
 	if s.focus == nil {
 		return false
 	}
@@ -717,7 +731,11 @@ func (s *Scene) dispatchMouseDown(evt Event) bool {
 	if target == nil {
 		target = s.mouseTargetAt(evt.Point.X, evt.Point.Y, s.hover)
 	}
-	s.setFocus(target)
+	// Transfer keyboard focus without moving the target before it interprets
+	// this pointer event. Explicit and Tab focus opt into scroll reveal.
+	if !s.focusWidget(target, false) {
+		s.focusWidget(nil, false)
+	}
 	if target == nil {
 		return false
 	}
@@ -807,21 +825,10 @@ func (s *Scene) hitTestClipped(widget Widget, x, y int32, clip Rect, clipped boo
 }
 
 func (s *Scene) hitTestOverlay(widget Widget, x, y int32) Widget {
-	if widget == nil || !widget.Visible() || !widget.Enabled() {
-		return nil
-	}
-	if container, ok := widget.(Container); ok {
-		children := container.Children()
-		for i := len(children) - 1; i >= 0; i-- {
-			if hit := s.hitTestOverlay(children[i], x, y); hit != nil {
-				return hit
-			}
-		}
-	}
-	if overlay, ok := widget.(overlayHitWidget); ok && overlay.overlayHitTest(x, y) {
-		return widget
-	}
-	return nil
+	return topmostVisibleWidget(widget, func(candidate Widget) bool {
+		overlay, ok := candidate.(overlayHitWidget)
+		return ok && overlay.overlayHitTest(x, y)
+	})
 }
 
 func (s *Scene) overlayTargetAt(x, y int32) Widget {
@@ -887,11 +894,8 @@ func (s *Scene) releaseMouse() {
 
 // setFocus 更新场景焦点。
 func (s *Scene) setFocus(target Widget) {
-	if target != nil {
-		focusable, ok := target.(focusableWidget)
-		if !ok || !focusable.acceptsFocus() || !target.Visible() || !target.Enabled() {
-			target = nil
-		}
+	if target != nil && !s.canFocusWidget(target) {
+		target = nil
 	}
 	if s.focus == target {
 		return

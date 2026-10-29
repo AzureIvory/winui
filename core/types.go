@@ -90,8 +90,16 @@ type MouseEvent struct {
 type KeyEvent struct {
 	// Key 表示虚拟键码。
 	Key uint32
+	// Handle is the source window, including a native child. It may be zero for manual dispatch.
+	Handle windows.Handle
 	// Flags 保存原始消息中的位标志。
 	Flags uintptr
+	// Ctrl, Shift and Alt describe the modifier state when the key was received.
+	Ctrl, Shift, Alt bool
+	// Repeat is true for an auto-repeated key press.
+	Repeat bool
+	// Composing is true for active IME composition or an unresolved IME process key.
+	Composing bool
 }
 
 // CommandEvent 描述原生子控件通过 WM_COMMAND 发送的通知。
@@ -136,6 +144,8 @@ type Options struct {
 	DoubleBuffered bool
 	// RenderMode 控制绘制后端选择。Auto 会优先尝试 Direct2D，失败时回退到 GDI。
 	RenderMode RenderMode
+	// StartHidden creates and lays out the window without showing or activating it.
+	StartHidden bool
 
 	// OnCreate 在窗口创建完成后触发。
 	OnCreate func(*App) error
@@ -155,6 +165,10 @@ type Options struct {
 	OnMouseWheel func(*App, MouseEvent)
 	// OnKeyDown 在按键按下时触发。
 	OnKeyDown func(*App, KeyEvent)
+	// OnKeyPreview runs before translation for keys sent to this window or its children.
+	// Returning true consumes the key, including the character it would generate.
+	// Composing marks IME input, which cannot be consumed by returning true.
+	OnKeyPreview func(*App, KeyEvent) bool
 	// OnChar 在字符输入时触发。
 	OnChar func(*App, rune)
 	// OnFocus 在窗口焦点变化时触发。
