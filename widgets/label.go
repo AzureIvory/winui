@@ -48,6 +48,7 @@ func (l *Label) SetText(text string) {
 			return
 		}
 		l.Text = text
+		l.invalidateMeasurement()
 		l.invalidate(l)
 	})
 }
@@ -59,6 +60,7 @@ func (l *Label) SetMultiline(multiline bool) {
 			return
 		}
 		l.multiline = multiline
+		l.invalidateMeasurement()
 		if panel, ok := l.parent().(*Panel); ok {
 			panel.applyLayout()
 			panel.invalidate(panel)
@@ -80,6 +82,7 @@ func (l *Label) SetWordWrap(wordWrap bool) {
 			return
 		}
 		l.wordWrap = wordWrap
+		l.invalidateMeasurement()
 		if panel, ok := l.parent().(*Panel); ok {
 			panel.applyLayout()
 			panel.invalidate(panel)
@@ -97,6 +100,9 @@ func (l *Label) WordWrap() bool {
 // SetStyle 更新标签的样式覆盖。
 func (l *Label) SetStyle(style TextStyle) {
 	l.runOnUI(func() {
+		if l.Style.Font != style.Font || l.Style.Format != style.Format {
+			l.invalidateMeasurement()
+		}
 		l.Style = style
 		l.invalidate(l)
 	})

@@ -1116,7 +1116,7 @@ func (e *EditBox) insertRune(ch rune) {
 }
 
 func (e *EditBox) handleWheel(evt Event) bool {
-	if !e.multiline || !e.verticalScroll {
+	if evt.Horizontal || !e.multiline || !e.verticalScroll {
 		return false
 	}
 	style := e.resolveStyle(&PaintCtx{scene: e.scene()})

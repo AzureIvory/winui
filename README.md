@@ -326,3 +326,11 @@ If you want `ModeNative` controls to render with Win10/Win11 visual styles, the 
 `widgets.MeasureForWidth(widget, width) core.Size` exposes the existing layout measurement path. Width and result use physical pixels; pass `app.DP(...)` for a logical column width. Call it on the UI thread after attaching the widget to its scene, so the current theme, font and DPI apply. A nil widget measures zero; nonpositive width uses natural measurement.
 
 Existing explicit preferred dimensions remain authoritative. For an automatically growing Label, enable `SetMultiline(true)` and `SetWordWrap(true)` and leave preferred height unset before measuring. `SetPreferredSize` uses logical DP, so convert measured pixels when recording logical sizes. See [the widget guide](WIDGETS.zh-CN.md#受宽测量) for the full contract.
+
+## Dynamic scrolling and wheel axes
+
+`ScrollView` invalidates its measured content size when descendants change children, layout data, explicit geometry or preferred size. Label text, wrapping and font/format changes also invalidate ancestor scroll measurements. The next layout, paint or scroll input recomputes both ranges at the existing viewport size; scrolling and hover keep using the measured cache. Use the setters on the UI thread rather than changing exported fields directly.
+
+Both native wheel messages use `OnMouseWheel`. `core.MouseEvent.Horizontal` and `widgets.Event.Horizontal` distinguish `WM_MOUSEHWHEEL` from the default vertical axis without changing raw `Flags` or signed `Delta`. A positive horizontal delta moves right; a positive vertical delta moves up. Shift + vertical wheel keeps its existing horizontal preference. True horizontal input only moves the horizontal axis and bubbles when unsupported or at its edge; vertical-only ListBox and EditBox handlers leave it for a capable ancestor.
+
+Scrollbar track and thumb colors derive from `PanelStyle.Background` and `BorderColor`. Leave the border color unset to use the default contrasting palette when setting a white background; setting both colors to white also makes the derived scrollbar white.

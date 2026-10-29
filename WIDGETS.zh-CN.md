@@ -90,6 +90,12 @@
 
 `ScrollView` 的祖先视口裁剪同样覆盖原生控件 HWND，包括自绘 EditBox 内的 RichEdit 输入层。部分可见时裁剪绘制及鼠标命中，完全离开视口时区域为空；恢复可见或调整视口会重新同步，不缩小编辑器内部文档尺寸、不重建 HWND、不重置选择。裁剪交集复用场景的 `clipBounds`，缓存实际区域避免每帧创建 GDI region。
 
+后代通过 setter 增删内容、修改布局/布局数据、显式几何、preferred size 或可见性时，会沿父树使祖先 ScrollView 的测量缓存失效；Label 的文本、换行、字体/格式变更也使用该路径。下次布局、绘制或滚动输入在相同视口下更新横纵范围，收缩时自动夹紧偏移，无需重复 resize。纯滚动、悬停和重绘继续复用测量结果；直接赋值公开字段不会代替 setter 的通知。
+
+原生 `WM_MOUSEWHEEL` 和 `WM_MOUSEHWHEEL` 共用 `OnMouseWheel`；`core.MouseEvent.Horizontal` / `widgets.Event.Horizontal` 默认为 false，true 表示真实横轴，独立于原始 `Flags`。有符号 `Delta` 原样保留：横轴正值向右、负值向左，纵轴正值向上。Shift + 纵滚保持既有横移优先行为；真实横滚不回退成纵滚，在轴未启用或到达边界时沿既有父树冒泡。ListBox 和 EditBox 的纵滚处理器不消费真实横滚。
+
+滚条轨道、滑块颜色由 `PanelStyle.Background` / `BorderColor` 派生。白色背景可省略 BorderColor，使用默认可辨认配色；同时将两色设白也会使滚条变白。
+
 `Toggle` 是滑动开关控件，仅自绘模式，通过 `ToggleStyle` 可自定义开关轨道色、滑块色以及 ON/OFF 文字颜色；JSON 中用 `type: "toggle"` 声明，样式键含 `trackOn` / `trackOff` / `knob` / `textOn` / `textOff`。
 
 `ListBox` 支持每行独立配色（`ListItem.Background` / `TextColor`）与右侧打勾列（`SetShowCheck` 开启，`ListItem.Checked` 记录勾选，回调 `OnCheckChange`）；勾选与单选选中互不影响，选中/悬停态以半透明叠加，自定义行底色依旧可见。JSON 侧 listbox 用 `check: true` 开启打勾列，每项可声明 `bg` / `fg` / `checked`。

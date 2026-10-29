@@ -82,8 +82,10 @@ type MouseEvent struct {
 	Button MouseButton
 	// Flags 保存原始 Win32 鼠标标志位。
 	Flags uintptr
-	// Delta 表示滚轮事件的滚动增量。
+	// Delta 保存原始有符号滚轮增量；纵轴正值向上，横轴正值向右。
 	Delta int32
+	// Horizontal 标记真实横向滚轮；默认 false 表示纵向滚轮，与 Flags 无关。
+	Horizontal bool
 }
 
 // KeyEvent 描述键盘按键与底层消息标志。
@@ -357,6 +359,8 @@ const (
 	wmRButtonUp = 0x0205
 	// wmMouseWheel 表示鼠标滚轮消息。
 	wmMouseWheel = 0x020A
+	// wmMouseHWheel 表示鼠标横向滚轮消息。
+	wmMouseHWheel = 0x020E
 	// wmMouseLeave 表示鼠标离开窗口消息。
 	wmMouseLeave = 0x02A3
 	// wmDPICHanged 表示 DPI 变化消息。

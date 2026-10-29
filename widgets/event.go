@@ -52,8 +52,10 @@ type Event struct {
 	Rune rune
 	// Flags 保存原始消息标志。
 	Flags uintptr
-	// Delta 表示滚轮增量。
+	// Delta 保存原始有符号滚轮增量；纵轴正值向上，横轴正值向右。
 	Delta int32
+	// Horizontal 标记真实横向滚轮；默认 false 表示纵向滚轮，与 Flags 无关。
+	Horizontal bool
 	// TimerID 表示触发事件的定时器标识。
 	TimerID uintptr
 	// Bounds 表示与尺寸变化相关的矩形范围。
@@ -67,10 +69,11 @@ type Event struct {
 // eventFromMouse 将鼠标事件转换为控件事件。
 func eventFromMouse(t EventType, ev core.MouseEvent) Event {
 	return Event{
-		Type:   t,
-		Point:  ev.Point,
-		Button: ev.Button,
-		Flags:  ev.Flags,
-		Delta:  ev.Delta,
+		Type:       t,
+		Point:      ev.Point,
+		Button:     ev.Button,
+		Flags:      ev.Flags,
+		Delta:      ev.Delta,
+		Horizontal: ev.Horizontal,
 	}
 }

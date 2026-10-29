@@ -139,13 +139,14 @@ func appWndProc(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr {
 		}
 		return 0
 
-	case wmMouseWheel:
+	case wmMouseWheel, wmMouseHWheel:
 		if app.opts.OnMouseWheel != nil {
 			pt := app.screenToClient(pointFromLParam(lParam))
 			app.opts.OnMouseWheel(app, MouseEvent{
-				Point: pt,
-				Flags: wParam & 0xFFFF,
-				Delta: int32(int16(uint16((wParam >> 16) & 0xFFFF))),
+				Point:      pt,
+				Flags:      wParam & 0xFFFF,
+				Delta:      int32(int16(uint16((wParam >> 16) & 0xFFFF))),
+				Horizontal: msg == wmMouseHWheel,
 			})
 		}
 		return 0

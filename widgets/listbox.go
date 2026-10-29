@@ -268,7 +268,7 @@ func (l *ListBox) OnEvent(evt Event) bool {
 		}
 		return true
 	case EventMouseWheel:
-		if !l.Enabled() {
+		if evt.Horizontal || !l.Enabled() {
 			return false
 		}
 		if l.scrollBy(wheelSteps(evt.Delta) * -3) {

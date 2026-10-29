@@ -64,3 +64,10 @@
 - 新增 `widgets.MeasureForWidth(widget Widget, width int32) core.Size`，直接复用 `preferredSizeForWidth`，没有第二套换行或测量实现。
 - 契约：UI 线程、挂载到 scene 后使用当前 theme/font/DPI；约束与结果均为物理像素；nil 为零，非正宽度为自然测量；显式 preferred 尺寸保持原语义，Label 自动高度应留空 preferred height。
 - README、开发指南、控件指南和 JSON UI 指南同步单位换算与使用边界；未新增控件、HWND、JSON 字段或线程调度行为。
+
+## 动态滚动范围与原生横轴（2026-10-29）
+
+- 修正已布局 ScrollView 的后代增删、布局/布局数据、显式几何、preferred size、可见性及 Label 文本/换行/字体格式变更未使祖先测量失效的问题，复用现有父树和 `layoutDirty`；下次使用重新派生横纵范围并夹紧偏移。
+- 测量失效时即使内容外框未变也重新安排后代；内部布局及滚动位置不写回 preferred size，纯滚动、悬停和绘制继续复用测量缓存。
+- 在既有 `OnMouseWheel` 路径分发 `WM_MOUSEHWHEEL`，`core.MouseEvent` 和 `widgets.Event` 新增默认 false 的 `Horizontal bool`，保留原始 Flags、有符号 Delta 与客户区坐标。横轴正值向右，纵轴正值向上；Shift + 纵滚沿用既有行为。
+- 真实横滚只处理横轴，未支持或到边界时冒泡；ListBox/EditBox 的纵向滚轮处理器不再误消费横轴。同步说明默认滚条派生色及白色样式覆盖边界，未新增控件、第二套回调或 JSON 字段。

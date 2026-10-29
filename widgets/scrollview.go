@@ -427,6 +427,7 @@ func (s *ScrollView) replaceContent(widget Widget) {
 	s.maxOffsetX = 0
 	s.maxOffsetY = 0
 	s.invalidateLayoutCache()
+	s.invalidateMeasurement()
 	s.hoverVerticalThumb = false
 	s.hoverHorizontalThumb = false
 	s.dragAxis = scrollDragNone
@@ -485,10 +486,10 @@ func (s *ScrollView) positionContent(target Rect) {
 		return
 	}
 	current := s.content.Bounds()
-	if current == target {
+	if current == target && !s.layoutDirty {
 		return
 	}
-	if current.W == target.W && current.H == target.H {
+	if current.W == target.W && current.H == target.H && !s.layoutDirty {
 		translateWidgetTree(s.content, target.X-current.X, target.Y-current.Y)
 		return
 	}
@@ -726,6 +727,7 @@ func (s *ScrollView) syncCursor() {
 }
 
 func (s *ScrollView) handleWheel(evt Event) bool {
+	s.layoutContent()
 	step := s.wheelStep
 	if step <= 0 {
 		step = 48
@@ -737,6 +739,9 @@ func (s *ScrollView) handleWheel(evt Event) bool {
 		} else if evt.Delta < 0 {
 			delta = step
 		}
+	}
+	if evt.Horizontal {
+		return s.scrollAlongAxis(-delta, true)
 	}
 	const mouseKeyShift = 0x0004
 	preferHorizontal := evt.Flags&mouseKeyShift != 0

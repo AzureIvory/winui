@@ -81,6 +81,7 @@ func (p *Panel) Add(child Widget) {
 	if container, ok := child.(Container); ok {
 		attachSceneRecursive(container, p.scene())
 	}
+	p.invalidateMeasurement()
 	p.applyLayout()
 	p.invalidate(p)
 }
@@ -106,6 +107,7 @@ func (p *Panel) Remove(id string) {
 			node.setScene(nil)
 		}
 		p.children = append(p.children[:i], p.children[i+1:]...)
+		p.invalidateMeasurement()
 		p.applyLayout()
 		p.invalidate(p)
 		return
@@ -125,6 +127,7 @@ func (p *Panel) SetLayout(layout Layout) {
 		layout = AbsoluteLayout{}
 	}
 	p.layout = layout
+	p.invalidateMeasurement()
 	p.applyLayout()
 	p.invalidate(p)
 }

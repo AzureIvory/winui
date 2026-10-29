@@ -185,6 +185,7 @@ func (b *widgetBase) LayoutData() any {
 // SetLayoutData 更新控件附带的布局数据并触发布局刷新。
 func (b *widgetBase) SetLayoutData(data any) {
 	b.layoutData = data
+	b.invalidateMeasurement()
 	if panel, ok := b.parentRef.(*Panel); ok {
 		panel.applyLayout()
 		panel.invalidate(panel)
@@ -230,7 +231,8 @@ func (b *widgetBase) setBounds(owner Widget, rect Rect) {
 	if b.bounds == rect {
 		return
 	}
-	if layoutPassDepth.Load() == 0 {
+	explicitGeometry := layoutPassDepth.Load() == 0 && suppressInvalidationDepth.Load() == 0
+	if explicitGeometry {
 		b.preferred = core.Size{Width: rect.W, Height: rect.H}
 		b.preferredLogical = false
 	}
@@ -239,6 +241,9 @@ func (b *widgetBase) setBounds(owner Widget, rect Rect) {
 		oldRect = widgetDirtyRect(owner)
 	}
 	b.bounds = rect
+	if explicitGeometry {
+		b.invalidateMeasurement()
+	}
 	if b.sceneRef != nil && suppressInvalidationDepth.Load() == 0 {
 		if !oldRect.Empty() {
 			b.sceneRef.invalidateRect(oldRect)
@@ -271,6 +276,7 @@ func (b *widgetBase) setPreferredSize(size core.Size) {
 	}
 	b.preferred = size
 	b.preferredLogical = true
+	b.invalidateMeasurement()
 	if panel, ok := b.parentRef.(*Panel); ok {
 		panel.applyLayout()
 		panel.invalidate(panel)
@@ -287,6 +293,7 @@ func (b *widgetBase) setVisible(owner Widget, visible bool) {
 		return
 	}
 	b.visible = visible
+	b.invalidateMeasurement()
 	defer syncNativeTreeGeometry(owner)
 	// 可见性变化会影响父容器布局（例如按钮组里动态显示/隐藏按钮）。
 	// 这里主动触发父面板重新排版，避免控件从隐藏切换为显示时仍停留在默认 (0,0)。
@@ -327,6 +334,22 @@ func (b *widgetBase) runOnUI(fn func()) {
 func (b *widgetBase) invalidate(owner Widget) {
 	if b.sceneRef != nil {
 		b.sceneRef.Invalidate(owner)
+	}
+}
+
+// invalidateMeasurement propagates intrinsic/layout changes to ancestor caches.
+// Painting, hover and internally arranged/scrolled geometry do not use this path.
+func (b *widgetBase) invalidateMeasurement() {
+	for parent := b.parentRef; parent != nil; {
+		if scroll, ok := parent.(*ScrollView); ok {
+			scroll.invalidateLayoutCache()
+			scroll.invalidate(scroll)
+		}
+		node := asWidgetNode(parent)
+		if node == nil {
+			return
+		}
+		parent = node.parent()
 	}
 }
 
