@@ -29,15 +29,16 @@ var (
 	procInvalidateRect    = nativeUser32.NewProc("InvalidateRect")
 	procSetFocus          = nativeUser32.NewProc("SetFocus")
 	//lint:ignore U1000 Reserved for future native backend focus checks.
-	procGetFocus          = nativeUser32.NewProc("GetFocus")
-	procGetKeyState       = nativeUser32.NewProc("GetKeyState")
-	procSetWindowLongW    = nativeUser32.NewProc("SetWindowLongW")
-	procSetWindowLongPtrW = nativeUser32.NewProc("SetWindowLongPtrW")
-	procCallWindowProcW   = nativeUser32.NewProc("CallWindowProcW")
-	procGetStockObject    = nativeGdi32.NewProc("GetStockObject")
-	procLoadCursorW       = nativeUser32.NewProc("LoadCursorW")
-	procSetCursor         = nativeUser32.NewProc("SetCursor")
-	procGetParent         = nativeUser32.NewProc("GetParent")
+	procGetFocus            = nativeUser32.NewProc("GetFocus")
+	procGetKeyState         = nativeUser32.NewProc("GetKeyState")
+	procSetWindowLongW      = nativeUser32.NewProc("SetWindowLongW")
+	procSetWindowLongPtrW   = nativeUser32.NewProc("SetWindowLongPtrW")
+	procCallWindowProcW     = nativeUser32.NewProc("CallWindowProcW")
+	procGetStockObject      = nativeGdi32.NewProc("GetStockObject")
+	procLoadCursorW         = nativeUser32.NewProc("LoadCursorW")
+	procSetCursor           = nativeUser32.NewProc("SetCursor")
+	procGetParent           = nativeUser32.NewProc("GetParent")
+	procGetNativeClientRect = nativeUser32.NewProc("GetClientRect")
 )
 
 var (
@@ -637,6 +638,12 @@ func setNativeEditRect(handle windows.Handle, rc nativeRect) {
 	}
 	sendNativeMessage(handle, nativeEditSetRectNP, 0, uintptr(unsafe.Pointer(&rc)))
 	procInvalidateRect.Call(uintptr(handle), 0, 1)
+}
+
+func getNativeClientRect(handle windows.Handle) (nativeRect, bool) {
+	var rect nativeRect
+	ok, _, _ := procGetNativeClientRect.Call(uintptr(handle), uintptr(unsafe.Pointer(&rect)))
+	return rect, ok != 0
 }
 
 //lint:ignore U1000 Reserved for future native placeholder support.

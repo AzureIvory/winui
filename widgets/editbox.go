@@ -714,6 +714,16 @@ func (e *EditBox) syncNativeInsets() {
 	if !e.native.valid() {
 		return
 	}
+	if e.multiline {
+		// RichEdit scrolls only its formatting rectangle. Leaving vertical
+		// padding inside the client lets partial glyphs outside that rectangle
+		// survive its scroll blit. The HWND itself is the content viewport;
+		// widget padding stays outside it and Windows clips text at the client.
+		if client, ok := getNativeClientRect(e.native.handle); ok {
+			setNativeEditRect(e.native.handle, client)
+		}
+		return
+	}
 	style := e.resolveStyle(&PaintCtx{scene: e.scene()})
 	padding := style.PaddingDP
 	if scene := e.scene(); scene != nil && scene.app != nil {
@@ -731,24 +741,6 @@ func (e *EditBox) syncNativeInsets() {
 	nRight := max32(nLeft+1, b.W-padding-hInset)
 	if nRight > w {
 		nRight = w
-	}
-	nTopPad := max32(0, padding-vInset)
-	nBottomPad := b.H - padding - vInset
-	if nBottomPad > h {
-		nBottomPad = h
-	}
-	if nBottomPad < nTopPad {
-		nBottomPad = nTopPad
-	}
-
-	if e.multiline {
-		setNativeEditRect(e.native.handle, nativeRect{
-			Left:   nLeft,
-			Top:    nTopPad,
-			Right:  nRight,
-			Bottom: nBottomPad,
-		})
-		return
 	}
 
 	lineHeight := e.textLineHeight(style)
@@ -778,6 +770,9 @@ func (e *EditBox) syncNativeAfterTreeMove() {
 func (e *EditBox) nativeHostBounds() Rect {
 	b := e.Bounds()
 	style := e.resolveStyle(&PaintCtx{scene: e.scene()})
+	if e.multiline {
+		return e.contentRect(style)
+	}
 	radius := style.CornerRadius
 	if scene := e.scene(); scene != nil && scene.app != nil {
 		radius = scene.app.DP(radius)

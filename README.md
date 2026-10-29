@@ -322,6 +322,8 @@ GitHub Actions mirrors the Windows validation path in `.github/workflows/ci.yml`
 
 `Button`, `EditBox`, `CheckBox`, `RadioButton`, `ComboBox`, and `FilePicker` can switch between custom-drawn and native-system backends via the `mode` parameter.
 
+Multiline `EditBox` hosts use the padded content viewport in both modes. RichEdit formats against its actual client area, including native scrollbar space, so internal scrolling cannot leave text fragments in the widget padding or border.
+
 If you want `ModeNative` controls to render with Win10/Win11 visual styles, the final executable still needs a `Microsoft.Windows.Common-Controls` v6 manifest.
 
 ## 紧凑知识工作台键盘语义（2026-10-29）

@@ -158,6 +158,19 @@ Recommended:
 - Region/position changes defer drawing until both are current, then invalidate
   client and frame. Existing movement hooks synchronize all native host types;
   editor move-only refreshes preserve its format rectangle, IME and selection.
+- A multiline editor's HWND occupies its padded content viewport in either mode;
+  the native border and scrollbars occupy that viewport. Its formatting rectangle
+  is the actual `GetClientRect`, with no padding inside the client. RichEdit can
+  paint partial glyphs beyond an inset format rectangle while its scroll blit
+  updates only that rectangle, leaving stale text in the remaining client area.
+  Keep padding in widget geometry instead of adding scroll-triggered repaints.
+  `TestMultilineNativeEditorViewportSurvivesScrollbarAndLayoutChanges` covers
+  resize, styles, dual-axis scrollbars and selection. On an interactive desktop,
+  `$env:WINUI_TEST_NATIVE_PAINT=1; go test ./widgets -run TestMultilineNativeEditorScrollPixelsMatchFreshPaint -v -count=1`
+  compares real child-window pixels after native line/page/edge scrolling with a
+  full repaint under Auto and GDI. It creates separate non-activating windows;
+  leave those test windows unobscured. `WM_PRINTCLIENT` cannot expose stale pixels
+  because it repaints the control before capture.
 - New editor hosts receive their cached text/caret before native command routing
   is registered. Geometry/theme setup can emit EN_CHANGE; an empty, registered
   host must never overwrite the preset draft during initialization. Both native

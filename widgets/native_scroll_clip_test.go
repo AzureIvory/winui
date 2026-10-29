@@ -12,8 +12,12 @@ import (
 )
 
 func scrollTestNativeApp(t *testing.T, create func(*core.App, *Scene)) (*core.App, func(func())) {
+	return scrollTestNativeAppMode(t, core.RenderModeAuto, create)
+}
+
+func scrollTestNativeAppMode(t *testing.T, mode core.RenderMode, create func(*core.App, *Scene)) (*core.App, func(func())) {
 	t.Helper()
-	opts := core.Options{Title: "WinUI isolated native clipping test", StartHidden: true, Width: 640, Height: 480}
+	opts := core.Options{Title: "WinUI isolated native clipping test", StartHidden: true, Width: 640, Height: 480, RenderMode: mode}
 	BindScene(&opts, SceneHooks{OnCreate: func(app *core.App, scene *Scene) error { create(app, scene); return nil }})
 	app, err := core.NewApp(opts)
 	if err != nil {
