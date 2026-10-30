@@ -92,16 +92,35 @@ Recommended:
 - `SetScreenBounds` / `ScreenBounds` describe the outer window in physical screen
   pixels. Explicit placement remains authoritative during a resulting DPI change;
   ordinary user moves still apply the recommended `WM_DPICHANGED` rectangle.
-- `ShowNoActivate`, `Hide`, `RaiseNoActivate`, `SetScreenBounds`, `ScreenBounds`
-  and `SetOwner` execute inline on the UI thread or synchronously through `Post`.
+- `ShowNoActivate`, `ShowAndActivate`, `Hide`, `RaiseNoActivate`, `SetTopmost`,
+  `SetScreenBounds`, `ScreenBounds` and `SetOwner` execute inline on the UI thread
+  or synchronously through `Post`.
   Call them after `Init`, which starts the pump; `Run` only waits for exit. Keep
   UI callbacks pumping, and do not hold locks that those callbacks require. The
   `stopped` broadcast releases synchronous callers if the UI loop exits before
   their queued operation completes. Win32 BOOL-returning operations propagate
   failures; `ShowWindow` returns previous visibility, rather than an error status.
 - `SetOwner` intentionally inherits Win32 owner minimize/destruction behavior.
-  Independent companion windows should use `RaiseNoActivate` instead. No helper
-  calls `SetForegroundWindow` or makes a normal window topmost.
+  Independent companion windows should use `RaiseNoActivate` instead.
+- `SetTopmost` uses `HWND_TOPMOST` / `HWND_NOTOPMOST` with
+  `SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE`. It changes no visibility, bounds,
+  owner or focus and stores no duplicate topmost state. Existing owned windows
+  follow owner transitions. A later `SetOwner` only establishes ownership; the
+  host must reapply the owner's current state before publishing/showing that
+  popup. Serialize a window family's topmost writes on the owner UI thread and
+  read the current host preference at that handoff, rather than replaying an old
+  worker snapshot. Demoting an owned window can also demote its owners in Win32.
+- `ShowAndActivate` is reserved for explicit user requests. It calls `ShowWindow`
+  with `SW_RESTORE`, then `SetForegroundWindow`; foreground denial returns an
+  error, without undoing the visibility change. `ShowWindow`'s zero return value
+  reports previous hidden state and is not failure. Automatic visibility still
+  uses `ShowNoActivate`; it never opts into foreground activation.
+- Hidden native topmost fixtures verify existing/late owned propagation, owner
+  reprojection, unrelated-window isolation and preservation of visibility,
+  ownership, bounds and thread focus. Query snapshots on each HWND's own UI
+  thread after queued native position changes; an owner's synchronous call is
+  not an atomic snapshot across all UI threads. Activation tests cover lifecycle guards
+  without activating a live window on the user's desktop.
 - `core/owned_shutdown_windows_test.go` uses hidden subprocess fixtures to verify
   actual owner-first `WM_CLOSE` with no popup, a ready popup and an initializing
   popup. It waits for both message pumps to exit and bounds failures with process

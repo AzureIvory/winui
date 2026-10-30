@@ -2,6 +2,8 @@
 
 ## 2026-10-30
 
+- 新增 `App.SetTopmost(bool) error`：经既有 callOnUI 使用 HWND_TOPMOST / HWND_NOTOPMOST，仅切换 Z 序，不改变可见性、边界、owner 或焦点。隐藏实测确认已有 owned 自动传播，late SetOwner 不立即继承，宿主须在 ready handoff 重新投影主 owner 当前状态；不引入窗口业务 registry 或修改 SetOwner 全局语义。
+- 新增 `App.ShowAndActivate() error` 供用户主动恢复：SW_RESTORE 后请求 SetForegroundWindow，拒绝时返回错误但保留已显示结果；自动显示继续用 ShowNoActivate。新增隐藏窗口族传播/状态保持及 nil/closed 合同回归，不对用户桌面执行激活测试，同步五份文档。
 - 新增 `ListBox.SetItemActionPresentation` 单一纯显示 provider：固定 76 DP 图文动作槽，nil 恢复 32 DP；支持默认、处理中、成功、失败外观及显式逐行 Disabled，复用鼠标和 Ctrl+Enter 可用性校验。重复设置刷新宿主状态并保留有效点击，仅槽宽变化或按下行不可用时取消，控件不存操作记录或反馈计时。
 - 新增 `ActionButtonStyle`，与列表动作共用状态色及图文尺寸；非默认禁用状态保持反馈可辨，图标直接绘制在实色背景。补充固定列宽、重排身份、更新取消和多 DPI/渲染后端回归，同步五份文档。
 - 新增隐藏独立子进程 owner-first 退出回归：真实向自建主 HWND 投递 WM_CLOSE，覆盖无浮窗、浮窗就绪及浮窗初始化中，验证两侧消息循环均退出。三个场景均通过，未修改 core 退出生产逻辑。

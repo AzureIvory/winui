@@ -8,6 +8,10 @@
 
 `BindScene` 在 UI 线程的创建回调中挂载场景，此时 `App.Init()` 可能尚未完成。`App.Handle()` / `IsUIThread()` 可安全地与初始化并发读取，但句柄非零不代表场景已完整初始化。后台宿主应在 `Init` 成功后发布需要完整场景的工作，再通过 `App.Post` / 既有 UI 调度修改控件；尚无原生窗口时 `Post` 返回 `ErrNotInitialized`，不保留回调。创建回调内的 UI 线程 `Post` 仍直接执行。
 
+窗口置顶由 `core.App.SetTopmost(enabled bool) error` 显式控制，只改变 Z 序，不改变可见性、位置、尺寸、owner 或焦点。已有 owned 窗口会随主 owner 升降；新浮窗完成 `SetOwner` 后，应在主 owner 的 UI 线程重新读取并投影当前置顶状态，再发布或显示浮窗。仅设置 owner 不会立即补齐新浮窗的置顶 Z 序。一个窗口族只由主 owner 写入置顶状态，避免在浮窗上单独取消置顶而连带降级 owner；自动显隐仍由宿主统一决定。
+
+用户主动恢复窗口时可调用 `App.ShowAndActivate() error`，它恢复并显示窗口，再请求系统前台焦点。系统拒绝前台请求时返回错误，但窗口已经显示。自动跟随显示继续使用 `ShowNoActivate()`；这两种入口均复用既有同步 UI 调度和生命周期错误合同。
+
 - `widgets.BindScene(&opts, hooks)` 把控件生命周期接到 `core.Options`
 - `scene.Root()` 返回根面板
 - `scene.Theme()` 返回当前主题

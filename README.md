@@ -26,7 +26,7 @@ Chinese version: [README.zh-CN.md](./README.zh-CN.md)
 - Declarative `scrollview` for JSON-authored nested scrolling surfaces
 - Runtime lookup helpers such as `Window.FindWidget`, `Document.FindWidget`, and `widgets.FindByID`
 - Single-window and multi-window helpers
-- Hidden startup and non-activating window placement, visibility and Z-order operations
+- Hidden startup, non-activating placement, explicit topmost state and user-requested foreground restoration
 - Consumable scene keyboard previews, including native RichEdit input and IME-safe shortcuts
 - Two-line `ListBox` rows using `ListItem.Subtitle` and a configured item height
 - Independent `ListBox` trailing actions via `SetItemAction`, with Ctrl+Enter, per-row text/status presentation and shared action-button styling
@@ -46,7 +46,8 @@ Chinese version: [README.zh-CN.md](./README.zh-CN.md)
 For companion windows, set `core.Options.StartHidden = true`, call `app.Init()`,
 then use `app.SetScreenBounds(core.Rect{...})`, `app.RaiseNoActivate()` and
 `app.ShowNoActivate()`. Screen bounds use physical pixels and include the window
-frame. These methods, `Hide()`, `ScreenBounds()` and `SetOwner(...)` run synchronously
+frame. These methods, `Hide()`, `ScreenBounds()`, `SetOwner(...)`, `SetTopmost(...)`
+and `ShowAndActivate()` run synchronously
 on the UI thread and return operation errors. `Init` starts the message pump;
 `Run` waits for its completion. A stopped pump returns `core.ErrAppClosed`.
 Avoid holding a lock needed by UI callbacks while calling a synchronous method.
@@ -74,6 +75,19 @@ to succeed before publishing work.
 window, and destroying the owner destroys it. Use `RaiseNoActivate` for independent
 windows that should stay alive after an external window closes. It raises within
 the current Z-order group without making a normal window globally topmost.
+
+`SetTopmost(enabled)` explicitly changes the topmost Z-order group while keeping
+visibility, bounds, ownership and focus. Existing owned windows follow the owner.
+After attaching a new owned window with `SetOwner`, reapply the owner's current
+topmost state before publishing/showing it; attachment alone does not refresh that
+Z-order state. Keep a window family's topmost writes on its owner: independently
+demoting an owned popup can also demote the owner under Win32 rules. Topmost does
+not change the host's automatic show/hide policy.
+
+For an explicit user request to restore a window, use `ShowAndActivate()`.
+It shows/restores the window and requests foreground activation. Windows can deny
+the request; the method then returns an error while the window remains shown.
+Automatic companion-window following should continue to use `ShowNoActivate()`.
 
 `ListBox.SetItemActionPresentation(provider)` adds per-row text, visual state and
 explicit availability to a registered action. Its fixed 76 DP slot keeps row text

@@ -135,7 +135,10 @@ func TestQueuedWindowOperationReturnsWhenMessageLoopStops(t *testing.T) {
 
 func TestWindowOperationsRejectUninitializedApp(t *testing.T) {
 	var app *App
-	for name, operation := range map[string]func() error{"show": app.ShowNoActivate, "hide": app.Hide, "raise": app.RaiseNoActivate} {
+	for name, operation := range map[string]func() error{
+		"show": app.ShowNoActivate, "activate": app.ShowAndActivate, "hide": app.Hide, "raise": app.RaiseNoActivate,
+		"pin": func() error { return app.SetTopmost(true) }, "unpin": func() error { return app.SetTopmost(false) },
+	} {
 		t.Run(name, func(t *testing.T) {
 			if !errors.Is(operation(), ErrNotInitialized) {
 				t.Fatal("expected ErrNotInitialized")
