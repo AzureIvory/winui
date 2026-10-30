@@ -63,10 +63,10 @@ var (
 type App struct {
 	// opts 保存创建应用时的配置。
 	opts Options
-	// hwnd 保存底层窗口句柄。
-	hwnd windows.Handle
-	// threadID 保存 UI 线程标识。
-	threadID uint32
+	// hwnd is published once by WM_NCCREATE and read through Handle.
+	hwnd atomic.Uintptr
+	// threadID is published before native creation and read atomically.
+	threadID atomic.Uint32
 	// className 保存注册到 Win32 的窗口类名。
 	className string
 
@@ -187,11 +187,12 @@ func (a *App) Run() int {
 }
 
 // Handle 返回应用底层的原生句柄。
+// It is safe during Init, but a nonzero handle does not mean Init has completed.
 func (a *App) Handle() windows.Handle {
 	if a == nil {
 		return 0
 	}
-	return a.hwnd
+	return windows.Handle(a.hwnd.Load())
 }
 
 // ClientSize 返回应用的客户区尺寸。
@@ -206,14 +207,16 @@ func (a *App) IsUIThread() bool {
 	if a == nil {
 		return false
 	}
-	return currentThreadID() == a.threadID
+	return currentThreadID() == a.threadID.Load()
 }
 
 // Post 将回调调度到应用的 UI 线程执行。
+// Before native window creation it returns ErrNotInitialized without queueing.
+// Creation callbacks on the UI thread can Post inline without waiting for Init.
 // If Post returns an error, fn has not executed and will never execute.
 // A nil result accepts the callback; UI-loop termination may still cancel it.
 func (a *App) Post(fn func()) error {
-	if a == nil || a.hwnd == 0 {
+	if a == nil || a.Handle() == 0 {
 		return ErrNotInitialized
 	}
 	if fn == nil {
@@ -222,7 +225,7 @@ func (a *App) Post(fn func()) error {
 	if a.closed.Load() {
 		return ErrAppClosed
 	}
-	if currentThreadID() == a.threadID {
+	if a.IsUIThread() {
 		fn()
 		return nil
 	}
@@ -245,7 +248,7 @@ func (a *App) enqueuePost(fn func()) error {
 
 	// Posting is nonblocking. Keep enqueue and notification atomic with respect
 	// to drainPosted so a failed notification cannot leave an executable callback.
-	r1, _, err := procPostMessageW.Call(uintptr(a.hwnd), wmAppInvoke, 0, 0)
+	r1, _, err := procPostMessageW.Call(uintptr(a.Handle()), wmAppInvoke, 0, 0)
 	if r1 == 0 {
 		a.postQueue[index] = nil
 		a.postQueue = a.postQueue[:index]
@@ -256,22 +259,22 @@ func (a *App) enqueuePost(fn func()) error {
 
 // Invalidate 标记区域或控件需要重绘。
 func (a *App) Invalidate(rect *Rect) {
-	if a == nil || a.hwnd == 0 || a.closed.Load() {
+	if a == nil || a.Handle() == 0 || a.closed.Load() {
 		return
 	}
 
 	if rect == nil {
-		procInvalidateRect.Call(uintptr(a.hwnd), 0, 0)
+		procInvalidateRect.Call(uintptr(a.Handle()), 0, 0)
 		return
 	}
 
 	local := rect.toWinRect()
-	procInvalidateRect.Call(uintptr(a.hwnd), uintptr(unsafe.Pointer(&local)), 0)
+	procInvalidateRect.Call(uintptr(a.Handle()), uintptr(unsafe.Pointer(&local)), 0)
 }
 
 // SetTitle 更新应用窗口标题。
 func (a *App) SetTitle(title string) {
-	if a == nil || a.hwnd == 0 || a.closed.Load() {
+	if a == nil || a.Handle() == 0 || a.closed.Load() {
 		return
 	}
 
@@ -281,7 +284,7 @@ func (a *App) SetTitle(title string) {
 		if err != nil {
 			return
 		}
-		procSetWindowTextW.Call(uintptr(a.hwnd), uintptr(unsafe.Pointer(ptr)))
+		procSetWindowTextW.Call(uintptr(a.Handle()), uintptr(unsafe.Pointer(ptr)))
 	})
 }
 
@@ -329,11 +332,11 @@ func (a *App) resolveWindowImageIcons() (small *Icon, big *Icon, err error) {
 }
 
 func (a *App) applyResolvedWindowIcons(small *Icon, big *Icon) {
-	if a == nil || a.hwnd == 0 || a.closed.Load() {
+	if a == nil || a.Handle() == 0 || a.closed.Load() {
 		return
 	}
-	procSendMessageW.Call(uintptr(a.hwnd), wmSetIcon, iconSmall, uintptr(iconHandle(small)))
-	procSendMessageW.Call(uintptr(a.hwnd), wmSetIcon, iconBig, uintptr(iconHandle(big)))
+	procSendMessageW.Call(uintptr(a.Handle()), wmSetIcon, iconSmall, uintptr(iconHandle(small)))
+	procSendMessageW.Call(uintptr(a.Handle()), wmSetIcon, iconBig, uintptr(iconHandle(big)))
 }
 
 func (a *App) applyWindowImage() {
@@ -346,7 +349,7 @@ func (a *App) applyWindowImage() {
 
 // SetWindowImage 设置窗口图片资源，并在内部生成 HICON。
 func (a *App) SetWindowImage(img *Image) {
-	if a == nil || a.hwnd == 0 || a.closed.Load() {
+	if a == nil || a.Handle() == 0 || a.closed.Load() {
 		return
 	}
 	a.opts.WindowImage = img
@@ -364,7 +367,7 @@ func (a *App) SetWindowImage(img *Image) {
 
 // SetIcon 保留旧的 HICON 设置路径。
 func (a *App) SetIcon(icon *Icon) {
-	if a == nil || a.hwnd == 0 || a.closed.Load() {
+	if a == nil || a.Handle() == 0 || a.closed.Load() {
 		return
 	}
 	a.opts.Icon = icon
@@ -373,8 +376,8 @@ func (a *App) SetIcon(icon *Icon) {
 		if icon != nil {
 			handle = icon.Handle()
 		}
-		procSendMessageW.Call(uintptr(a.hwnd), wmSetIcon, iconSmall, uintptr(handle))
-		procSendMessageW.Call(uintptr(a.hwnd), wmSetIcon, iconBig, uintptr(handle))
+		procSendMessageW.Call(uintptr(a.Handle()), wmSetIcon, iconSmall, uintptr(handle))
+		procSendMessageW.Call(uintptr(a.Handle()), wmSetIcon, iconBig, uintptr(handle))
 	}
 	if a.IsUIThread() {
 		apply()
@@ -385,7 +388,7 @@ func (a *App) SetIcon(icon *Icon) {
 
 // MessageBox 显示一个由应用窗口拥有的原生 Windows 消息框。
 func (a *App) MessageBox(title, text string, flags uint32, timeout time.Duration) (int, error) {
-	if a == nil || a.hwnd == 0 {
+	if a == nil || a.Handle() == 0 {
 		return 0, ErrNotInitialized
 	}
 
@@ -400,7 +403,7 @@ func (a *App) MessageBox(title, text string, flags uint32, timeout time.Duration
 
 	if timeout > 0 && procMessageBoxTimeoutW.Find() == nil {
 		r1, _, _ := procMessageBoxTimeoutW.Call(
-			uintptr(a.hwnd),
+			uintptr(a.Handle()),
 			uintptr(unsafe.Pointer(textPtr)),
 			uintptr(unsafe.Pointer(titlePtr)),
 			uintptr(flags),
@@ -411,7 +414,7 @@ func (a *App) MessageBox(title, text string, flags uint32, timeout time.Duration
 	}
 
 	r1, _, callErr := procMessageBoxW.Call(
-		uintptr(a.hwnd),
+		uintptr(a.Handle()),
 		uintptr(unsafe.Pointer(textPtr)),
 		uintptr(unsafe.Pointer(titlePtr)),
 		uintptr(flags),
@@ -441,7 +444,7 @@ func (a *App) runUIThread() {
 	}()
 	defer a.closeRenderer()
 
-	a.threadID = currentThreadID()
+	a.threadID.Store(currentThreadID())
 	a.setDPI(initProcessDPIAwareness())
 
 	if err := a.createWindow(); err != nil {
@@ -524,7 +527,7 @@ func (a *App) createWindow() error {
 		return err
 	}
 
-	createRegistry.Store(a.threadID, a)
+	createRegistry.Store(a.threadID.Load(), a)
 	style := a.opts.Style
 	if a.opts.StartHidden {
 		style &^= 0x10000000 // WS_VISIBLE must not activate during CreateWindowExW.
@@ -543,13 +546,11 @@ func (a *App) createWindow() error {
 		hInst,
 		0,
 	)
-	createRegistry.Delete(a.threadID)
+	createRegistry.Delete(a.threadID.Load())
 	if hwnd == 0 {
 		return wrapError("CreateWindowExW", createErr)
 	}
 
-	a.hwnd = windows.Handle(hwnd)
-	windowRegistry.Store(a.hwnd, a)
 	a.refreshWindowDPI()
 	a.initRenderer()
 
@@ -557,7 +558,7 @@ func (a *App) createWindow() error {
 
 	size := Size{}
 	hasSize := false
-	if rect, err := clientRect(a.hwnd); err == nil {
+	if rect, err := clientRect(a.Handle()); err == nil {
 		size = Size{Width: rect.W, Height: rect.H}
 		hasSize = true
 	}
@@ -633,7 +634,7 @@ func (a *App) effectiveCursor() CursorID {
 
 // SetCursor 更新应用使用的光标。
 func (a *App) SetCursor(cursor CursorID) {
-	if a == nil || a.hwnd == 0 {
+	if a == nil || a.Handle() == 0 {
 		return
 	}
 	if a.IsUIThread() {
@@ -647,15 +648,15 @@ func (a *App) SetCursor(cursor CursorID) {
 
 // captureMouse 在 UI 线程为应用窗口捕获鼠标输入。
 func (a *App) captureMouse() {
-	if a == nil || a.hwnd == 0 {
+	if a == nil || a.Handle() == 0 {
 		return
 	}
-	procSetCapture.Call(uintptr(a.hwnd))
+	procSetCapture.Call(uintptr(a.Handle()))
 }
 
 // CaptureMouse 在 UI 线程为应用窗口捕获鼠标输入。
 func (a *App) CaptureMouse() {
-	if a == nil || a.hwnd == 0 {
+	if a == nil || a.Handle() == 0 {
 		return
 	}
 	if a.IsUIThread() {
@@ -674,7 +675,7 @@ func (a *App) releaseMouse() {
 
 // ReleaseMouse 在 UI 线程释放鼠标捕获。
 func (a *App) ReleaseMouse() {
-	if a == nil || a.hwnd == 0 {
+	if a == nil || a.Handle() == 0 {
 		return
 	}
 	if a.IsUIThread() {
@@ -717,14 +718,14 @@ func (a *App) finishCreate(size Size, hasSize bool) error {
 }
 
 func (a *App) scheduleInitialRelayout() {
-	if a == nil || a.hwnd == 0 || a.closed.Load() {
+	if a == nil || a.Handle() == 0 || a.closed.Load() {
 		return
 	}
 	_ = a.Post(func() {
-		if a == nil || a.hwnd == 0 || a.closed.Load() {
+		if a == nil || a.Handle() == 0 || a.closed.Load() {
 			return
 		}
-		rect, err := clientRect(a.hwnd)
+		rect, err := clientRect(a.Handle())
 		if err != nil {
 			return
 		}
@@ -778,16 +779,16 @@ func (a *App) minTrackSize() Size {
 // currentThreadID 返回调用线程的标识。
 // Close 请求关闭当前应用窗口。
 func (a *App) Close() {
-	if a == nil || a.hwnd == 0 || a.closed.Load() {
+	if a == nil || a.Handle() == 0 || a.closed.Load() {
 		return
 	}
 	if a.IsUIThread() {
-		procDestroyWindow.Call(uintptr(a.hwnd))
+		procDestroyWindow.Call(uintptr(a.Handle()))
 		return
 	}
 	_ = a.Post(func() {
-		if a.hwnd != 0 && !a.closed.Load() {
-			procDestroyWindow.Call(uintptr(a.hwnd))
+		if a.Handle() != 0 && !a.closed.Load() {
+			procDestroyWindow.Call(uintptr(a.Handle()))
 		}
 	})
 }
@@ -800,10 +801,10 @@ func currentThreadID() uint32 {
 
 // screenToClient 将屏幕坐标转换为窗口客户区坐标。
 func (a *App) screenToClient(pt Point) Point {
-	if a == nil || a.hwnd == 0 {
+	if a == nil || a.Handle() == 0 {
 		return pt
 	}
 	wp := point(pt)
-	procScreenToClient.Call(uintptr(a.hwnd), uintptr(unsafe.Pointer(&wp)))
+	procScreenToClient.Call(uintptr(a.Handle()), uintptr(unsafe.Pointer(&wp)))
 	return Point(wp)
 }

@@ -191,11 +191,11 @@ func ScreenDPI() DPIInfo {
 
 // refreshWindowDPI 刷新应用窗口的 DPI 信息。
 func (a *App) refreshWindowDPI() {
-	if a == nil || a.hwnd == 0 {
+	if a == nil || a.Handle() == 0 {
 		return
 	}
 	if err := procGetDpiForWindow.Find(); err == nil {
-		dpiX, _, _ := procGetDpiForWindow.Call(uintptr(a.hwnd))
+		dpiX, _, _ := procGetDpiForWindow.Call(uintptr(a.Handle()))
 		if dpiX > 0 {
 			info := a.DPI()
 			info.X = int32(dpiX)

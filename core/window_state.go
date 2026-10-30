@@ -18,7 +18,7 @@ var (
 
 // callOnUI runs a window operation synchronously on its owning UI thread.
 func (a *App) callOnUI(fn func() error) error {
-	if a == nil || a.hwnd == 0 {
+	if a == nil || a.Handle() == 0 {
 		return ErrNotInitialized
 	}
 	invoke := func() error {
@@ -46,7 +46,7 @@ func (a *App) callOnUI(fn func() error) error {
 // The window retains normal activation when the user clicks it.
 func (a *App) ShowNoActivate() error {
 	return a.callOnUI(func() error {
-		procShowWindow.Call(uintptr(a.hwnd), 8) // SW_SHOWNA preserves size and position.
+		procShowWindow.Call(uintptr(a.Handle()), 8) // SW_SHOWNA preserves size and position.
 		return nil
 	})
 }
@@ -54,7 +54,7 @@ func (a *App) ShowNoActivate() error {
 // Hide hides the window without destroying its scene or native controls.
 func (a *App) Hide() error {
 	return a.callOnUI(func() error {
-		procShowWindow.Call(uintptr(a.hwnd), 0) // SW_HIDE
+		procShowWindow.Call(uintptr(a.Handle()), 0) // SW_HIDE
 		return nil
 	})
 }
@@ -64,7 +64,7 @@ func (a *App) Hide() error {
 // normal window topmost and does not create an owner lifetime relationship.
 func (a *App) RaiseNoActivate() error {
 	return a.callOnUI(func() error {
-		ok, _, err := procSetWindowPos.Call(uintptr(a.hwnd), 0, 0, 0, 0, 0,
+		ok, _, err := procSetWindowPos.Call(uintptr(a.Handle()), 0, 0, 0, 0, 0,
 			0x0001|0x0002|swpNoActivate) // SWP_NOSIZE | SWP_NOMOVE
 		if ok == 0 {
 			return wrapError("SetWindowPos", err)
@@ -82,7 +82,7 @@ func (a *App) SetScreenBounds(bounds Rect) error {
 	return a.callOnUI(func() error {
 		a.placingScreenBounds = true
 		defer func() { a.placingScreenBounds = false }()
-		ok, _, err := procSetWindowPos.Call(uintptr(a.hwnd), 0,
+		ok, _, err := procSetWindowPos.Call(uintptr(a.Handle()), 0,
 			uintptr(bounds.X), uintptr(bounds.Y), uintptr(bounds.W), uintptr(bounds.H),
 			swpNoZOrder|swpNoActivate)
 		if ok == 0 {
@@ -97,7 +97,7 @@ func (a *App) ScreenBounds() (Rect, error) {
 	var bounds Rect
 	err := a.callOnUI(func() error {
 		var rect winRect
-		ok, _, err := procGetWindowRect.Call(uintptr(a.hwnd), uintptr(unsafe.Pointer(&rect)))
+		ok, _, err := procGetWindowRect.Call(uintptr(a.Handle()), uintptr(unsafe.Pointer(&rect)))
 		if ok == 0 {
 			return wrapError("GetWindowRect", err)
 		}
@@ -113,7 +113,7 @@ func (a *App) ScreenBounds() (Rect, error) {
 // when its owner is destroyed. The owner must be another top-level window.
 func (a *App) SetOwner(owner windows.Handle) error {
 	return a.callOnUI(func() error {
-		if owner == a.hwnd {
+		if owner == a.Handle() {
 			return fmt.Errorf("a window cannot own itself")
 		}
 		proc := procSetWindowLongPtrW
@@ -121,7 +121,7 @@ func (a *App) SetOwner(owner windows.Handle) error {
 			proc = procSetWindowLongW
 		}
 		procSetLastError.Call(0)
-		previous, _, err := proc.Call(uintptr(a.hwnd), ^uintptr(7), uintptr(owner)) // GWLP_HWNDPARENT
+		previous, _, err := proc.Call(uintptr(a.Handle()), ^uintptr(7), uintptr(owner)) // GWLP_HWNDPARENT
 		if previous == 0 && err != windows.ERROR_SUCCESS {
 			return wrapError("SetWindowLongPtrW", err)
 		}

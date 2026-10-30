@@ -14,14 +14,14 @@ func (a *App) SetTimer(id uintptr, interval time.Duration) error {
 	if id == 0 {
 		return ErrTimerIDZero
 	}
-	if a == nil || a.hwnd == 0 {
+	if a == nil || a.Handle() == 0 {
 		return ErrNotInitialized
 	}
 	if interval <= 0 {
 		interval = 10 * time.Millisecond
 	}
 
-	r1, _, err := procSetTimer.Call(uintptr(a.hwnd), id, uintptr(interval/time.Millisecond), 0)
+	r1, _, err := procSetTimer.Call(uintptr(a.Handle()), id, uintptr(interval/time.Millisecond), 0)
 	if r1 == 0 {
 		return wrapError("SetTimer", err)
 	}
@@ -34,11 +34,11 @@ func (a *App) SetTimer(id uintptr, interval time.Duration) error {
 
 // KillTimer stops a native window timer for the app.
 func (a *App) KillTimer(id uintptr) error {
-	if a == nil || a.hwnd == 0 {
+	if a == nil || a.Handle() == 0 {
 		return ErrNotInitialized
 	}
 
-	r1, _, err := procKillTimer.Call(uintptr(a.hwnd), id)
+	r1, _, err := procKillTimer.Call(uintptr(a.Handle()), id)
 	if r1 == 0 {
 		return wrapError("KillTimer", err)
 	}
@@ -59,7 +59,7 @@ func (a *App) killAllTimers() {
 	a.timerMu.Unlock()
 
 	for _, id := range ids {
-		procKillTimer.Call(uintptr(a.hwnd), id)
+		procKillTimer.Call(uintptr(a.Handle()), id)
 	}
 
 	a.timerMu.Lock()

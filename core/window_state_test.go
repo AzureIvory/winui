@@ -6,8 +6,6 @@ import (
 	"errors"
 	"testing"
 	"time"
-
-	"golang.org/x/sys/windows"
 )
 
 func TestWindowPlacementPreservesVisibilityAndForeground(t *testing.T) {
@@ -87,7 +85,7 @@ func TestQueuedWindowOperationReturnsWhenMessageLoopStops(t *testing.T) {
 	if err := app.Post(func() {
 		close(entered)
 		<-release
-		procDestroyWindow.Call(uintptr(app.hwnd))
+		procDestroyWindow.Call(uintptr(app.Handle()))
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -166,20 +164,20 @@ func TestKeyPreviewFiltersMessagesAndRecognizesProcessKey(t *testing.T) {
 	}
 	t.Cleanup(func() { app.Close(); app.Run() })
 	err = app.callOnUI(func() error {
-		ordinary := keyEvent(app.hwnd, uintptr(KeyReturn), 0)
-		if ordinary.Key != KeyReturn || ordinary.Composing || ordinary.Handle != app.hwnd {
+		ordinary := keyEvent(app.Handle(), uintptr(KeyReturn), 0)
+		if ordinary.Key != KeyReturn || ordinary.Composing || ordinary.Handle != app.Handle() {
 			t.Errorf("ordinary Return/source identity lost: %+v", ordinary)
 		}
 		for _, message := range []msg{
-			{HWnd: app.hwnd, Message: 0x0102, WParam: 'K'},
+			{HWnd: app.Handle(), Message: 0x0102, WParam: 'K'},
 			{Message: wmKeyDown, WParam: 'K'},
-			{HWnd: app.hwnd, Message: wmKeyDown, WParam: 0xE5},
+			{HWnd: app.Handle(), Message: wmKeyDown, WParam: 0xE5},
 		} {
 			if app.previewKeyMessage(&message) {
 				t.Error("unrelated/character/IME process message was consumed")
 			}
 		}
-		message := msg{HWnd: app.hwnd, Message: wmKeyDown, WParam: 'K', LParam: 1 << 30}
+		message := msg{HWnd: app.Handle(), Message: wmKeyDown, WParam: 'K', LParam: 1 << 30}
 		if !app.previewKeyMessage(&message) {
 			t.Error("preview did not consume window key")
 		}
@@ -219,8 +217,8 @@ func TestFailedNativePostNeverRetainsItsCallback(t *testing.T) {
 	}
 	// Use a verified nonexistent ordinary HWND, excluding all special values.
 	// No native window is created or valid application's queue is targeted.
-	app.hwnd = windows.Handle(0x7ffe7ffe)
-	if valid, _, _ := user32.NewProc("IsWindow").Call(uintptr(app.hwnd)); valid != 0 {
+	app.hwnd.Store(0x7ffe7ffe)
+	if valid, _, _ := user32.NewProc("IsWindow").Call(uintptr(app.Handle())); valid != 0 {
 		t.Fatal("test HWND unexpectedly exists")
 	}
 	prior, failed := 0, 0

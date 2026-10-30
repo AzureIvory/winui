@@ -81,6 +81,14 @@ Recommended:
 - `Options.StartHidden` prevents the creation path from showing the window, even
   when the supplied style includes `WS_VISIBLE`; `OnCreate` and initial layout
   still run.
+- `App.hwnd` and `threadID` are the single atomic identity stores. Native
+  `WM_NCCREATE` publishes the HWND and registry entry once; every core HWND read
+  uses `Handle()`, and thread checks use the atomic identity through `IsUIThread()`.
+  Do not add a second raw handle, readiness polling or a pre-initialization Post
+  queue. A zero HWND means `Post` returns `ErrNotInitialized` without retaining
+  its callback. A nonzero HWND permits existing creation-time callbacks and
+  inline UI-thread Post; it does not promise `Init` has finished. Background
+  hosts that require completed scene creation wait for the `Init` result.
 - `SetScreenBounds` / `ScreenBounds` describe the outer window in physical screen
   pixels. Explicit placement remains authoritative during a resulting DPI change;
   ordinary user moves still apply the recommended `WM_DPICHANGED` rectangle.

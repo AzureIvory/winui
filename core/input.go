@@ -81,7 +81,7 @@ func (a *App) previewKeyMessage(message *msg) bool {
 	if a.opts.OnKeyPreview == nil || (message.Message != wmKeyDown && message.Message != 0x0104) {
 		return false
 	}
-	if message.HWnd != a.hwnd && !isChildWindow(a.hwnd, message.HWnd) {
+	if message.HWnd != a.Handle() && !isChildWindow(a.Handle(), message.HWnd) {
 		return false
 	}
 	ev := keyEvent(message.HWnd, message.WParam, message.LParam)
@@ -91,13 +91,13 @@ func (a *App) previewKeyMessage(message *msg) bool {
 
 // trackMouseLeave 请求当前窗口接收 WM_MOUSELEAVE 消息。
 func (a *App) trackMouseLeave() {
-	if a == nil || a.hwnd == 0 {
+	if a == nil || a.Handle() == 0 {
 		return
 	}
 	event := trackMouseEvent{
 		CbSize:    uint32(unsafe.Sizeof(trackMouseEvent{})),
 		DwFlags:   tmeLeave,
-		HWndTrack: a.hwnd,
+		HWndTrack: a.Handle(),
 	}
 	procTrackMouseEvent.Call(uintptr(unsafe.Pointer(&event)))
 }

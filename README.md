@@ -55,6 +55,13 @@ Avoid holding a lock needed by UI callbacks while calling a synchronous method.
 error. Success accepts the callback (or executes it inline on the UI thread);
 termination of the UI loop can still cancel accepted work.
 
+`Handle()` and `IsUIThread()` safely read the window/thread identity while `Init`
+is running. A nonzero handle can be published during native creation, before
+`Init` finishes. `Post` does not start the app or queue work before a window exists:
+it returns `ErrNotInitialized` then. Native creation callbacks may `Post` inline;
+background callers that require a fully initialized scene should wait for `Init`
+to succeed before publishing work.
+
 `SetOwner` uses ordinary Win32 ownership: minimizing the owner hides the owned
 window, and destroying the owner destroys it. Use `RaiseNoActivate` for independent
 windows that should stay alive after an external window closes. It raises within

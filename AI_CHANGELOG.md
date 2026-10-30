@@ -2,6 +2,8 @@
 
 ## 2026-10-30
 
+- 修复 `App.Init` 原生创建与后台 `Post` / `Handle` / `IsUIThread` 并发访问身份字段的 data race：句柄、线程 ID 各使用唯一原子存储，core 全部读取统一走 getter；HWND 仅在 `WM_NCCREATE` 发布并注册，删除创建返回后的重复写。
+- 保持既有初始化与投递合同：尚无窗口时拒绝并不保留回调，创建期 UI 回调可 inline Post，非零 HWND 不等于 Init 完成；新增真实隐藏窗口创建期 channel barrier、并发投递及 OnCreate Post/Close 回归，不引入等待重试或初始化前队列。
 - 新增通用 `ListBox.SetItemAction` / `SetItemActionEnabled`：32 DP 行尾图片动作、默认启用、禁用留槽、nil 注册隐藏，图片继续由宿主持有；文字与打勾列共用几何并避开滚动条。
 - 行尾动作只触发 `OnItemAction`，按下/抬起验证索引和 Value；数据刷新、滚动、离开、隐藏、禁用、祖先状态及快速平移取消手势，取消后也不落入选择/勾选/激活。基础控件只通知当前捕获后代的私有取消钩子。
 - Ctrl+Enter 复用既有 Scene 预翻译路径执行当前有效行一次，保留普通 Enter、正文双击、Space、IME 和自动重复边界；新增独立动作、取消、裁剪、重入及布局回归，并同步五份库文档。

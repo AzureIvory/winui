@@ -4,6 +4,8 @@
 
 `widgets` 建立在 `core` 之上，`Scene` 是运行时协调者。
 
+`BindScene` 在 UI 线程的创建回调中挂载场景，此时 `App.Init()` 可能尚未完成。`App.Handle()` / `IsUIThread()` 可安全地与初始化并发读取，但句柄非零不代表场景已完整初始化。后台宿主应在 `Init` 成功后发布需要完整场景的工作，再通过 `App.Post` / 既有 UI 调度修改控件；尚无原生窗口时 `Post` 返回 `ErrNotInitialized`，不保留回调。创建回调内的 UI 线程 `Post` 仍直接执行。
+
 - `widgets.BindScene(&opts, hooks)` 把控件生命周期接到 `core.Options`
 - `scene.Root()` 返回根面板
 - `scene.Theme()` 返回当前主题

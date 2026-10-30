@@ -14,8 +14,8 @@ func appWndProc(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr {
 	if app == nil && msg == wmNcCreate {
 		app = lookupCreatingApp()
 		if app != nil {
-			app.hwnd = windows.Handle(hwnd)
-			windowRegistry.Store(app.hwnd, app)
+			app.hwnd.Store(hwnd)
+			windowRegistry.Store(app.Handle(), app)
 		}
 	}
 	if app == nil {
@@ -42,14 +42,14 @@ func appWndProc(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr {
 		}
 	case wmSetFocus:
 		other := windows.Handle(wParam)
-		if !isChildWindow(app.hwnd, other) && app.opts.OnFocus != nil {
+		if !isChildWindow(app.Handle(), other) && app.opts.OnFocus != nil {
 			app.opts.OnFocus(app, true)
 		}
 		return 0
 
 	case wmKillFocus:
 		other := windows.Handle(wParam)
-		if !isChildWindow(app.hwnd, other) && app.opts.OnFocus != nil {
+		if !isChildWindow(app.Handle(), other) && app.opts.OnFocus != nil {
 			app.opts.OnFocus(app, false)
 		}
 		return 0
@@ -61,7 +61,7 @@ func appWndProc(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr {
 		}
 
 	case wmPaint:
-		session, err := beginPaintSession(app, app.hwnd, app.opts.DoubleBuffered)
+		session, err := beginPaintSession(app, app.Handle(), app.opts.DoubleBuffered)
 		if err == nil {
 			if session.canvas != nil {
 				_ = session.canvas.Clear(app.opts.Background)
@@ -74,7 +74,7 @@ func appWndProc(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr {
 		return 0
 
 	case wmSize:
-		if rect, err := clientRect(app.hwnd); err == nil {
+		if rect, err := clientRect(app.Handle()); err == nil {
 			size := Size{Width: rect.W, Height: rect.H}
 			app.updateClientSize(size)
 			if app.opts.OnResize != nil {
@@ -180,7 +180,7 @@ func appWndProc(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr {
 		app.applyWindowImage()
 		if suggested != nil && !app.placingScreenBounds {
 			procSetWindowPos.Call(
-				uintptr(app.hwnd),
+				uintptr(app.Handle()),
 				0,
 				uintptr(suggested.Left),
 				uintptr(suggested.Top),
@@ -192,7 +192,7 @@ func appWndProc(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr {
 		if app.opts.OnDPIChanged != nil {
 			app.opts.OnDPIChanged(app, info)
 		}
-		if rect, err := clientRect(app.hwnd); err == nil {
+		if rect, err := clientRect(app.Handle()); err == nil {
 			size := Size{Width: rect.W, Height: rect.H}
 			app.updateClientSize(size)
 			if app.opts.OnResize != nil {
@@ -206,7 +206,7 @@ func appWndProc(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr {
 		return 0
 
 	case wmClose:
-		procDestroyWindow.Call(uintptr(app.hwnd))
+		procDestroyWindow.Call(uintptr(app.Handle()))
 		return 0
 
 	case wmDestroy:
@@ -220,7 +220,7 @@ func appWndProc(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr {
 		return 0
 
 	case wmNcDestroy:
-		windowRegistry.Delete(app.hwnd)
+		windowRegistry.Delete(app.Handle())
 		return 0
 	}
 
