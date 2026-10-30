@@ -4,6 +4,8 @@
 
 `widgets` 建立在 `core` 之上，`Scene` 是运行时协调者。
 
+`EditBox.SetTextPreservingView(text string)` 用于流式输出、日志等累计快照：原先在底部时跟随新内容，手动向上浏览后保持当前视口，返回底部后自动恢复跟随；同时保留选区，程序更新不触发 `OnChange` 或增加撤销步骤。库内部处理增量替换、UTF-16 选区、原生/自绘视口及 IME，无需调用方保存偏移或操作 HWND。IME 期间只等待最新快照，用户编辑、普通 `SetText`、卸载或销毁会清除它，避免覆盖已提交的输入。新文档或新一轮生成继续使用 `SetText` 的既有重置语义。
+
 `BindScene` 在 UI 线程的创建回调中挂载场景，此时 `App.Init()` 可能尚未完成。`App.Handle()` / `IsUIThread()` 可安全地与初始化并发读取，但句柄非零不代表场景已完整初始化。后台宿主应在 `Init` 成功后发布需要完整场景的工作，再通过 `App.Post` / 既有 UI 调度修改控件；尚无原生窗口时 `Post` 返回 `ErrNotInitialized`，不保留回调。创建回调内的 UI 线程 `Post` 仍直接执行。
 
 - `widgets.BindScene(&opts, hooks)` 把控件生命周期接到 `core.Options`

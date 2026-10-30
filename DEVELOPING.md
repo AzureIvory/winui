@@ -235,6 +235,31 @@ Keep actions on the existing Scene event and pre-translation paths. The action p
 
 Ctrl+Enter acts on the focused valid selection once; repeats are consumed without another callback, and IME/Alt/Shift input is left alone. Plain Enter and body double-click retain `OnActivate`, while plain Space retains checkbox behavior. Cover these paths with `listbox_action_test.go` and hidden native fixtures in both cgo modes.
 
+## EditBox cumulative snapshots
+
+`SetTextPreservingView` is the explicit alternative to `SetText` reset semantics.
+Keep snapshot replacement, selection mapping and viewport restoration in one UI
+transaction. A single changed range replaces only the differing text through
+`EM_REPLACESEL(FALSE)`, with programmatic native notifications suppressed. Map
+RichEdit selections in UTF-16 units, including surrogate pairs and paragraph
+boundaries. Restore the selection before the viewport and never call
+`ScrollToCaret` afterward. Read the native scrollbar range to decide whether the
+view was at the bottom; use its 32-bit position for long documents, retaining
+`EM_GETSCROLLPOS` only as the no-scrollbar fallback. Custom unfocused rendering
+uses its own layout/offsets and must keep the hidden input HWND hidden.
+
+Preserve the existing content-only native HWND and actual client formatting
+rectangle when text changes scrollbar visibility. Suppress/re-enable redraw only
+for a child that already has `WS_VISIBLE`; re-enabling it on a hidden HWND would
+show it. IME stores only the latest pending snapshot and applies it after the
+native end-composition message only if the baseline text is unchanged. Native
+user changes, `SetText`, destruction and detachment clear pending work. Host-side
+stream cancellation and document identity remain application responsibilities.
+
+The hidden `editbox_update_windows_test.go` regressions cover manual scrolling,
+tail follow/resume, horizontal/long-document positions, UTF-16 copy selection,
+read-only updates, IME/reset/disposal and programmatic callback/undo boundaries.
+
 ## Width-constrained measurement
 
 `widgets.MeasureForWidth(Widget, int32) core.Size` is a thin public wrapper over `preferredSizeForWidth`; keep that private path as the single measurement implementation. The constraint and result are physical pixels, including the widget's scene/theme/DPI policy. It is a UI-thread query, not a marshalled operation; attach the widget before measuring when scene metrics matter.

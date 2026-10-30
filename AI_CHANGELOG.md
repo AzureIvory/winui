@@ -2,6 +2,8 @@
 
 ## 2026-10-30
 
+- 新增 `EditBox.SetTextPreservingView` 累计快照入口：单个 changed range 增量替换并恢复 UTF-16 选区、视口；底部时跟随、用户离底后保持、返回底部恢复，程序更新不发 OnChange 或增加撤销步骤，普通 SetText 重置语义保持。
+- 将 IME 最新待更新及用户编辑/reset/卸载取消封装在控件内，避免流式取消后重放；保留内容 HWND 与实际 client 格式区以维持滚动残影修复。新增隐藏原生/自绘、多 DPI、水平/超过 16 位范围长文档、选区复制、只读、IME 和生命周期回归。
 - 修复 `App.Init` 原生创建与后台 `Post` / `Handle` / `IsUIThread` 并发访问身份字段的 data race：句柄、线程 ID 各使用唯一原子存储，core 全部读取统一走 getter；HWND 仅在 `WM_NCCREATE` 发布并注册，删除创建返回后的重复写。
 - 保持既有初始化与投递合同：尚无窗口时拒绝并不保留回调，创建期 UI 回调可 inline Post，非零 HWND 不等于 Init 完成；新增真实隐藏窗口创建期 channel barrier、并发投递及 OnCreate Post/Close 回归，不引入等待重试或初始化前队列。
 - 新增通用 `ListBox.SetItemAction` / `SetItemActionEnabled`：32 DP 行尾图片动作、默认启用、禁用留槽、nil 注册隐藏，图片继续由宿主持有；文字与打勾列共用几何并避开滚动条。

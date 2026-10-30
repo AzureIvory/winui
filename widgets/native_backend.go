@@ -610,6 +610,8 @@ func nativeEditProc(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr {
 	}
 	switch msg {
 	case 0x010D: // WM_IME_STARTCOMPOSITION
+		edit.imeBaseText = edit.normalizeText(getNativeText(edit.native.handle))
+		edit.pendingTextUpdate = nil
 		edit.imeComposing = true
 	case 0x010E: // WM_IME_ENDCOMPOSITION
 		edit.imeComposing = false
@@ -630,6 +632,9 @@ func nativeEditProc(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr {
 		return 0
 	}
 	result, _, _ := procCallWindowProcW.Call(edit.native.oldWndProc, hwnd, uintptr(msg), wParam, lParam)
+	if msg == 0x010E { // WM_IME_ENDCOMPOSITION, after RichEdit finishes the edit.
+		edit.flushPendingTextUpdate()
+	}
 	return result
 }
 func setNativeEditRect(handle windows.Handle, rc nativeRect) {

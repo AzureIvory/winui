@@ -27,6 +27,10 @@ type EditBox struct {
 	imeComposing bool
 	// imeKeyComposing preserves composition across TranslateMessage ending it.
 	imeKeyComposing bool
+	// Programmatic snapshots never become user edits or replay over an IME edit.
+	applyingText      bool
+	imeBaseText       string
+	pendingTextUpdate *string
 	// Text 保存当前文本内容。
 	Text string
 	// Placeholder 保存占位文本。
@@ -107,6 +111,7 @@ func (e *EditBox) SetEnabled(enabled bool) {
 // SetText 更新编辑框的显示文本。
 func (e *EditBox) SetText(text string) {
 	e.runOnUI(func() {
+		e.pendingTextUpdate = nil
 		normalized := e.normalizeText(text)
 		if e.Text == normalized {
 			return
@@ -126,7 +131,7 @@ func (e *EditBox) TextValue() string {
 	if e.native.valid() {
 		e.Text = e.normalizeText(getNativeText(e.native.handle))
 		_, end := getNativeSelection(e.native.handle)
-		e.caret = clampInt(end, 0, len([]rune(e.Text)))
+		e.caret = editRunePosition(e.Text, end)
 	}
 	return e.Text
 }
@@ -349,7 +354,8 @@ func (e *EditBox) OnEvent(evt Event) bool {
 			e.syncNativeBounds()
 			e.syncNativeVisible()
 			if e.native.valid() {
-				setNativeSelection(e.native.handle, e.caret, e.caret)
+				position := editUTF16Position(e.Text, e.caret)
+				setNativeSelection(e.native.handle, position, position)
 				setNativeFocus(e.native.handle)
 				e.syncNativeVisible()
 			}
@@ -374,7 +380,8 @@ func (e *EditBox) OnEvent(evt Event) bool {
 			e.syncNativeReadOnly()
 			e.syncNativePassword()
 			if e.native.valid() {
-				setNativeSelection(e.native.handle, e.caret, e.caret)
+				position := editUTF16Position(e.Text, e.caret)
+				setNativeSelection(e.native.handle, position, position)
 				setNativeFocus(e.native.handle)
 				e.syncNativeVisible()
 			}
@@ -392,7 +399,7 @@ func (e *EditBox) OnEvent(evt Event) bool {
 					}
 				}
 				_, end := getNativeSelection(e.native.handle)
-				e.caret = clampInt(end, 0, len([]rune(e.Text)))
+				e.caret = editRunePosition(e.Text, end)
 			}
 			e.Focused = false
 			e.syncNativeVisible()
@@ -557,17 +564,21 @@ func (e *EditBox) handleNativeCommand(code uint16) bool {
 		e.invalidate(e)
 		return true
 	case nativeEditChanged:
+		if e.applyingText {
+			return true
+		}
 		text := e.Text
 		if e.native.valid() {
 			text = e.normalizeText(getNativeText(e.native.handle))
 			_, end := getNativeSelection(e.native.handle)
-			e.caret = clampInt(end, 0, len([]rune(text)))
+			e.caret = editRunePosition(text, end)
 		}
 		if e.Text == text {
 			e.invalidate(e)
 			return true
 		}
 		e.Text = text
+		e.pendingTextUpdate = nil
 		e.clampScroll()
 		e.invalidate(e)
 		if e.OnChange != nil {
@@ -625,6 +636,8 @@ func (e *EditBox) ensureNativeControl(scene *Scene) {
 
 // destroyNativeControl 销毁编辑框对应的原生系统子控件。
 func (e *EditBox) destroyNativeControl(scene *Scene) {
+	e.pendingTextUpdate = nil
+	e.imeBaseText = ""
 	if !e.native.valid() {
 		e.native = nativeControlState{}
 		return
@@ -670,7 +683,8 @@ func (e *EditBox) syncNativeEnabled() {
 func (e *EditBox) syncNativeText() {
 	if e.native.valid() {
 		setNativeText(e.native.handle, e.nativeTextValue())
-		setNativeSelection(e.native.handle, e.caret, e.caret)
+		position := editUTF16Position(e.Text, e.caret)
+		setNativeSelection(e.native.handle, position, position)
 	}
 }
 
@@ -966,6 +980,7 @@ func (e *EditBox) handleChar(ch rune) bool {
 
 // notifyChanged 使控件失效并触发变更回调。
 func (e *EditBox) notifyChanged() {
+	e.pendingTextUpdate = nil
 	e.Text = e.normalizeText(e.Text)
 	e.syncNativeText()
 	e.clampScroll()

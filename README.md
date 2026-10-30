@@ -55,6 +55,14 @@ Avoid holding a lock needed by UI callbacks while calling a synchronous method.
 error. Success accepts the callback (or executes it inline on the UI thread);
 termination of the UI loop can still cancel accepted work.
 
+For cumulative streaming text or a live log, use `EditBox.SetTextPreservingView(text)`.
+It preserves selection and the current viewport, follows appended text only when
+the view was already at the bottom, and resumes following when the user returns
+there. Programmatic updates do not fire `OnChange` or add an undo step. IME
+composition defers the latest snapshot; user edits, ordinary `SetText` and
+detachment discard it. Use `SetText` for a new document/reset. No caller-managed
+scroll position, native handle or follow-state flag is required.
+
 `Handle()` and `IsUIThread()` safely read the window/thread identity while `Init`
 is running. A nonzero handle can be published during native creation, before
 `Init` finishes. `Post` does not start the app or queue work before a window exists:
