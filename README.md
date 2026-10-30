@@ -29,6 +29,7 @@ Chinese version: [README.zh-CN.md](./README.zh-CN.md)
 - Hidden startup and non-activating window placement, visibility and Z-order operations
 - Consumable scene keyboard previews, including native RichEdit input and IME-safe shortcuts
 - Two-line `ListBox` rows using `ListItem.Subtitle` and a configured item height
+- Independent `ListBox` trailing image actions via `SetItemAction`, with Ctrl+Enter support and optional action disabling
 - Demo apps in `demo/demo_json_full` and `demo/demo_go_full`
 
 ## Packages

@@ -238,6 +238,7 @@ func (b *widgetBase) setBounds(owner Widget, rect Rect) {
 	if b.bounds == rect {
 		return
 	}
+	cancelCapturedPointerGesture(owner)
 	explicitGeometry := layoutPassDepth.Load() == 0 && suppressInvalidationDepth.Load() == 0
 	if explicitGeometry {
 		b.preferred = core.Size{Width: rect.W, Height: rect.H}
@@ -299,6 +300,7 @@ func (b *widgetBase) setVisible(owner Widget, visible bool) {
 	if b.visible == visible {
 		return
 	}
+	cancelCapturedPointerGesture(owner)
 	b.visible = visible
 	b.invalidateMeasurement()
 	defer syncNativeTreeGeometry(owner)
@@ -319,6 +321,7 @@ func (b *widgetBase) setEnabled(owner Widget, enabled bool) {
 	if b.enabled == enabled {
 		return
 	}
+	cancelCapturedPointerGesture(owner)
 	b.enabled = enabled
 	if b.sceneRef != nil {
 		b.sceneRef.Invalidate(owner)
@@ -409,6 +412,11 @@ func translateWidgetTree(widget Widget, dx, dy int32) {
 	if widget == nil || (dx == 0 && dy == 0) {
 		return
 	}
+	cancelCapturedPointerGesture(widget)
+	translateWidgetTreeBounds(widget, dx, dy)
+}
+
+func translateWidgetTreeBounds(widget Widget, dx, dy int32) {
 	if movable, ok := widget.(boundsMovable); ok {
 		movable.moveBoundsBy(dx, dy)
 	}
@@ -417,7 +425,27 @@ func translateWidgetTree(widget Widget, dx, dy int32) {
 	}
 	if container, ok := widget.(Container); ok {
 		for _, child := range container.Children() {
-			translateWidgetTree(child, dx, dy)
+			translateWidgetTreeBounds(child, dx, dy)
+		}
+	}
+}
+
+// Notify only the captured descendant, and only when it opts into cancellation.
+// Capture ownership and ordinary widgets' event semantics remain with Scene.
+func cancelCapturedPointerGesture(owner Widget) {
+	node := asWidgetNode(owner)
+	if node == nil || node.scene() == nil {
+		return
+	}
+	captured := node.scene().capture
+	gesture, ok := captured.(interface{ cancelPointerGesture() })
+	if !ok {
+		return
+	}
+	for current := asWidgetNode(captured); current != nil; current = asWidgetNode(current.parent()) {
+		if current == node {
+			gesture.cancelPointerGesture()
+			return
 		}
 	}
 }

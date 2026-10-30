@@ -219,6 +219,14 @@ Typical files:
 
 `EditBox.Composing() bool` 是 UI 线程上的只读原生 IME 状态查询。需要延迟搜索的宿主可在去抖回调中检查它，组合期间等待，组合结束后再按需发起后台工作。它复用已有原生组合状态，不执行网络/文件访问，也不启动额外消息循环。JSON UI 的 ListBox `showCheck` 自动采用上述通用 Space 行为；组合状态查询是 Go 宿主 API，无需新的 JSON 字段。
 
+## ListBox trailing actions
+
+`ListBox.SetItemAction(image, callback)` is the single registration point for the optional 32 DP trailing action. Either nil argument hides the slot. The host owns the `core.Image`; replacing, hiding or detaching the list does not close it. `SetItemActionEnabled(false)` retains the slot and dims its icon while preventing pointer and keyboard invocation. The checkbox remains to the action's left, and shared row geometry reserves both slots and the scrollbar before laying out text.
+
+Keep actions on the existing Scene event and pre-translation paths. The action press records the row index and `ListItem.Value`; only the matching, eligible release invokes `OnItemAction`. Item replacement, scrolling, pointer departure, geometry changes, hiding and disabling cancel it, including disable/re-enable of ancestors. `widgetBase` notifies only the current captured descendant that implements the private cancellation hook; fast subtree translation notifies once before moving bounds. Do not broadcast lifecycle events, add another capture owner or build per-row button trees. The canceled pointer sequence still consumes its synthetic click, so it cannot become a selection, checkbox or activation event.
+
+Ctrl+Enter acts on the focused valid selection once; repeats are consumed without another callback, and IME/Alt/Shift input is left alone. Plain Enter and body double-click retain `OnActivate`, while plain Space retains checkbox behavior. Cover these paths with `listbox_action_test.go` and hidden native fixtures in both cgo modes.
+
 ## Width-constrained measurement
 
 `widgets.MeasureForWidth(Widget, int32) core.Size` is a thin public wrapper over `preferredSizeForWidth`; keep that private path as the single measurement implementation. The constraint and result are physical pixels, including the widget's scene/theme/DPI policy. It is a UI-thread query, not a marshalled operation; attach the widget before measuring when scene metrics matter.

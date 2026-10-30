@@ -106,6 +106,10 @@
 
 `ListItem.Subtitle` 可在列表行第二行显示。例如设置 `ListStyle{ItemHeightDP: 56}`，默认字体下即可同时显示主标题和副标题。行高不足以容纳两行时仍用原有单行显示；没有副标题的条目垂直居中。副标题复用列表的可见行裁剪、选择、滚动、禁用色、打勾列和双击/Enter 激活，不影响命中区域。
 
+`ListBox.SetItemAction(image *core.Image, callback func(int, ListItem))` 为每行注册独立行尾图标动作。图片和回调任一为 nil 时隐藏该列；图片由宿主持有，列表不关闭资源。动作默认可用，`SetItemActionEnabled(false)` 保留图标和 32 DP 槽位，以淡化图标显示禁用。开启打勾列时勾选框放在动作左侧，文字同时避开两列和滚动条。
+
+鼠标在同一有效行的动作槽按下并抬起才触发 `OnItemAction`；动作不会改变单选、勾选，也不触发 `OnChange` / `OnActivate`。条目刷新、滚动、指针离开、隐藏、禁用及祖先状态变化会取消当前手势。聚焦后的 Ctrl+Enter 对当前有效选中行执行一次相同动作，自动重复不再次触发，IME 组合键与 Alt/Shift 组合不参与；普通 Enter、正文双击和 Space 勾选保持原有语义。
+
 ## 5. JSON UI
 
 声明式 UI 现在统一放在 `widgets/jsonui`。

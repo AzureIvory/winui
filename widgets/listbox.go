@@ -9,7 +9,6 @@ import (
 )
 
 // ListBox 表示单选列表控件。
-// ListBox 表示单选列表控件。
 type ListBox struct {
 	// widgetBase 提供列表框共享的基础控件能力。
 	widgetBase
@@ -41,16 +40,33 @@ type ListBox struct {
 	showCheck bool
 	// OnCheckChange 保存打勾列勾选状态变更回调。
 	OnCheckChange func(int, ListItem)
+	// OnItemAction 保存独立行尾动作回调，由 SetItemAction 注册。
+	OnItemAction      func(int, ListItem)
+	itemActionImage   *core.Image
+	itemActionEnabled bool
+	itemActionHover   int
+	itemActionGesture listItemActionGesture
+}
+
+// Keep a canceled action until Scene's synthetic click has been consumed, so
+// releasing over text or a checkbox cannot turn that gesture into a row click.
+type listItemActionGesture struct {
+	active   bool
+	index    int
+	value    string
+	released bool
 }
 
 // NewListBox 创建一个新的列表框。
 func NewListBox(id string) *ListBox {
 	return &ListBox{
-		widgetBase:     newWidgetBase(id, "listbox"),
-		selected:       -1,
-		hover:          -1,
-		pressed:        -1,
-		lastClickIndex: -1,
+		widgetBase:        newWidgetBase(id, "listbox"),
+		selected:          -1,
+		hover:             -1,
+		pressed:           -1,
+		lastClickIndex:    -1,
+		itemActionEnabled: true,
+		itemActionHover:   -1,
 	}
 }
 
@@ -76,9 +92,17 @@ func (l *ListBox) SetEnabled(enabled bool) {
 	})
 }
 
+func (l *ListBox) setScene(scene *Scene) {
+	if l.scene() != scene {
+		l.cancelPointerGesture()
+	}
+	l.widgetBase.setScene(scene)
+}
+
 // SetItems 更新列表框的项目集合。
 func (l *ListBox) SetItems(items []ListItem) {
 	l.runOnUI(func() {
+		l.cancelPointerGesture()
 		l.items = cloneItems(items)
 		if len(l.items) == 0 {
 			l.selected = -1
@@ -135,6 +159,7 @@ func (l *ListBox) SelectedItem() (ListItem, bool) {
 // SetStyle 更新列表框的样式覆盖。
 func (l *ListBox) SetStyle(style ListStyle) {
 	l.runOnUI(func() {
+		l.cancelPointerGesture()
 		l.Style = style
 		l.clampScroll()
 		l.invalidate(l)
@@ -168,6 +193,7 @@ func (l *ListBox) SetShowCheck(show bool) {
 		if l.showCheck == show {
 			return
 		}
+		l.cancelPointerGesture()
 		l.showCheck = show
 		l.invalidate(l)
 	})
@@ -176,6 +202,30 @@ func (l *ListBox) SetShowCheck(show bool) {
 // ShowCheck 返回是否已开启打勾列。
 func (l *ListBox) ShowCheck() bool {
 	return l.showCheck
+}
+
+// SetItemAction 设置每行独立的行尾图标动作。image 或 callback 为 nil 时隐藏
+// 动作列；图片由调用方持有，列表不会关闭它。点击动作和 Ctrl+Enter 只触发
+// OnItemAction，不改变选择、勾选或触发行激活。
+func (l *ListBox) SetItemAction(image *core.Image, callback func(int, ListItem)) {
+	l.runOnUI(func() {
+		l.cancelPointerGesture()
+		l.itemActionImage = image
+		l.OnItemAction = callback
+		l.invalidate(l)
+	})
+}
+
+// SetItemActionEnabled 控制行尾动作是否可触发，默认 true。禁用时保留图标列。
+func (l *ListBox) SetItemActionEnabled(enabled bool) {
+	l.runOnUI(func() {
+		if l.itemActionEnabled == enabled {
+			return
+		}
+		l.cancelPointerGesture()
+		l.itemActionEnabled = enabled
+		l.invalidate(l)
+	})
 }
 
 // SetOnCheckChange 注册打勾列勾选状态变更回调。
@@ -212,11 +262,23 @@ func (l *ListBox) OnEvent(evt Event) bool {
 	switch evt.Type {
 	case EventMouseMove:
 		index := l.indexAt(evt.Point)
+		actionHover := -1
+		if l.pointInItemActionArea(evt.Point, index) && l.canInvokeItemAction(index) {
+			actionHover = index
+		}
+		if gesture := l.itemActionGesture; gesture.active && gesture.index >= 0 && actionHover != gesture.index {
+			l.cancelPointerGesture()
+		}
+		if l.itemActionHover != actionHover {
+			l.itemActionHover = actionHover
+			l.invalidate(l)
+		}
 		if l.hover != index {
 			l.hover = index
 			l.invalidate(l)
 		}
 	case EventMouseLeave:
+		l.cancelPointerGesture()
 		if l.hover != -1 {
 			l.hover = -1
 			l.invalidate(l)
@@ -226,6 +288,19 @@ func (l *ListBox) OnEvent(evt Event) bool {
 			index := l.indexAt(evt.Point)
 			switch evt.Button {
 			case core.MouseButtonLeft:
+				l.itemActionGesture = listItemActionGesture{}
+				if l.pointInItemActionArea(evt.Point, index) {
+					l.lastClickIndex = -1
+					l.lastClickAt = time.Time{}
+					l.itemActionGesture = listItemActionGesture{active: true, index: -1}
+					if l.canInvokeItemAction(index) {
+						l.itemActionGesture.index = index
+						l.itemActionGesture.value = l.items[index].Value
+					}
+					l.pressed = -1
+					l.invalidate(l)
+					return true
+				}
 				l.pressed = index
 				l.invalidate(l)
 				return true
@@ -240,18 +315,36 @@ func (l *ListBox) OnEvent(evt Event) bool {
 			}
 		}
 	case EventMouseUp:
+		if evt.Button == core.MouseButtonLeft && l.itemActionGesture.active {
+			l.itemActionGesture.released = true
+			l.invalidate(l)
+			return true
+		}
 		if l.pressed != -1 {
 			l.pressed = -1
 			l.invalidate(l)
 			return true
 		}
 	case EventClick:
+		if gesture := l.itemActionGesture; gesture.active {
+			l.itemActionGesture = listItemActionGesture{}
+			l.invalidate(l)
+			if gesture.released && l.canInvokeItemAction(gesture.index) &&
+				l.items[gesture.index].Value == gesture.value &&
+				l.pointInItemActionArea(evt.Point, gesture.index) {
+				l.OnItemAction(gesture.index, l.items[gesture.index])
+			}
+			return true
+		}
 		if !l.Enabled() {
 			return false
 		}
 		index := l.indexAt(evt.Point)
 		if index < 0 {
 			return false
+		}
+		if l.pointInItemActionArea(evt.Point, index) {
+			return true
 		}
 		// 点击落在打勾列时切换勾选，与单选选中相互独立。
 		if l.showCheck && l.pointInCheckArea(evt.Point, index) {
@@ -280,6 +373,7 @@ func (l *ListBox) OnEvent(evt Event) bool {
 			l.invalidate(l)
 		}
 	case EventBlur:
+		l.cancelPointerGesture()
 		if l.focused || l.hover != -1 {
 			l.focused = false
 			l.hover = -1
@@ -329,18 +423,6 @@ func (l *ListBox) Paint(ctx *PaintCtx) {
 	end := len(l.items)
 	if visible := l.visibleRows(style); visible > 0 && start+visible+1 < end {
 		end = start + visible + 1
-	}
-
-	// 打勾列开启时，在每行右侧预留指示器宽度。
-	leftPad := ctx.DP(10)
-	rightPad := leftPad
-	checkSize := int32(0)
-	if l.showCheck {
-		checkSize = ctx.DP(style.CheckSizeDP)
-		if checkSize <= 0 {
-			checkSize = ctx.DP(18)
-		}
-		rightPad += checkSize + ctx.DP(10)
 	}
 
 	// 行绘制裁剪到列表框内部区域，避免最后一行（部分可见）的圆角背景
@@ -393,26 +475,18 @@ func (l *ListBox) Paint(ctx *PaintCtx) {
 			textColor = style.ItemTextColor
 		}
 
-		textRect := Rect{
-			X: rowRect.X + leftPad,
-			Y: rowRect.Y,
-			W: max32(0, rowRect.W-leftPad-rightPad),
-			H: rowRect.H,
-		}
+		textRect, checkRect, actionRect := l.rowContentRects(rowRect, style)
 		if rowBg == 0 {
 			rowBg = baseBg
 		}
 		l.paintRowText(ctx, item, textRect, style, textColor, rowBg)
 
 		// 打勾指示器画在行右侧，垂直居中。
-		if checkSize > 0 {
-			boxRect := Rect{
-				X: rowRect.X + rowRect.W - leftPad - checkSize,
-				Y: rowRect.Y + (rowRect.H-checkSize)/2,
-				W: checkSize,
-				H: checkSize,
-			}
-			l.paintRowCheck(ctx, boxRect, item.Checked, style)
+		if !checkRect.Empty() {
+			l.paintRowCheck(ctx, checkRect, item.Checked, style)
+		}
+		if !actionRect.Empty() {
+			l.paintRowAction(ctx, actionRect, index, style, rowBg)
 		}
 	}
 
@@ -488,11 +562,23 @@ func (l *ListBox) resolveStyle(ctx *PaintCtx) ListStyle {
 	return mergeListStyle(style, l.Style)
 }
 
-// handleKey 处理列表框的按键事件。
 // handleKeyBeforeTranslate participates in the existing scene default-key
-// stage, so a check callback may focus a native editor without receiving the
-// Space character generated for this activation.
+// stage, so action/check callbacks may focus native editors without receiving
+// the character generated for the activation key.
 func (l *ListBox) handleKeyBeforeTranslate(key core.KeyEvent) bool {
+	if key.Key == core.KeyReturn && key.Ctrl {
+		if !l.focused || key.Composing || key.Alt || key.Shift || key.Flags&(1<<29) != 0 ||
+			!l.canInvokeItemAction(l.selected) {
+			return false
+		}
+		if scene := l.scene(); scene != nil && scene.Focus() != l {
+			return false
+		}
+		if !key.Repeat && key.Flags&(1<<30) == 0 {
+			l.OnItemAction(l.selected, l.items[l.selected])
+		}
+		return true
+	}
 	if !l.showCheck || !l.focused || !l.Visible() || !l.Enabled() || key.Key != core.KeySpace ||
 		key.Composing || key.Ctrl || key.Alt || key.Shift || key.Flags&(1<<29) != 0 ||
 		l.selected < 0 || l.selected >= len(l.items) || l.items[l.selected].Disabled {
@@ -507,11 +593,12 @@ func (l *ListBox) handleKeyBeforeTranslate(key core.KeyEvent) bool {
 	return true
 }
 
+// handleKey 处理列表框的按键事件。
 func (l *ListBox) handleKey(key core.KeyEvent) bool {
 	if len(l.items) == 0 || !l.Enabled() {
 		return false
 	}
-	if key.Key == core.KeySpace && l.showCheck {
+	if key.Key == core.KeyReturn && key.Ctrl || key.Key == core.KeySpace && l.showCheck {
 		return l.handleKeyBeforeTranslate(key)
 	}
 
@@ -694,14 +781,17 @@ func (l *ListBox) maxScroll(style ListStyle) int {
 
 // clampScroll 把滚动位置限制在合法范围内。
 func (l *ListBox) clampScroll() {
-	style := l.resolveStyle(nil)
-	maxScroll := l.maxScroll(style)
-	if l.scroll < 0 {
-		l.scroll = 0
+	l.setScroll(l.scroll)
+}
+
+func (l *ListBox) setScroll(scroll int) bool {
+	scroll = max(0, min(scroll, l.maxScroll(l.resolveStyle(nil))))
+	if scroll == l.scroll {
+		return false
 	}
-	if l.scroll > maxScroll {
-		l.scroll = maxScroll
-	}
+	l.cancelPointerGesture()
+	l.scroll = scroll
+	return true
 }
 
 // scrollBy 按给定偏移滚动列表。
@@ -709,10 +799,7 @@ func (l *ListBox) scrollBy(delta int) bool {
 	if delta == 0 {
 		return false
 	}
-	old := l.scroll
-	l.scroll += delta
-	l.clampScroll()
-	if l.scroll == old {
+	if !l.setScroll(l.scroll + delta) {
 		return false
 	}
 	l.invalidate(l)
@@ -730,12 +817,12 @@ func (l *ListBox) ensureVisible(index int) {
 		return
 	}
 	if index < l.scroll {
-		l.scroll = index
+		l.setScroll(index)
 		return
 	}
 	last := l.scroll + rows - 1
 	if index > last {
-		l.scroll = index - rows + 1
+		l.setScroll(index - rows + 1)
 	}
 	l.clampScroll()
 }
@@ -779,18 +866,116 @@ func (l *ListBox) pointInCheckArea(point core.Point, index int) bool {
 		return false
 	}
 	style := l.resolveStyle(nil)
-	checkSize := l.dp(style.CheckSizeDP)
-	if checkSize <= 0 {
-		checkSize = l.dp(18)
+	row := l.rowRect(index, &PaintCtx{scene: l.scene()}, style)
+	_, check, _ := l.rowContentRects(row, style)
+	check.Y, check.H = row.Y, row.H
+	return check.Contains(point.X, point.Y)
+}
+
+// rowContentRects is shared by painting and pointer hit testing. Reserve the
+// scrollbar before placing the action, checkbox and text from right to left.
+func (l *ListBox) rowContentRects(row Rect, style ListStyle) (text, check, action Rect) {
+	pad := l.dp(10)
+	right := row.X + row.W - pad
+	if l.maxScroll(style) > 0 {
+		right -= l.dp(8)
 	}
-	padding := max32(0, l.dp(style.PaddingDP))
-	itemHeight := max32(1, l.dp(style.ItemHeightDP))
-	rowW := max32(0, l.bounds.W-padding*2)
-	rowY := l.bounds.Y + padding + int32(index-l.scroll)*itemHeight
-	// 与 Paint 中保持一致：打勾区距行右边缘 leftPad（10dp）。
-	checkLeft := l.bounds.X + padding + rowW - l.dp(10) - checkSize
-	return point.X >= checkLeft && point.X <= checkLeft+checkSize &&
-		point.Y >= rowY && point.Y <= rowY+itemHeight
+	if l.hasItemAction() {
+		width := l.dp(32)
+		action = intersectRect(row, Rect{X: right - width, Y: row.Y, W: width, H: row.H})
+		right -= width
+	}
+	if l.showCheck {
+		size := l.dp(style.CheckSizeDP)
+		if size <= 0 {
+			size = l.dp(18)
+		}
+		check = intersectRect(row, Rect{X: right - size, Y: row.Y + (row.H-size)/2, W: size, H: size})
+		right -= size + pad
+	}
+	text = Rect{X: row.X + pad, Y: row.Y, W: max32(0, right-row.X-pad), H: row.H}
+	return
+}
+
+func (l *ListBox) hasItemAction() bool {
+	return l.itemActionImage != nil && l.OnItemAction != nil
+}
+
+func (l *ListBox) canInvokeItemAction(index int) bool {
+	if !l.hasItemAction() || !l.itemActionEnabled || !l.Visible() || !l.Enabled() ||
+		index < 0 || index >= len(l.items) || l.items[index].Disabled {
+		return false
+	}
+	return l.scene() == nil || l.scene().canFocusWidget(l)
+}
+
+func (l *ListBox) pointInItemActionArea(point core.Point, index int) bool {
+	if !l.hasItemAction() || index < 0 || index >= len(l.items) || l.indexAt(point) != index {
+		return false
+	}
+	style := l.resolveStyle(nil)
+	row := l.rowRect(index, &PaintCtx{scene: l.scene()}, style)
+	_, _, action := l.rowContentRects(row, style)
+	content := insetRect(l.Bounds(), max32(0, l.dp(style.PaddingDP)), max32(0, l.dp(style.PaddingDP)))
+	if !intersectRect(action, content).Contains(point.X, point.Y) {
+		return false
+	}
+	if scene := l.scene(); scene != nil {
+		if overlay := scene.overlayTargetAt(point.X, point.Y); overlay != nil && overlay != l {
+			return false
+		}
+		return scene.hitTest(scene.root, point.X, point.Y) == l
+	}
+	return true
+}
+
+// cancelPointerGesture is an opt-in hook for captured widgets. It deliberately
+// retains the click guard until Scene finishes the current pointer sequence.
+func (l *ListBox) cancelPointerGesture() {
+	changed := l.itemActionHover != -1 || l.itemActionGesture.active && l.itemActionGesture.index >= 0
+	if l.itemActionGesture.active {
+		l.itemActionGesture.index = -1
+	}
+	if l.itemActionHover != -1 {
+		l.itemActionHover = -1
+	}
+	if changed {
+		l.invalidate(l)
+	}
+}
+
+func (l *ListBox) paintRowAction(ctx *PaintCtx, slot Rect, index int, style ListStyle, background core.Color) {
+	if ctx.Canvas() == nil {
+		return
+	}
+	available := l.canInvokeItemAction(index)
+	size := min32(ctx.DP(28), min32(slot.W, max32(0, slot.H-ctx.DP(4))))
+	button := Rect{X: slot.X + (slot.W-size)/2, Y: slot.Y + (slot.H-size)/2, W: size, H: size}
+	if available && index == l.itemActionHover {
+		alpha := listHoverAlpha
+		if gesture := l.itemActionGesture; gesture.active && gesture.index == index && !gesture.released {
+			alpha = listSelectionAlpha
+		}
+		_ = ctx.FillRoundRect(button, ctx.DP(4), BlendColor(background, style.ItemSelectedColor, alpha))
+	}
+	iconSize := min32(ctx.DP(16), min32(button.W, button.H))
+	src := l.itemActionImage.NaturalSize()
+	fitted := core.FitContain(src, iconSize, iconSize)
+	if fitted.Width <= 0 || fitted.Height <= 0 {
+		return
+	}
+	bitmap, err := l.itemActionImage.BitmapFor(fitted.Width, fitted.Height, core.ChooseScaleQuality(src, fitted))
+	if err != nil {
+		return
+	}
+	alpha := byte(255)
+	if !available {
+		alpha = 96
+	}
+	_ = ctx.Canvas().DrawBitmapAlpha(bitmap, Rect{
+		X: slot.X + (slot.W-fitted.Width)/2, Y: slot.Y + (slot.H-fitted.Height)/2,
+		W: fitted.Width, H: fitted.Height,
+	}, alpha)
 }
 
 // toggleItemCheck 翻转指定项的勾选状态，并按需触发回调。
