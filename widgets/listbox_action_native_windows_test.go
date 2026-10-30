@@ -61,6 +61,34 @@ func TestListBoxItemActionHiddenNativeDPIAndRenderBackends(t *testing.T) {
 						sendNativeMessage(app.Handle(), 0x000F, 0, 0) // WM_PAINT
 					}
 					list.SetItemActionEnabled(true)
+					for _, state := range []ActionVisualState{
+						ActionVisualDefault, ActionVisualWorking, ActionVisualSuccess, ActionVisualError,
+					} {
+						presentation := ItemActionPresentation{Text: "发送中", State: state}
+						provider := func(int, ListItem) ItemActionPresentation { return presentation }
+						list.SetItemActionPresentation(provider)
+						text, check, action = list.rowContentRects(row, style)
+						if action.W != app.DP(76) || text.X+text.W > check.X || check.X+check.W > action.X {
+							t.Errorf("DPI %d presentation columns overlap: text=%+v check=%+v action=%+v", dpi, text, check, action)
+						}
+						point = core.Point{X: action.X + action.W/2, Y: action.Y + action.H/2}
+						for _, disabled := range []bool{false, true} {
+							presentation.Disabled = disabled
+							list.SetItemActionPresentation(provider)
+							before := actions
+							listActionMouse(scene, point, true)
+							listActionMouse(scene, point, false)
+							want := before
+							if !disabled {
+								want++
+							}
+							if actions != want {
+								t.Errorf("DPI %d state %d disabled=%v actions=%d want=%d", dpi, state, disabled, actions, want)
+							}
+							sendNativeMessage(app.Handle(), 0x000F, 0, 0) // WM_PAINT
+						}
+					}
+					list.SetItemActionPresentation(nil)
 				}
 				backend := app.RenderBackend()
 				if backend == core.RenderBackendUnknown || renderer == core.RenderModeGDI && backend != core.RenderBackendGDI {

@@ -249,16 +249,26 @@ func TestEditTextSnapshotKeepsLongDocumentScrollBeyond16BitRange(t *testing.T) {
 		scene.Root().Add(edit)
 		scene.FocusWidget(edit)
 	})
+	var before, after core.Point
 	onUI(func() {
+		// RichEdit can initially format only a few screenfuls. Complete native
+		// layout before requesting a position beyond that temporary range.
+		sendNativeMessage(edit.native.handle, 0x0115, 7, 0) // WM_VSCROLL / SB_BOTTOM
 		point := core.Point{Y: 70000}
 		sendNativeMessage(edit.native.handle, nativeEditSetScrollPos, 0, uintptr(unsafe.Pointer(&point)))
-		before := nativeEditScrollPosition(edit)
+		before = nativeEditScrollPosition(edit)
 		if before.Y <= 65535 {
-			t.Fatalf("fixture did not enter long document range: %+v", before)
+			return
 		}
 		edit.SetTextPreservingView(edit.Text + "追加末尾\n")
-		if after := nativeEditScrollPosition(edit); after != before {
-			t.Fatalf("long snapshot wrapped scroll: %+v -> %+v", before, after)
-		}
+		after = nativeEditScrollPosition(edit)
 	})
+	// Fatal assertions belong to the test goroutine; Goexit on the UI thread
+	// would terminate its message pump and deadlock app.Run during cleanup.
+	if before.Y <= 65535 {
+		t.Fatalf("fixture did not enter long document range: %+v", before)
+	}
+	if after != before {
+		t.Fatalf("long snapshot wrapped scroll: %+v -> %+v", before, after)
+	}
 }

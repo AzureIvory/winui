@@ -29,7 +29,7 @@ Chinese version: [README.zh-CN.md](./README.zh-CN.md)
 - Hidden startup and non-activating window placement, visibility and Z-order operations
 - Consumable scene keyboard previews, including native RichEdit input and IME-safe shortcuts
 - Two-line `ListBox` rows using `ListItem.Subtitle` and a configured item height
-- Independent `ListBox` trailing image actions via `SetItemAction`, with Ctrl+Enter support and optional action disabling
+- Independent `ListBox` trailing actions via `SetItemAction`, with Ctrl+Enter, per-row text/status presentation and shared action-button styling
 - Demo apps in `demo/demo_json_full` and `demo/demo_go_full`
 
 ## Packages
@@ -74,6 +74,16 @@ to succeed before publishing work.
 window, and destroying the owner destroys it. Use `RaiseNoActivate` for independent
 windows that should stay alive after an external window closes. It raises within
 the current Z-order group without making a normal window globally topmost.
+
+`ListBox.SetItemActionPresentation(provider)` adds per-row text, visual state and
+explicit availability to a registered action. Its fixed 76 DP slot keeps row text
+stable across status changes; a nil provider restores the 32 DP icon-only slot.
+The provider reads host state, and re-registering it refreshes the display.
+An eligible pointer gesture survives a display refresh; slot changes or disabled
+state cancel it.
+`ActionVisualWorking` does not disable the action: use `Disabled` explicitly.
+`ActionButtonStyle(state)` shares the same appearance with custom buttons;
+operation tracking, feedback duration and state transitions belong to the host.
 
 Use `scene.FocusWidget(widget)` for explicit widget focus and
 `scene.SetKeyPreview(func(core.KeyEvent) bool)` (or `SceneHooks.OnKeyPreview`) for

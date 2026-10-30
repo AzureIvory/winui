@@ -112,6 +112,10 @@
 
 `ListBox.SetItemAction(image *core.Image, callback func(int, ListItem))` 为每行注册独立行尾图标动作。图片和回调任一为 nil 时隐藏该列；图片由宿主持有，列表不关闭资源。动作默认可用，`SetItemActionEnabled(false)` 保留图标和 32 DP 槽位，以淡化图标显示禁用。开启打勾列时勾选框放在动作左侧，文字同时避开两列和滚动条。
 
+`SetItemActionPresentation(func(int, ListItem) ItemActionPresentation)` 是文字、外观状态和逐行可用性的唯一显示入口。返回值包含 `Text`、`State` 和 `Disabled`；`State` 可为 `ActionVisualDefault`、`ActionVisualWorking`、`ActionVisualSuccess`、`ActionVisualError`。启用 provider 后固定预留 76 DP，不随文字或状态变化；长文字省略，传 nil 恢复 32 DP 图标列。provider 必须是只读纯函数，按当前 `ListItem.Value` 读取宿主状态；宿主在 UI 线程更新状态后再次传入同一 provider 即可重绘。纯显示刷新保留仍有效的指针手势；nil 与非 nil 切换或按下行变为不可用时取消手势。
+
+`Working` 只改变外观，不会自动禁用；逐行 `Disabled` 与列表、祖先、条目和全局动作禁用共同约束鼠标及 Ctrl+Enter。`ActionButtonStyle(state)` 为 `ModeCustom` 的 `Button` 返回同源状态样式；处理中、成功和失败在禁用时仍保留可辨状态色。图标直接绘制在实色底上，适合浅色前景资源。操作执行、状态转换、反馈持续时间与操作记录均由宿主管理。
+
 鼠标在同一有效行的动作槽按下并抬起才触发 `OnItemAction`；动作不会改变单选、勾选，也不触发 `OnChange` / `OnActivate`。条目刷新、滚动、指针离开、隐藏、禁用及祖先状态变化会取消当前手势。聚焦后的 Ctrl+Enter 对当前有效选中行执行一次相同动作，自动重复不再次触发，IME 组合键与 Alt/Shift 组合不参与；普通 Enter、正文双击和 Space 勾选保持原有语义。
 
 ## 5. JSON UI

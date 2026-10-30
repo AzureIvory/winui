@@ -41,11 +41,12 @@ type ListBox struct {
 	// OnCheckChange 保存打勾列勾选状态变更回调。
 	OnCheckChange func(int, ListItem)
 	// OnItemAction 保存独立行尾动作回调，由 SetItemAction 注册。
-	OnItemAction      func(int, ListItem)
-	itemActionImage   *core.Image
-	itemActionEnabled bool
-	itemActionHover   int
-	itemActionGesture listItemActionGesture
+	OnItemAction           func(int, ListItem)
+	itemActionImage        *core.Image
+	itemActionEnabled      bool
+	itemActionHover        int
+	itemActionGesture      listItemActionGesture
+	itemActionPresentation func(int, ListItem) ItemActionPresentation
 }
 
 // Keep a canceled action until Scene's synthetic click has been consumed, so
@@ -224,6 +225,24 @@ func (l *ListBox) SetItemActionEnabled(enabled bool) {
 		}
 		l.cancelPointerGesture()
 		l.itemActionEnabled = enabled
+		l.invalidate(l)
+	})
+}
+
+// SetItemActionPresentation registers a pure row presentation provider. A nonnil
+// provider reserves 76 DP for image and text; nil restores the 32 DP image slot.
+// Call again after host state changes to repaint, even with the same provider.
+// Refresh preserves an eligible gesture; slot changes or unavailability cancel it.
+// Working is visual only; Disabled explicitly controls per-row availability.
+func (l *ListBox) SetItemActionPresentation(provider func(int, ListItem) ItemActionPresentation) {
+	l.runOnUI(func() {
+		hadPresentation := l.itemActionPresentation != nil
+		l.itemActionPresentation = provider
+		geometryChanged := hadPresentation != (provider != nil)
+		gestureUnavailable := l.itemActionGesture.active && !l.canInvokeItemAction(l.itemActionGesture.index)
+		if geometryChanged || gestureUnavailable {
+			l.cancelPointerGesture()
+		}
 		l.invalidate(l)
 	})
 }
@@ -882,6 +901,9 @@ func (l *ListBox) rowContentRects(row Rect, style ListStyle) (text, check, actio
 	}
 	if l.hasItemAction() {
 		width := l.dp(32)
+		if l.itemActionPresentation != nil {
+			width = l.dp(76)
+		}
 		action = intersectRect(row, Rect{X: right - width, Y: row.Y, W: width, H: row.H})
 		right -= width
 	}
@@ -904,6 +926,9 @@ func (l *ListBox) hasItemAction() bool {
 func (l *ListBox) canInvokeItemAction(index int) bool {
 	if !l.hasItemAction() || !l.itemActionEnabled || !l.Visible() || !l.Enabled() ||
 		index < 0 || index >= len(l.items) || l.items[index].Disabled {
+		return false
+	}
+	if l.itemActionPresentation != nil && l.itemActionPresentation(index, l.items[index]).Disabled {
 		return false
 	}
 	return l.scene() == nil || l.scene().canFocusWidget(l)
@@ -951,14 +976,53 @@ func (l *ListBox) paintRowAction(ctx *PaintCtx, slot Rect, index int, style List
 	available := l.canInvokeItemAction(index)
 	size := min32(ctx.DP(28), min32(slot.W, max32(0, slot.H-ctx.DP(4))))
 	button := Rect{X: slot.X + (slot.W-size)/2, Y: slot.Y + (slot.H-size)/2, W: size, H: size}
-	if available && index == l.itemActionHover {
+	iconSlot := button
+	alpha := byte(255)
+	if !available {
+		alpha = 96
+	}
+	if l.itemActionPresentation != nil {
+		presentation := l.itemActionPresentation(index, l.items[index])
+		actionStyle := ActionButtonStyle(presentation.State)
+		button = Rect{X: slot.X + ctx.DP(2), Y: button.Y, W: max32(0, slot.W-ctx.DP(4)), H: button.H}
+		fill, textColor := actionStyle.Background, actionStyle.TextColor
+		if !available {
+			fill, textColor = actionStyle.Disabled, actionStyle.DisabledText
+		} else if index == l.itemActionHover {
+			fill = actionStyle.Hover
+			if gesture := l.itemActionGesture; gesture.active && gesture.index == index && !gesture.released {
+				fill = actionStyle.Pressed
+			}
+		}
+		_ = ctx.FillRoundRect(button, ctx.DP(actionStyle.CornerRadius), fill)
+		if actionStyle.Disabled == actionStyle.Background {
+			alpha = 255
+		}
+		pad := ctx.DP(actionStyle.PadDP)
+		iconWidth := min32(ctx.DP(actionStyle.ImageSizeDP), min32(button.H, max32(0, button.W-2*pad)))
+		iconSlot = Rect{X: button.X + pad, Y: button.Y + (button.H-iconWidth)/2, W: iconWidth, H: iconWidth}
+		if presentation.Text == "" {
+			iconSlot.X = button.X + (button.W-iconWidth)/2
+		}
+		if presentation.Text != "" {
+			textLeft := iconSlot.X + iconSlot.W + ctx.DP(actionStyle.GapDP)
+			text := Rect{
+				X: textLeft, Y: button.Y,
+				W: max32(0, button.X+button.W-ctx.DP(actionStyle.PadDP)-textLeft), H: button.H,
+			}
+			_ = ctx.DrawWidgetText(l, presentation.Text, text, TextStyle{
+				Font: mergeFontSpec(style.Font, actionStyle.Font), Color: textColor,
+				Format: core.DTVCenter | core.DTSingleLine | core.DTEndEllipsis,
+			})
+		}
+	} else if available && index == l.itemActionHover {
 		alpha := listHoverAlpha
 		if gesture := l.itemActionGesture; gesture.active && gesture.index == index && !gesture.released {
 			alpha = listSelectionAlpha
 		}
 		_ = ctx.FillRoundRect(button, ctx.DP(4), BlendColor(background, style.ItemSelectedColor, alpha))
 	}
-	iconSize := min32(ctx.DP(16), min32(button.W, button.H))
+	iconSize := min32(ctx.DP(16), min32(iconSlot.W, iconSlot.H))
 	src := l.itemActionImage.NaturalSize()
 	fitted := core.FitContain(src, iconSize, iconSize)
 	if fitted.Width <= 0 || fitted.Height <= 0 {
@@ -968,12 +1032,8 @@ func (l *ListBox) paintRowAction(ctx *PaintCtx, slot Rect, index int, style List
 	if err != nil {
 		return
 	}
-	alpha := byte(255)
-	if !available {
-		alpha = 96
-	}
 	_ = ctx.Canvas().DrawBitmapAlpha(bitmap, Rect{
-		X: slot.X + (slot.W-fitted.Width)/2, Y: slot.Y + (slot.H-fitted.Height)/2,
+		X: iconSlot.X + (iconSlot.W-fitted.Width)/2, Y: iconSlot.Y + (iconSlot.H-fitted.Height)/2,
 		W: fitted.Width, H: fitted.Height,
 	}, alpha)
 }

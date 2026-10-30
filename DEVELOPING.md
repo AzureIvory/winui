@@ -102,6 +102,10 @@ Recommended:
 - `SetOwner` intentionally inherits Win32 owner minimize/destruction behavior.
   Independent companion windows should use `RaiseNoActivate` instead. No helper
   calls `SetForegroundWindow` or makes a normal window topmost.
+- `core/owned_shutdown_windows_test.go` uses hidden subprocess fixtures to verify
+  actual owner-first `WM_CLOSE` with no popup, a ready popup and an initializing
+  popup. It waits for both message pumps to exit and bounds failures with process
+  deadlines. Keep this separate from host worker, ledger and resource shutdown.
 - Keyboard preview belongs to the core message loop, before `TranslateMessage`,
   for the app HWND and its children. A consumed key is never translated or
   dispatched. Native edit subclasses must not run preview again.
@@ -231,6 +235,23 @@ Typical files:
 
 `ListBox.SetItemAction(image, callback)` is the single registration point for the optional 32 DP trailing action. Either nil argument hides the slot. The host owns the `core.Image`; replacing, hiding or detaching the list does not close it. `SetItemActionEnabled(false)` retains the slot and dims its icon while preventing pointer and keyboard invocation. The checkbox remains to the action's left, and shared row geometry reserves both slots and the scrollbar before laying out text.
 
+`SetItemActionPresentation(func(int, ListItem) ItemActionPresentation)` is the single
+source for optional action text, visual state and per-row availability. A nonnil
+provider reserves 76 DP regardless of text or state; nil restores the original
+32 DP slot. Providers must be pure/read-only and run on the UI path. After updating
+host state on the UI thread, call the setter again with the same provider to
+invalidate. Pure display refreshes preserve eligible pointer gestures; changing
+between nil/nonnil or making the pressed row unavailable cancels them. Resolve identity through the
+current `ListItem.Value`; never cache operation state by row index in the widget.
+`Working` is presentation only. `Disabled` adds to the existing list, ancestor,
+item and global action eligibility checks for pointer and Ctrl+Enter alike.
+
+Use `ActionButtonStyle(state)` for matching custom buttons. Both paths share the
+status palette; working/success/error remain readable when unavailable. Images
+are drawn directly on the fill, so a light foreground asset fits this appearance.
+The toolkit does not launch operations, schedule feedback timers or infer disabled
+state. Keep those transitions and their lifetime in the host's operation store.
+
 Keep actions on the existing Scene event and pre-translation paths. The action press records the row index and `ListItem.Value`; only the matching, eligible release invokes `OnItemAction`. Item replacement, scrolling, pointer departure, geometry changes, hiding and disabling cancel it, including disable/re-enable of ancestors. `widgetBase` notifies only the current captured descendant that implements the private cancellation hook; fast subtree translation notifies once before moving bounds. Do not broadcast lifecycle events, add another capture owner or build per-row button trees. The canceled pointer sequence still consumes its synthetic click, so it cannot become a selection, checkbox or activation event.
 
 Ctrl+Enter acts on the focused valid selection once; repeats are consumed without another callback, and IME/Alt/Shift input is left alone. Plain Enter and body double-click retain `OnActivate`, while plain Space retains checkbox behavior. Cover these paths with `listbox_action_test.go` and hidden native fixtures in both cgo modes.
@@ -247,6 +268,12 @@ boundaries. Restore the selection before the viewport and never call
 view was at the bottom; use its 32-bit position for long documents, retaining
 `EM_GETSCROLLPOS` only as the no-scrollbar fallback. Custom unfocused rendering
 uses its own layout/offsets and must keep the hidden input HWND hidden.
+
+The long-document native regression first completes RichEdit layout with
+`SB_BOTTOM` before requesting its distant manual scroll position. A newly created
+control can expose only a temporary partial scrollbar range. Keep fatal test
+assertions on the test goroutine so failure cannot terminate the UI message pump
+and strand cleanup.
 
 Preserve the existing content-only native HWND and actual client formatting
 rectangle when text changes scrollbar visibility. Suppress/re-enable redraw only

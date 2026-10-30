@@ -2,6 +2,10 @@
 
 ## 2026-10-30
 
+- 新增 `ListBox.SetItemActionPresentation` 单一纯显示 provider：固定 76 DP 图文动作槽，nil 恢复 32 DP；支持默认、处理中、成功、失败外观及显式逐行 Disabled，复用鼠标和 Ctrl+Enter 可用性校验。重复设置刷新宿主状态并保留有效点击，仅槽宽变化或按下行不可用时取消，控件不存操作记录或反馈计时。
+- 新增 `ActionButtonStyle`，与列表动作共用状态色及图文尺寸；非默认禁用状态保持反馈可辨，图标直接绘制在实色背景。补充固定列宽、重排身份、更新取消和多 DPI/渲染后端回归，同步五份文档。
+- 新增隐藏独立子进程 owner-first 退出回归：真实向自建主 HWND 投递 WM_CLOSE，覆盖无浮窗、浮窗就绪及浮窗初始化中，验证两侧消息循环均退出。三个场景均通过，未修改 core 退出生产逻辑。
+- 修正长文档回归 fixture 的初始化时序：先用 SB_BOTTOM 完成 RichEdit 全量布局，再验证超过 16 位范围的手动位置；原基线也可复现临时范围仅 1690 像素的问题。保留原断言，将 Fatal 移回测试线程避免失败杀死 UI 泵、卡住清理，不修改 EditBox 生产逻辑。
 - 新增 `EditBox.SetTextPreservingView` 累计快照入口：单个 changed range 增量替换并恢复 UTF-16 选区、视口；底部时跟随、用户离底后保持、返回底部恢复，程序更新不发 OnChange 或增加撤销步骤，普通 SetText 重置语义保持。
 - 将 IME 最新待更新及用户编辑/reset/卸载取消封装在控件内，避免流式取消后重放；保留内容 HWND 与实际 client 格式区以维持滚动残影修复。新增隐藏原生/自绘、多 DPI、水平/超过 16 位范围长文档、选区复制、只读、IME 和生命周期回归。
 - 修复 `App.Init` 原生创建与后台 `Post` / `Handle` / `IsUIThread` 并发访问身份字段的 data race：句柄、线程 ID 各使用唯一原子存储，core 全部读取统一走 getter；HWND 仅在 `WM_NCCREATE` 发布并注册，删除创建返回后的重复写。

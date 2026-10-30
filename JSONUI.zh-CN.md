@@ -404,6 +404,8 @@ Go 宿主取得 `*widgets.EditBox` 后可用 `SetTextPreservingView(text)` 回�
 
 行尾图标动作同样由 Go 宿主在取得 `*widgets.ListBox` 后调用 `SetItemAction(image, callback)` 注册，再用 `SetItemActionEnabled` 控制可用状态。回调收到当前索引和 `ListItem`，可使用已有 `value` 识别条目；图片由宿主负责释放。任一注册参数为 nil 时隐藏动作列，禁用时保留槽位。鼠标动作和 Ctrl+Enter 只触发该回调，与 JSON 的选择、激活及勾选绑定相互独立；复用现有 DPI、裁剪、IME 与自动重复规则，无需新增 JSON 字段或逐行按钮节点。
 
+需要行尾文字或状态反馈时，由宿主调用 `SetItemActionPresentation(provider)`，以只读函数返回 `ItemActionPresentation{Text, State, Disabled}`。非 nil provider 固定使用 76 DP 动作槽，nil 恢复 32 DP 图标槽；重复设置同一 provider 会重绘并保留仍有效的指针手势，仅槽宽变化或按下行变为不可用时取消。`ActionVisualWorking` 只代表外观，逐行禁用须明确返回 `Disabled: true`。可通过 `ActionButtonStyle(state)` 同步自绘按钮外观。操作状态、转换和反馈计时由宿主唯一维护，JSON 不增加业务状态字段。
+
 表单需要 Tab / Shift+Tab 时，宿主可在当前场景的 UI 线程按键预览中调用 `Scene.FocusNext(key.Shift)`；资格判定、子控件树顺序和模态范围由场景统一管理，不需要在产品中维护另一份控件顺序，也没有新增 JSON Tab 配置。
 
 嵌套 `scrollview` 内的原生编辑输入层也按祖先视口交集裁剪，不会盖住视口外的固定页脚。宿主调用 `FocusWidget` / `FocusNext` 时会用既有滚动偏移显露离屏控件，无需另写 JSON 滚动动作或产品级原生窗口覆盖逻辑。
