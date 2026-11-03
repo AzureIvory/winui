@@ -373,6 +373,8 @@ const (
 	wmNcDestroy = 0x0082
 	// wmAppInvoke 表示执行投递回调的自定义消息。
 	wmAppInvoke = wmApp + 0x240
+	// wmAppTray is owned by App's native notification-area component.
+	wmAppTray = wmApp + 0x241
 
 	// hitTestClient 表示光标位于客户区。
 	hitTestClient = 1

@@ -1,5 +1,21 @@
 # JSON UI 使用指南
 
+## Go 宿主托盘与列表标签
+
+原生托盘通过已有 HostedWindow.App 的 `NewTrayIcon` 装配，在 OnCreate 或 Init
+后使用；复用该 App 的 HWND/UI 线程，不调用第二个 Run。JSON DSL 不声明托盘
+生命周期、业务菜单或退出策略。请提供 OnError 并遵守
+[关闭与回调契约](DEVELOPING.md#native-tray-lifetime)。
+
+只读列表标签由 Go 宿主以 `widgets.ListItem.Badge` 和可选 `BadgeStyle` 通过既有
+列表 SetItems 投影；未新增 JSON 字段、绑定语法或隐式业务标签。原有 JSON 行高、
+选择、showCheck、行尾动作和裁剪规则保持原语义。主题默认值在 ListStyle.Badge，
+参见 [控件指南](WIDGETS.zh-CN.md#listbox-只读标签与原生托盘)。
+
+Go 宿主还可使用 `ListBox.FirstVisibleIndex` / `SetFirstVisibleIndex`，按稳定 Value
+映射刷新后的顶部锚点；先恢复选择再恢复滚动，末页按现有规则夹紧。getter 是 UI
+线程查询，空列表为 -1；setter 不改变选择。DSL 不自动暴露或保存滚动状态。
+
 本文面向直接使用 `widgets/jsonui` 的宿主代码，重点说明 JSON DSL、绑定方式、表达式语义、多窗口支持，以及少量 imperative 运行时代码应该如何和声明式 UI 协作。
 
 ## 1. 设计原则

@@ -1,5 +1,24 @@
 # AI Change Log
 
+## 2026-11-03
+
+- 新增 App-owned Unicode 原生托盘：NewTrayIcon、SetIcon、SetTooltip、SetMenu、
+  Close 与类型化菜单命令；复用既有 HWND/UI 线程，未新增消息循环或业务状态。
+- 使用 version4、TaskbarCreated 恢复、CopyIcon 私有副本、完整 UTF-16 验证；
+  多图标 callback ID 不复用，可选 GUID 在进程内保留真实所有权。
+- WM_DESTROY/线程退出先关闭组件写入口并保留 App.closed 早关闭；native cleanup
+  不经过 Post。菜单构造/跟踪栈持有 HMENU，重入关闭只 EndMenu，返回后才释放。
+  删除或销毁失败保留身份/句柄与错误，不清零掩盖，不复活已退役对象。
+- App.Run 在最终 UI 线程清理尝试后才返回。上下文菜单通过实际图标矩形锚定，
+  支持键盘和负屏幕坐标；Shell BOOL 失败不伪造 last-error/HRESULT。
+- ListItem.Badge/BadgeStyle 与 ListStyle.Badge 复用现有列表标题、主题、字体、
+  DPI 与裁剪；不改变行高、选择/勾选/行尾动作，也不引入业务排序或知识状态。
+- ListBox.FirstVisibleIndex / SetFirstVisibleIndex 公开既有顶部行锚点；空列表
+  getter为-1，setter按现有maxScroll夹紧且不改选择。宿主可按Value先恢复选择再
+  恢复锚点；无业务ID、JSON滚动状态或新滚动体系。
+- 新增生产 ABI 静态不变量；纯编译与实际交互验收分开报告，未新增/运行测试、
+  demo 或应用。本阶段不发布依赖，也不修改任何客户端。
+
 ## 2026-10-30
 
 - 新增 `App.SetTopmost(bool) error`：经既有 callOnUI 使用 HWND_TOPMOST / HWND_NOTOPMOST，仅切换 Z 序，不改变可见性、边界、owner 或焦点。隐藏实测确认已有 owned 自动传播，late SetOwner 不立即继承，宿主须在 ready handoff 重新投影主 owner 当前状态；不引入窗口业务 registry 或修改 SetOwner 全局语义。

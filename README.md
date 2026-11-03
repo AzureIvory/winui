@@ -1,5 +1,27 @@
 # winui
 
+## Native notification-area icons and list labels
+
+`app.NewTrayIcon(core.TrayIconOptions{Icon: icon, Tooltip: "Ready", ...})`
+attaches a native notification-area icon to the existing App HWND and UI thread.
+Use `SetIcon`, `SetTooltip`, `SetMenu` and `Close`; there is no second message loop
+or tray worker. Menu commands use `TrayCommandID`, `TrayMenuItem` and
+`TrayMenuCommand` / `TrayMenuCheckbox` / `TrayMenuSeparator`. The host owns the
+source icon and checkbox state. Supply `OnError` to observe asynchronous recovery
+and cleanup errors; ordinary calls return errors directly. See
+[the lifecycle contract](DEVELOPING.md#native-tray-lifetime) before integrating.
+
+`widgets.ListItem.Badge` adds a read-only leading label to a ListBox title.
+`ListStyle.Badge` and per-item `BadgeStyle` customize its theme/font/DPI appearance.
+It shares existing clipping and row metrics, with no extra pointer target or
+business-specific semantics. Existing selection, checkbox and trailing-action
+routes remain authoritative.
+
+`ListBox.FirstVisibleIndex()` reads the current top-row anchor on the UI thread;
+`SetFirstVisibleIndex(index)` restores it through existing clamped row scrolling.
+For reordered rows, retain the top item's stable Value, restore selection, then
+restore its new index. An empty list reports -1; this API changes no selection.
+
 `winui` is a Windows-only Go UI toolkit built directly on top of Win32.
 
 It targets native desktop tools that need explicit control over window lifecycle, painting, DPI, input, reusable widgets, and a declarative JSON UI layer without WebView, XAML, or cross-platform wrappers.

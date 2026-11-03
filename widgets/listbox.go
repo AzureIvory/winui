@@ -149,6 +149,28 @@ func (l *ListBox) SelectedIndex() int {
 	return l.selected
 }
 
+// FirstVisibleIndex returns the top-row scroll anchor, or -1 for an empty list.
+// It is a UI-thread query, like SelectedIndex, and does not imply the widget is
+// visible or has nonzero bounds. Hosts can retain that item's Value across a
+// reordered SetItems, then restore selection before restoring the scroll anchor.
+func (l *ListBox) FirstVisibleIndex() int {
+	if len(l.items) == 0 {
+		return -1
+	}
+	return l.scroll
+}
+
+// SetFirstVisibleIndex sets the top-row scroll anchor through the existing
+// UI-thread path. Indices clamp to [0, maxScroll] (zero for an empty list), so
+// the last page stays filled. It changes no selection and notifies no callbacks.
+func (l *ListBox) SetFirstVisibleIndex(index int) {
+	l.runOnUI(func() {
+		if l.setScroll(index) {
+			l.invalidate(l)
+		}
+	})
+}
+
 // SelectedItem 返回列表框当前选中的项目。
 func (l *ListBox) SelectedItem() (ListItem, bool) {
 	if l.selected < 0 || l.selected >= len(l.items) {
@@ -545,6 +567,7 @@ func (l *ListBox) paintRowText(ctx *PaintCtx, item ListItem, bounds Rect, style 
 		titleRect, subtitleRect = itemTextLineRects(ctx, bounds, style.Font, subtitleFont)
 	}
 	format := core.DTVCenter | core.DTSingleLine | core.DTEndEllipsis
+	titleRect = l.paintRowBadge(ctx, item, titleRect, style)
 	_ = ctx.DrawWidgetText(l, item.displayText(), titleRect, TextStyle{
 		Font: style.Font, Color: color, Format: format,
 	})
@@ -723,6 +746,7 @@ func (l *ListBox) dp(value int32) int32 {
 // mergeListStyle 将列表框样式覆盖合并到基础样式上。
 func mergeListStyle(base, override ListStyle) ListStyle {
 	base.Font = mergeFontSpec(base.Font, override.Font)
+	base.Badge = mergeListBadgeStyle(base.Badge, override.Badge)
 	if override.TextColor != 0 {
 		base.TextColor = override.TextColor
 	}

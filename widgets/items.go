@@ -24,6 +24,11 @@ type ListItem struct {
 	TextColor core.Color
 	// Checked 记录该项侧边打勾列的勾选状态，仅在列表开启打勾列时生效。
 	Checked bool
+	// Badge is an optional read-only label before the ListBox row title.
+	// It has no separate hit target and does not affect row height or ordering.
+	Badge string
+	// BadgeStyle overrides the list theme's badge appearance; zero inherits.
+	BadgeStyle ListBadgeStyle
 }
 
 // displayText 返回列表项最合适的显示文本。

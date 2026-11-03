@@ -152,6 +152,16 @@ type ChoiceStyle struct {
 	IndicatorGapDP int32
 }
 
+// ListBadgeStyle describes a read-only row label. Zero fields inherit from
+// the list theme, and Font inherits the row's secondary font.
+type ListBadgeStyle struct {
+	Font         FontSpec
+	TextColor    core.Color
+	Background   core.Color
+	PaddingDP    int32
+	CornerRadius int32
+}
+
 // ListStyle 描述列表框控件的外观样式。
 type ListStyle struct {
 	// Font 指定列表文本使用的字体规格。
@@ -188,6 +198,8 @@ type ListStyle struct {
 	CheckBorder core.Color
 	// CheckSizeDP 指定打勾列指示器尺寸。
 	CheckSizeDP int32
+	// Badge supplies defaults for ListItem.Badge and per-item BadgeStyle.
+	Badge ListBadgeStyle
 }
 
 // ToggleStyle 描述开关控件的外观样式。
@@ -416,6 +428,7 @@ func DefaultTheme() *Theme {
 			IndicatorGapDP:  10,
 		},
 		ListBox: ListStyle{
+			Badge: ListBadgeStyle{TextColor: core.RGB(30, 64, 175), Background: core.RGB(219, 234, 254), PaddingDP: 5, CornerRadius: 4},
 			Font: FontSpec{
 				Face:   "Microsoft YaHei UI",
 				SizeDP: 15,

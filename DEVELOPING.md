@@ -1,5 +1,127 @@
 # Developing winui
 
+## Native tray lifetime
+
+`App.NewTrayIcon(TrayIconOptions) (*TrayIcon, error)` runs synchronously on the
+App's existing UI thread, after `Init` or within `OnCreate`. It uses the App HWND;
+it never starts another HWND, OS thread, goroutine or application message loop.
+Callers must keep UI callbacks pumping and must not hold a lock needed by them.
+`SetIcon`, `SetTooltip` and `SetMenu` follow the same `callOnUI` contract.
+
+- `Icon` is required. Creation and replacement use `CopyIcon`; the caller owns
+  the original and must keep it valid, without concurrent Close, for the whole
+  synchronous call. The component destroys only its private copies. A successful
+  Shell replacement commits the new accepted image; if destruction of the old
+  copy then fails, the method returns that cleanup error and retains its handle
+  for a later attempt. Such a cleanup error does not undo the Shell update.
+- Tooltip validation rejects invalid UTF-8, embedded NUL and more than 127 UTF-16
+  code units; no truncation splits a surrogate pair. Menu text is also valid,
+  nonempty UTF-8 without NUL. Command IDs are nonzero and unique per snapshot.
+  Separators contain only their kind; only checkbox items can be Checked.
+- `SetMenu` copies and validates the whole flat snapshot before replacement.
+  Native IDs are private snapshot indices, distinct from `TrayCommandID` and
+  widget `WM_COMMAND` notifications. The toolkit never toggles checkbox state;
+  the host projects its authoritative state back into a replacement menu.
+- Zero GUID identifies an icon by HWND + allocated ID. Nonzero `windows.GUID`
+  uses a stable Shell identity, reserved across this process until confirmed
+  deletion. Coordinate other processes in the host. Callback IDs are distinct
+  16-bit values and are never reused for an App's lifetime; exhaustion is an
+  explicit error, including IDs consumed by failed initialization.
+- Unicode `Shell_NotifyIconW` uses version4. ADD must be followed by SETVERSION;
+  rollback preserves failed cleanup records. `NIN_SELECT` / `NIN_KEYSELECT`
+  invoke `OnActivate`, while `WM_CONTEXTMENU` opens the native menu. LOWORD of
+  lParam is the event, HIWORD is callback identity. Context menus query
+  `Shell_NotifyIconGetRect` for mouse/keyboard placement using signed screen
+  coordinates, rather than interpreting undefined callback coordinates.
+- `TaskbarCreated` assumes old Shell registrations were lost and re-adds only
+  live accepted configurations, with SETVERSION again. It also handles the
+  Windows 10 primary-display DPI broadcast. It does not poll or infinitely retry.
+  Re-add failures use `OnError`; updates requiring registration return an error
+  until recovery. Pass a suitable-resolution icon: a private copy retains its
+  pixels, and window DPI is not assumed equal to taskbar DPI. The host can use
+  existing `LoadIconFromICO` or `Image.IconFor` before `SetIcon`.
+- `OnActivate`, `OnCommand` and `OnError` execute on the owner UI thread. Supply
+  `OnError` for asynchronous recovery/automatic cleanup errors. They may close
+  the component or App. Never block them waiting for the same UI thread.
+
+`TrackPopupMenu` pumps a native modal menu on this same thread and can reenter
+WndProc. An open menu retains its original immutable snapshot. One menu stack
+holds its HMENU from construction through foreground setup and tracking; Close
+requests `EndMenu` but never frees that held handle. Only the actual returning
+stack releases it. Menu changes take effect next time. The App suppresses nested
+tray menus. Foreground denial and reliable native errors are reported; a zero
+TPM_RETURNCMD result is cancellation or error without a reliable distinction.
+WM_NULL after tracking and NIM_SETFOCUS after cancellation run only for a live
+owner. User commands run after resource bookkeeping and another lifetime check,
+including after `OnError`, which may itself destroy the App.
+
+Shutdown first publishes the UI-thread tray manager's monotonic closing fence,
+then preserves App.closed's early transition. All identities retire before
+native cleanup and before user error callbacks. Every queued/inline operation,
+callback and recovery checks this fence, with native-return checks before state
+commit. `drainPosted` cannot resurrect a tray. Internal cleanup directly uses
+owner-thread native calls after App.closed; it never posts or waits for stopped.
+`WM_DESTROY` and the UI-thread exit defer share this path. `App.Run` now returns
+after the final cleanup attempt and the stopped broadcast.
+
+`Close() error` is irreversible and idempotent. Retirement is separate from
+resource reclamation: NIM_DELETE failure retains an unconfirmed identity while
+local owned handles are independently reclaimed; failed DestroyIcon/DestroyMenu
+retains each original handle. Resource records are not discarded on failure,
+nor turned active again. Pending deletion also retains a GUID reservation.
+After owner WM_NCDESTROY no Shell/window operation reuses its obsolete HWND.
+Retries use only existing UI opportunities: another explicit Close while the App
+is alive, the returning menu stack, and final UI-thread cleanup. There is no
+finalizer, worker, second pump or unbounded retry. A final failure is reported,
+not represented as successful toolkit cleanup merely because process exit will
+eventually reclaim OS resources.
+
+Inside a menu callback Close can return nil after requesting retirement while
+the original HMENU remains held until tracking returns. Deferred errors use
+OnError. During App shutdown Close only reads the published result; it never
+queues work on a stopped thread. Shutdown callbacks must treat the HWND as
+unusable. Fully reclaimed objects return nil on repeat Close; residual cleanup
+errors remain observable. Library users own visibility/focus/exit policy.
+
+Native bindings live in the same `//go:build windows` implementation with cgo on
+or off. Production compile-time assertions fix NOTIFYICONDATAW size and critical
+offsets (956 bytes on 386, 976 on amd64), plus NOTIFYICONIDENTIFIER size (28/40).
+Compilation proves those layouts, not Explorer/menu/UI behavior. Manual
+acceptance must still cover hidden owners, multiple icons, keyboard activation,
+Explorer restart, negative-monitor placement, DPI and menu-close reentry.
+
+References: [NOTIFYICONDATAW](https://learn.microsoft.com/en-us/windows/win32/api/shellapi/ns-shellapi-notifyicondataw),
+[Shell_NotifyIconW](https://learn.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-shell_notifyiconw),
+[TaskbarCreated](https://learn.microsoft.com/en-us/windows/win32/shell/taskbar),
+[TrackPopupMenu](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-trackpopupmenu),
+[CopyIcon](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-copyicon),
+[Shell_NotifyIconGetRect](https://learn.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-shell_notifyicongetrect).
+
+### Read-only ListBox badges
+
+Use `ListItem.Badge` plus optional `ListItem.BadgeStyle`, with defaults in
+`ListStyle.Badge`. `ListBadgeStyle` contains Font, TextColor, Background,
+PaddingDP and CornerRadius; zero fields inherit using existing merge rules.
+The badge reserves at most half of the existing title rectangle, ellipsizes long
+text and is omitted when the title cannot fit it. It leaves subtitle geometry,
+row height, scroll metrics, selection/hover painting, checkbox and trailing-action
+slots unchanged. It adds no separate gesture. Theme/font/DPI resolution and
+ancestor clipping follow the existing PaintCtx path; disabled text follows the
+list's disabled color. The host decides text and item order, including any
+pinning; widgets contain no domain-specific matching or knowledge state.
+
+`ListBox.FirstVisibleIndex() int` is a UI-thread query, like SelectedIndex: it
+returns the existing top-row scroll anchor or -1 for an empty list. It does not
+promise the control is visible or has nonzero bounds. `SetFirstVisibleIndex(int)`
+uses runOnUI and the existing setScroll path, clamps negative/large values to
+`[0,maxScroll]` (zero internally when empty), preserves a filled last page, and
+invalidates/cancels an eligible pointer gesture only when scrolling changes.
+It changes neither selection nor host callbacks. For reorder/refresh, record
+the top item's stable Value, map it into the new items, restore selection with
+SetSelected, then restore that mapped anchor. If it disappeared the host chooses
+its fallback. SetItems alone preserves/clamps numeric indices, not identities.
+No JSON state or alternate scrolling implementation is introduced.
+
 ## Goal
 
 `winui` is a Windows-only Go UI toolkit. Changes should keep the project reusable, embeddable, free of app logic, and easy to reason about at the Win32 boundary.

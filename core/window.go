@@ -116,6 +116,8 @@ type App struct {
 	renderFallback string
 	// d2dRenderer 保存 Direct2D 渲染器实例。
 	d2dRenderer *d2dRenderer
+	// trays shares this window's UI thread and native lifetime.
+	trays trayManager
 }
 
 // NewApp 创建一个新的应用实例。
@@ -438,11 +440,14 @@ func MessageBeep() error {
 func (a *App) runUIThread() {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
+	exitCode := -1
 	defer func() {
-		a.closed.Store(true)
+		a.closeTrays()
+		a.closeRenderer()
 		close(a.stopped)
+		// Run returns only after the final UI-thread resource cleanup attempt.
+		a.done <- exitCode
 	}()
-	defer a.closeRenderer()
 
 	a.threadID.Store(currentThreadID())
 	a.setDPI(initProcessDPIAwareness())
@@ -450,12 +455,11 @@ func (a *App) runUIThread() {
 	if err := a.createWindow(); err != nil {
 		a.initErr = err
 		close(a.ready)
-		a.done <- -1
 		return
 	}
 
 	close(a.ready)
-	a.done <- a.runLoop()
+	exitCode = a.runLoop()
 }
 
 // createWindow 注册窗口类并创建原生窗口实例。

@@ -23,6 +23,9 @@ func appWndProc(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr {
 		return ret
 	}
 
+	if app.handleTrayMessage(msg, wParam, lParam) {
+		return 0
+	}
 	switch msg {
 
 	case wmGetMinMaxInfo:
@@ -210,7 +213,7 @@ func appWndProc(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr {
 		return 0
 
 	case wmDestroy:
-		app.closed.Store(true)
+		app.closeTrays()
 		app.killAllTimers()
 		app.drainPosted()
 		if app.opts.OnDestroy != nil {
@@ -220,6 +223,7 @@ func appWndProc(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintptr {
 		return 0
 
 	case wmNcDestroy:
+		app.trays.ownerGone = true
 		windowRegistry.Delete(app.Handle())
 		return 0
 	}

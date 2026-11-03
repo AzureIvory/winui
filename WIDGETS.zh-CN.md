@@ -1,5 +1,28 @@
 # WIDGETS 指南
 
+## ListBox 只读标签与原生托盘
+
+`ListItem.Badge string` 在标题前绘制通用只读标签，空串保持旧外观。
+`ListItem.BadgeStyle` 覆盖 `ListStyle.Badge`；`ListBadgeStyle` 包含 Font、TextColor、
+Background、PaddingDP、CornerRadius，零值按现有样式规则继承。宿主通过既有
+SetItems 更新数据；标签不维护业务状态、不决定置顶/排序、不单独响应点击。
+
+标签占现有标题区域最多一半，长文本省略，区域不足时不画；不改变行高、副标题、
+滚动、选择/悬停、勾选与行尾动作区域。字体与 DP 度量复用当前 Scene/PaintCtx，
+绘制沿用列表及祖先裁剪，禁用项使用列表禁用文字色。标签不会创建每行控件树。
+
+`ListBox.FirstVisibleIndex() int` 在 UI 线程读取顶部行锚点，空列表为 -1；不表示
+控件当前可见或已有非零边界。`SetFirstVisibleIndex(int)` 复用 runOnUI/setScroll，
+负数或超界值夹到现有 `[0,maxScroll]`，空列表内部为0，末页保持填满；不改变选择
+或触发宿主回调。刷新/重排前记录顶部项 Value，在新数据中映射后先 SetSelected
+恢复选择，再设顶部锚点。锚点项消失时由宿主决定回退；SetItems 自身只保留数字
+索引，不识别业务ID。这个通用端口不新增 JSON 状态或另一套滚动系统。
+
+托盘是 `core.App.NewTrayIcon` 管理的原生窗口组件，不属于 Scene/widget。
+用 `core.TrayIconOptions` 与类型化 `TrayMenuItem` 装配；所有回调在所属 App UI
+线程，退出和显示策略由宿主决定。详情见 [原生托盘生命周期](DEVELOPING.md#native-tray-lifetime)，
+包括图标私有副本、Explorer 恢复、关闭屏障、菜单重入与失败句柄的保留规则。
+
 ## 1. 核心模型
 
 `widgets` 建立在 `core` 之上，`Scene` 是运行时协调者。
