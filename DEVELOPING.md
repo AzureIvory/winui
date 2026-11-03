@@ -35,7 +35,18 @@ Callers must keep UI callbacks pumping and must not hold a lock needed by them.
   coordinates, rather than interpreting undefined callback coordinates.
 - `TaskbarCreated` assumes old Shell registrations were lost and re-adds only
   live accepted configurations, with SETVERSION again. It also handles the
-  Windows 10 primary-display DPI broadcast. It does not poll or infinitely retry.
+  Windows 10 primary-display DPI broadcast. Each real broadcast advances an
+  owner-thread Shell generation and coalesces pending recovery, including busy
+  icons. ADD/SETVERSION/MODIFY responses only commit in that same generation;
+  a cross-generation successful return retains uncertain native ownership,
+  never current readiness or new accepted configuration. The outermost native
+  operation exit consumes one bounded recovery batch on the existing UI stack.
+  A further broadcast during that batch queues one coalesced callback through
+  the existing posted queue, never UI-thread Post's inline path. Ordinary native
+  failure does not re-arm recovery or queue retries; there is no polling loop.
+  If an uncertain ADD may already have reached the current Shell, one bounded
+  full-configuration MODIFY after an ADD failure can reconcile its still-reserved
+  identity before SETVERSION. Both must return in the same current generation.
   Re-add failures use `OnError`; updates requiring registration return an error
   until recovery. Pass a suitable-resolution icon: a private copy retains its
   pixels, and window DPI is not assumed equal to taskbar DPI. The host can use
@@ -51,6 +62,9 @@ requests `EndMenu` but never frees that held handle. Only the actual returning
 stack releases it. Menu changes take effect next time. The App suppresses nested
 tray menus. Foreground denial and reliable native errors are reported; a zero
 TPM_RETURNCMD result is cancellation or error without a reliable distinction.
+EndMenu BOOL failure is reported with operation context only, without stale
+last-error codes or a synthesized EINVAL; its failure never transfers HMENU
+ownership away from the returning tracking stack.
 WM_NULL after tracking and NIM_SETFOCUS after cancellation run only for a live
 owner. User commands run after resource bookkeeping and another lifetime check,
 including after `OnError`, which may itself destroy the App.
@@ -62,13 +76,22 @@ callback and recovery checks this fence, with native-return checks before state
 commit. `drainPosted` cannot resurrect a tray. Internal cleanup directly uses
 owner-thread native calls after App.closed; it never posts or waits for stopped.
 `WM_DESTROY` and the UI-thread exit defer share this path. `App.Run` now returns
-after the final cleanup attempt and the stopped broadcast.
+after the final cleanup attempt and the stopped broadcast on success and on
+initialization failure (including a tray created by an OnCreate that then fails).
+Init retains its existing creation-result/ready semantics; only Run additionally
+waits for stopped when Init returns an error. Like any blocking Run, it belongs
+to the external host, not the UI callbacks whose completion it waits for.
 
 `Close() error` is irreversible and idempotent. Retirement is separate from
 resource reclamation: NIM_DELETE failure retains an unconfirmed identity while
 local owned handles are independently reclaimed; failed DestroyIcon/DestroyMenu
 retains each original handle. Resource records are not discarded on failure,
 nor turned active again. Pending deletion also retains a GUID reservation.
+Even a broadcast proving old registrations absent cannot release that reservation
+while the old identity's native stack is still in flight. A successful stale
+ADD/MODIFY/SETVERSION retains uncertain ownership until same-generation native
+reconciliation/deletion or a later broadcast; release requires retirement,
+confirmed absence, no native operation and no cleanup on that object's stack.
 After owner WM_NCDESTROY no Shell/window operation reuses its obsolete HWND.
 Retries use only existing UI opportunities: another explicit Close while the App
 is alive, the returning menu stack, and final UI-thread cleanup. There is no

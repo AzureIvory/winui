@@ -10,6 +10,8 @@ or tray worker. Menu commands use `TrayCommandID`, `TrayMenuItem` and
 source icon and checkbox state. Supply `OnError` to observe asynchronous recovery
 and cleanup errors; ordinary calls return errors directly. See
 [the lifecycle contract](DEVELOPING.md#native-tray-lifetime) before integrating.
+Busy native operations retain coalesced Explorer recovery across real Shell
+generations; `Run` waits for final cleanup even when initialization fails.
 
 `widgets.ListItem.Badge` adds a read-only leading label to a ListBox title.
 `ListStyle.Badge` and per-item `BadgeStyle` customize its theme/font/DPI appearance.

@@ -2,6 +2,15 @@
 
 ## 2026-11-03
 
+- PhaseA review fix: TaskbarCreated now records/coalesces a real Shell generation
+  while operations are busy; the outermost owner UI stack drains bounded
+  recovery, and another broadcast during recovery uses one existing queued
+  callback. Same-generation native replies alone commit registration/accepted
+  state. Uncertain effects and in-flight GUID ownership remain recorded.
+- Run also waits for stopped/final resource cleanup when Init fails. EndMenu
+  BOOL failures carry operation context without stale or fabricated native codes;
+  HMENU ownership remains with the actual returning menu stack.
+
 - 新增 App-owned Unicode 原生托盘：NewTrayIcon、SetIcon、SetTooltip、SetMenu、
   Close 与类型化菜单命令；复用既有 HWND/UI 线程，未新增消息循环或业务状态。
 - 使用 version4、TaskbarCreated 恢复、CopyIcon 私有副本、完整 UTF-16 验证；

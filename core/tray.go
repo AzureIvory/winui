@@ -54,6 +54,8 @@ type TrayIconOptions struct {
 
 var ErrTrayClosed = errors.New("winui/core: tray icon closed")
 
+var errTrayShellChanged = errors.New("winui/core: Shell generation changed during tray operation")
+
 // Process-local reservation also prevents two Apps from using the same GUID
 // while a previous icon's Shell deletion remains unconfirmed.
 var trayGUIDOwners sync.Map
@@ -64,6 +66,11 @@ type trayManager struct {
 	taskbarMessage     uint32
 	icons              map[uint16]*TrayIcon
 	menuOwner          *TrayIcon
+	// generation advances only on a real TaskbarCreated message. A recovery
+	// batch runs after the outermost identity/native operation has committed.
+	generation                 uint64
+	operations                 int
+	recovering, recoveryQueued bool
 }
 
 type trayCloseResult struct{ err error }
@@ -72,18 +79,22 @@ type trayCloseResult struct{ err error }
 // state is UI-thread confined except the published close result. No extra HWND,
 // thread, goroutine or message loop is created.
 type TrayIcon struct {
-	app                           *App
-	id                            uint16
-	guid                          windows.GUID
-	options                       TrayIconOptions
-	tooltip                       [128]uint16
-	menu                          []TrayMenuItem
-	icon                          windows.Handle
-	ownedIcons                    map[windows.Handle]struct{}
-	ownedMenus                    map[windows.Handle]struct{}
-	shellPresent, ready, retired  bool
-	busy                          int
-	cleaning, reporting, tracking bool
+	app                          *App
+	id                           uint16
+	guid                         windows.GUID
+	options                      TrayIconOptions
+	tooltip                      [128]uint16
+	menu                         []TrayMenuItem
+	icon                         windows.Handle
+	ownedIcons                   map[windows.Handle]struct{}
+	ownedMenus                   map[windows.Handle]struct{}
+	shellPresent, ready, retired bool
+	// A cross-generation successful native return has uncertain Shell effects,
+	// not a valid current registration. Keep its identity reservation until a
+	// same-generation reconciliation/deletion or later broadcast resolves it.
+	shellUncertain, accepted, recoveryPending bool
+	busy                                      int
+	cleaning, reporting, tracking             bool
 	// heldMenu belongs to a showMenu stack, including its construction and
 	// foreground setup before native tracking begins. Cleanup must not free it.
 	heldMenu windows.Handle
@@ -138,7 +149,7 @@ func (a *App) NewTrayIcon(options TrayIconOptions) (*TrayIcon, error) {
 			m.icons = make(map[uint16]*TrayIcon)
 		}
 		m.icons[t.id] = t // Also owns partially initialized and retired resources.
-		t.busy++
+		t.beginOperation()
 		icon, operationErr := t.copyIcon(options.Icon)
 		if operationErr == nil {
 			t.icon = icon
@@ -148,15 +159,19 @@ func (a *App) NewTrayIcon(options TrayIconOptions) (*TrayIcon, error) {
 				operationErr = t.add()
 			}
 		}
-		t.busy--
 		if operationErr != nil || !t.available() {
 			if operationErr == nil {
 				operationErr = ErrAppClosed
 			}
 			t.retire()
+			t.endOperation()
 			return errors.Join(operationErr, t.cleanup())
 		}
-		t.ready = true
+		t.ready, t.accepted = true, true
+		t.endOperation()
+		if !t.available() {
+			return errors.Join(ErrAppClosed, t.cleanup())
+		}
 		tray = t
 		return nil
 	})
@@ -232,22 +247,80 @@ func (t *TrayIcon) add() error {
 	d := t.data()
 	d.Flags |= nifMessage | nifIcon | nifTip | nifShowTip
 	d.Callback, d.Icon, d.Tip = wmAppTray, t.icon, t.tooltip
-	if err := notifyTray(nimAdd, &d); err != nil {
-		return err
+	if err := t.notify(nimAdd, &d); err != nil {
+		if errors.Is(err, errTrayShellChanged) || !t.shellUncertain || !t.available() {
+			return err
+		}
+		// A prior successful ADD crossed a broadcast. The current Shell may
+		// already contain this still-reserved identity. Reconcile the complete
+		// accepted configuration once, rather than assuming ADD failure means
+		// absence or repeatedly deleting/re-adding an uncertain identity.
+		if modifyErr := t.notify(nimModify, &d); modifyErr != nil {
+			return errors.Join(err, modifyErr)
+		}
 	}
-	t.shellPresent = true
+	t.shellPresent, t.shellUncertain = true, false
 	if !t.available() {
 		return ErrAppClosed
 	}
 	d = t.data()
 	d.Version = notifyIconVersion4
-	if err := notifyTray(nimSetVersion, &d); err != nil {
+	if err := t.notify(nimSetVersion, &d); err != nil {
 		return err
 	}
 	if !t.available() {
 		return ErrAppClosed
 	}
 	return nil
+}
+
+// notify accepts native state only if the response belongs to the same Shell
+// generation. All callers retain the original identity on this owner UI stack.
+func (t *TrayIcon) notify(operation uint32, data *notifyIconDataW) error {
+	t.beginOperation()
+	defer t.endOperation()
+	generation := t.app.trays.generation
+	err := notifyTray(operation, data)
+	if generation != t.app.trays.generation {
+		t.ready = false
+		if err == nil && (operation == nimAdd || operation == nimModify || operation == nimSetVersion) {
+			t.shellUncertain = true
+		}
+		if t.accepted && t.available() {
+			t.recoveryPending = true
+		}
+		return errors.Join(err, errTrayShellChanged)
+	}
+	return err
+}
+
+func (t *TrayIcon) deleteRegistration() error {
+	d := t.data()
+	if err := t.notify(nimDelete, &d); err != nil {
+		return err
+	}
+	t.shellPresent, t.shellUncertain = false, false
+	return nil
+}
+
+func (t *TrayIcon) beginOperation() {
+	t.busy++
+	t.app.trays.operations++
+}
+
+func (t *TrayIcon) endOperation() {
+	t.busy--
+	t.app.trays.operations--
+	t.releaseGUID()
+	if t.app.trays.operations == 0 {
+		t.app.drainTrayRecovery()
+	}
+}
+
+func (t *TrayIcon) releaseGUID() {
+	if t.retired && t.busy == 0 && !t.cleaning && !t.shellPresent && !t.shellUncertain && t.guid != (windows.GUID{}) {
+		trayGUIDOwners.CompareAndDelete(t.guid, t)
+	}
 }
 
 func (t *TrayIcon) copyIcon(icon *Icon) (windows.Handle, error) {
@@ -274,9 +347,9 @@ func (t *TrayIcon) change(fn func() error) error {
 		if t.busy != 0 {
 			return fmt.Errorf("winui/core: tray operation already in progress")
 		}
-		t.busy++
+		t.beginOperation()
 		err := fn()
-		t.busy--
+		t.endOperation()
 		if !t.available() {
 			return errors.Join(err, ErrTrayClosed, t.cleanup())
 		}
@@ -298,7 +371,7 @@ func (t *TrayIcon) SetTooltip(text string) error {
 		d := t.data()
 		d.Flags |= nifTip | nifShowTip
 		d.Tip = tip
-		if err := notifyTray(nimModify, &d); err != nil {
+		if err := t.notify(nimModify, &d); err != nil {
 			return err
 		}
 		if t.available() {
@@ -336,7 +409,7 @@ func (t *TrayIcon) SetIcon(icon *Icon) error {
 		d := t.data()
 		d.Flags |= nifIcon
 		d.Icon = h
-		if err := notifyTray(nimModify, &d); err != nil {
+		if err := t.notify(nimModify, &d); err != nil {
 			return errors.Join(err, t.destroyIcon(h))
 		}
 		if !t.available() {
@@ -350,6 +423,7 @@ func (t *TrayIcon) SetIcon(icon *Icon) error {
 
 func (t *TrayIcon) retire() {
 	t.retired, t.ready = true, false
+	t.recoveryPending = false
 	if t.closed.Load() == nil {
 		t.closed.Store(&trayCloseResult{})
 	}
@@ -383,9 +457,9 @@ func (t *TrayIcon) destroyIcon(h windows.Handle) error {
 	if h == 0 {
 		return nil
 	}
-	t.busy++
+	t.beginOperation()
+	defer t.endOperation()
 	ok, _, err := procDestroyIcon.Call(uintptr(h))
-	t.busy--
 	if ok == 0 {
 		return wrapError("DestroyIcon(tray)", err)
 	}
@@ -394,9 +468,9 @@ func (t *TrayIcon) destroyIcon(h windows.Handle) error {
 }
 
 func (t *TrayIcon) destroyMenu(h windows.Handle) error {
-	t.busy++
+	t.beginOperation()
+	defer t.endOperation()
 	ok, _, err := procDestroyMenu.Call(uintptr(h))
-	t.busy--
 	if ok == 0 {
 		return wrapError("DestroyMenu(tray)", err)
 	}
@@ -415,21 +489,20 @@ func (t *TrayIcon) cleanup() error {
 		return nil
 	}
 	t.cleaning = true
+	t.beginOperation()
 	var errs []error
 	if t.tracking {
-		if ok, _, err := procEndMenu.Call(); ok == 0 {
-			errs = append(errs, wrapError("EndMenu(tray)", err))
+		if ok, _, _ := procEndMenu.Call(); ok == 0 {
+			// BOOL failure has no reliable last-error diagnostic for this path.
+			errs = append(errs, fmt.Errorf("winui/core: EndMenu(tray) failed"))
 		}
 	}
-	if t.shellPresent {
+	if t.shellPresent || t.shellUncertain {
 		if t.app.trays.ownerGone {
 			errs = append(errs, fmt.Errorf("winui/core: tray Shell deletion unconfirmed before owner destruction"))
 		} else {
-			d := t.data()
-			if err := notifyTray(nimDelete, &d); err != nil {
+			if err := t.deleteRegistration(); err != nil {
 				errs = append(errs, err)
-			} else {
-				t.shellPresent = false
 			}
 		}
 	}
@@ -445,12 +518,10 @@ func (t *TrayIcon) cleanup() error {
 			}
 		}
 	}
-	if !t.shellPresent && t.guid != (windows.GUID{}) {
-		trayGUIDOwners.CompareAndDelete(t.guid, t)
-	}
 	err := errors.Join(errs...)
 	t.closed.Store(&trayCloseResult{err: err})
 	t.cleaning = false
+	t.endOperation()
 	return err
 }
 
@@ -488,41 +559,91 @@ func (a *App) traySnapshot() []*TrayIcon {
 	return icons
 }
 
+// drainTrayRecovery consumes at most one pending request per icon in a stable
+// batch, after the outermost owner-thread operation commits. Only a real new
+// TaskbarCreated can re-arm a consumed request; ordinary native failure cannot.
+func (a *App) drainTrayRecovery() {
+	m := &a.trays
+	if m.closing || a.closed.Load() || m.operations != 0 || m.recovering {
+		return
+	}
+	m.recovering = true
+	icons := a.traySnapshot()
+	errs := make([]error, len(icons))
+	for i, t := range icons {
+		if !t.recoveryPending || !t.available() || !t.accepted {
+			continue
+		}
+		t.recoveryPending = false
+		t.beginOperation()
+		err := t.add()
+		if err != nil && !errors.Is(err, errTrayShellChanged) && t.available() && (t.shellPresent || t.shellUncertain) {
+			// Roll back a current-generation unversioned registration once. A
+			// generation change leaves the coalesced new request intact instead.
+			err = errors.Join(err, t.deleteRegistration())
+		}
+		t.ready = err == nil && t.available()
+		t.endOperation()
+		if !t.available() {
+			err = errors.Join(err, t.cleanup())
+		}
+		errs[i] = err
+	}
+	// All batch bookkeeping precedes callbacks. Their inline Post/change calls
+	// cannot recursively start another recovery batch while recovering is true.
+	for i, t := range icons {
+		t.report(errs[i])
+	}
+	m.recovering = false
+	a.queueTrayRecovery()
+}
+
+func (a *App) queueTrayRecovery() {
+	m := &a.trays
+	if m.closing || a.closed.Load() || m.recoveryQueued {
+		return
+	}
+	icons := a.traySnapshot()
+	pending := false
+	for _, t := range icons {
+		if t.recoveryPending && t.available() {
+			pending = true
+			break
+		}
+	}
+	if !pending {
+		return
+	}
+	m.recoveryQueued = true
+	// Post would execute inline on the UI thread. enqueuePost really enters
+	// the existing queue/WM_APP invocation path, coalescing broadcasts received
+	// during a recovery batch without recursion, a new pump or polling retries.
+	if err := a.enqueuePost(func() {
+		m.recoveryQueued = false
+		a.drainTrayRecovery()
+	}); err != nil {
+		m.recoveryQueued = false
+		for _, t := range icons {
+			if t.recoveryPending && t.available() {
+				t.report(err)
+			}
+		}
+	}
+}
+
 func (a *App) handleTrayMessage(message uint32, wParam, lParam uintptr) bool {
 	m := &a.trays
 	if m.taskbarMessage != 0 && message == m.taskbarMessage {
+		m.generation++
 		icons := a.traySnapshot()
 		// The broadcast invalidates all old Shell registrations, including retired
 		// identities with an earlier unconfirmed NIM_DELETE. Never restore those.
 		for _, t := range icons {
-			t.shellPresent = false
-			if t.retired && t.busy == 0 && !t.cleaning && t.guid != (windows.GUID{}) {
-				trayGUIDOwners.CompareAndDelete(t.guid, t)
-			}
+			t.shellPresent, t.shellUncertain, t.ready = false, false, false
+			t.recoveryPending = t.accepted && t.available()
+			t.releaseGUID()
 		}
-		for _, t := range icons {
-			if !t.available() || t.busy != 0 {
-				continue
-			}
-			t.busy++
-			err := t.add()
-			if err != nil && t.shellPresent && t.available() {
-				// SETVERSION failed. Keep accepted configuration but remove this
-				// unversioned registration until a later TaskbarCreated can retry.
-				d := t.data()
-				if deleteErr := notifyTray(nimDelete, &d); deleteErr != nil {
-					err = errors.Join(err, deleteErr)
-				} else {
-					t.shellPresent = false
-				}
-			}
-			t.busy--
-			if !t.available() {
-				err = errors.Join(err, t.cleanup())
-			}
-			t.ready = err == nil && t.available()
-			t.report(err)
-		}
+		a.drainTrayRecovery()
 		return true
 	}
 	if message != wmAppTray {
@@ -630,8 +751,11 @@ func (t *TrayIcon) showMenu() {
 		}
 		if selected == 0 && t.available() {
 			d := t.data()
-			err = errors.Join(err, notifyTray(nimSetFocus, &d))
+			err = errors.Join(err, t.notify(nimSetFocus, &d))
 		}
+	}
+	if t.retired {
+		err = errors.Join(err, t.cleanup())
 	}
 	t.report(err)
 	// OnError may have closed this icon/App. Validate again before user command.

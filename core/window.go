@@ -183,6 +183,9 @@ func (a *App) Run() int {
 		return -1
 	}
 	if err := a.Init(); err != nil {
+		// Init reports creation, including OnCreate failure, before the UI
+		// thread's final resource retry. Run owns waiting for that cleanup too.
+		<-a.stopped
 		return -1
 	}
 	return <-a.done
